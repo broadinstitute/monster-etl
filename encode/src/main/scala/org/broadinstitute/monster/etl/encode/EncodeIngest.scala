@@ -7,7 +7,7 @@ import caseapp._
 import com.spotify.scio.coders.Coder
 import com.spotify.scio.{BuildInfo => _, io => _, _}
 import com.spotify.scio.extra.json._
-import io.circe.Json
+import io.circe.JsonObject
 import io.circe.jawn.JawnParser
 import io.circe.syntax._
 import org.apache.beam.sdk
@@ -61,13 +61,14 @@ object EncodeIngest {
 
   def main(rawArgs: Array[String]): Unit = {
     // Using `typed` gives us '--help' and '--usage' automatically.
-    val (sc, parsedArgs) = ContextAndArgs.typed[Args](rawArgs)
+    val (pipelineContext, parsedArgs) = ContextAndArgs.typed[Args](rawArgs)
 
     // Add processing steps between the read and write here.
-    sc.jsonFile[Json](parsedArgs.experimentsJson)
+    pipelineContext
+      .jsonFile[JsonObject](parsedArgs.experimentsJson)
       .saveAsJsonFile(parsedArgs.outputDir)
 
-    sc.close().waitUntilDone()
+    pipelineContext.close().waitUntilDone()
     ()
   }
 }
