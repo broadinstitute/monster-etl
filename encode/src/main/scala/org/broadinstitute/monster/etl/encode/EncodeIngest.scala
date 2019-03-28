@@ -94,7 +94,8 @@ object Filters {
     Set(
       "@id",
       "accession",
-      "awad",
+      "aliases",
+      "award",
       "date_created",
       "date_released",
       "date_submitted",
@@ -108,12 +109,12 @@ object Filters {
 
   val RenamedEncodeFields =
     Map(
-      "accession" -> Set("close_match"),
-      "award" -> Set("sponsor"),
-      "dbxrefs" -> Set("aliases"),
-      "@id" -> Set(
-        "id",
-        "label"
-      )
+      "@id" ->        Set(
+                        "id",
+                        "label"
+                      ),
+      "accession" ->  Set("close_match"),
+      "award" ->      Set("sponsor"),
+      "dbxrefs" ->    Set("aliases")
     )
 }
