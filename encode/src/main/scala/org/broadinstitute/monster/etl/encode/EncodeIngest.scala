@@ -66,9 +66,54 @@ object EncodeIngest {
     // Add processing steps between the read and write here.
     pipelineContext
       .jsonFile[JsonObject](parsedArgs.experimentsJson)
+      .map { jObj =>
+        jObj.filterKeys(Filters.EncodeFields.contains)
+      }
+      .map { jObj =>
+        Filters.RenamedEncodeFields.foldLeft(jObj) {
+          case (currentJObj, (oldFieldName, newFieldNames)) =>
+            currentJObj(oldFieldName).fold(currentJObj) { value =>
+              newFieldNames.foldLeft(currentJObj) { (currentJObjModify, newFieldName) =>
+                currentJObjModify
+                  .add(newFieldName, value)
+                  .remove(oldFieldName)
+              }
+            }
+        }
+      }
       .saveAsJsonFile(parsedArgs.outputDir)
 
     pipelineContext.close().waitUntilDone()
     ()
   }
+}
+
+object Filters {
+
+  val EncodeFields =
+    Set(
+      "@id",
+      "accession",
+      "awad",
+      "date_created",
+      "date_released",
+      "date_submitted",
+      "dbxrefs",
+      "description",
+      "lab",
+      "status",
+      "submitted_by",
+      "target"
+    )
+
+  val RenamedEncodeFields =
+    Map(
+      "accession" -> Set("close_match"),
+      "award" -> Set("sponsor"),
+      "dbxrefs" -> Set("aliases"),
+      "@id" -> Set(
+        "id",
+        "label"
+      )
+    )
 }
