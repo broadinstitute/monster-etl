@@ -109,12 +109,12 @@ object Filters {
 
   val RenamedEncodeFields =
     Map(
-      "@id" ->        Set(
-                        "id",
-                        "label"
-                      ),
-      "accession" ->  Set("close_match"),
-      "award" ->      Set("sponsor"),
-      "dbxrefs" ->    Set("aliases")
+      "@id" -> Set(
+        "id",
+        "label"
+      ),
+      "accession" -> Set("close_match"),
+      "award" -> Set("sponsor"),
+      "dbxrefs" -> Set("aliases")
     )
 }
