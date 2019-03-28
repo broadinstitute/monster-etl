@@ -70,14 +70,15 @@ object EncodeIngest {
         jObj.filterKeys(Filters.EncodeFields.contains)
       }
       .map { jObj =>
-        Filters.RenamedEncodeFields.foldLeft(jObj) {
+        Filters.RenamedExperimentFields.foldLeft(jObj) {
           case (currentJObj, (oldFieldName, newFieldNames)) =>
             currentJObj(oldFieldName).fold(currentJObj) { value =>
-              newFieldNames.foldLeft(currentJObj) { (currentJObjModify, newFieldName) =>
-                currentJObjModify
-                  .add(newFieldName, value)
-                  .remove(oldFieldName)
-              }
+              newFieldNames
+                .foldLeft(currentJObj) { (currentJObjModify, newFieldName) =>
+                  currentJObjModify
+                    .add(newFieldName, value)
+                }
+                .remove(oldFieldName)
             }
         }
       }
@@ -107,7 +108,7 @@ object Filters {
       "target"
     )
 
-  val RenamedEncodeFields =
+  val RenamedExperimentFields =
     Map(
       "@id" -> Set(
         "id",
