@@ -5,13 +5,29 @@ import com.spotify.scio.{BuildInfo => _, io => _, _}
 import com.spotify.scio.extra.json._
 import io.circe.JsonObject
 import org.broadinstitute.monster.etl.BuildInfo
+import org.broadinstitute.monster.etl.encode.transforms.{
+  DonorTransforms,
+  EncodeTransforms,
+  FileTransforms
+}
 
-/** Main entry-point for the ENCODE ETL workflow. */
+/**
+  * ETL workflow for cleaning ENCODE metadata pre-ingest.
+  *
+  * For now, requires a preceding step to download raw ENCODE JSON
+  * into a location that Apache Beam can access (local storage or GCS).
+  */
 object EncodeIngest {
 
   @AppName("ENCODE Ingest")
   @AppVersion(BuildInfo.version)
   @ProgName("org.broadinstitute.monster.etl.encode.EncodeIngest")
+  /**
+    * Command-line arguments for the ETL workflow.
+    *
+    * scio's `ContextAndArgs.typed` delegates down to `caseapp`, which will generate
+    * parsers + help text for these args (as well as Beams' underlying options)
+    */
   case class Args(
     @HelpMessage("Path to newline-delimited JSON describing raw ENCODE donors")
     donorsJson: String,
@@ -42,7 +58,7 @@ object EncodeIngest {
     val cleanedDonors =
       rawDonors
         .transform(EncodeTransforms.cleanEntities(EncodeEntity.Donor))
-        .transform(EncodeTransforms.splitDonorPhenotypes)
+        .transform(DonorTransforms.splitDonorPhenotypes)
 
     val cleanedExperiments =
       rawExperiments.transform(EncodeTransforms.cleanEntities(EncodeEntity.Experiment))
@@ -51,13 +67,14 @@ object EncodeIngest {
     val cleanedFiles =
       rawFiles
         .transform(EncodeTransforms.cleanEntities(EncodeEntity.File))
-        .transform(EncodeTransforms.extractFileQc)
+        .transform(FileTransforms.extractFileQc)
+        .transform(FileTransforms.markFileRunType)
 
     val cleanedLibraries =
       rawLibraries.transform(EncodeTransforms.cleanEntities(EncodeEntity.Library))
 
     val cleanedSamples =
-      rawSamples.transform(EncodeTransforms.cleanEntities(EncodeEntity.Sample))
+      rawSamples.transform(EncodeTransforms.cleanEntities(EncodeEntity.Biosample))
 
     // TODO: Generate join tables & assay entities.
 

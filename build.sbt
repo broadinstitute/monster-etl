@@ -74,7 +74,8 @@ lazy val encode = project
       "com.beachape" %% "enumeratum" % enumeratumVersion,
       "com.spotify" %% "scio-core" % scioVersion,
       "com.spotify" %% "scio-extra" % scioVersion,
-      "org.apache.beam" % "beam-runners-direct-java" % beamVersion % Runtime
+      "org.apache.beam" % "beam-runners-direct-java" % beamVersion % Runtime,
+      "org.apache.beam" % "beam-runners-google-cloud-dataflow-java" % beamVersion % Runtime
     ),
     libraryDependencies ++= Seq(
       "com.spotify" %% "scio-test" % scioVersion

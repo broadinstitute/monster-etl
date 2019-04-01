@@ -2,8 +2,19 @@ package org.broadinstitute.monster.etl.encode
 
 import enumeratum.{Enum, EnumEntry}
 
+/**
+  * An entity type found in ENCODE that we also want
+  * (with modifications) in our data model.
+  */
 sealed trait EncodeEntity extends EnumEntry {
 
+  /**
+    * Fields from the original ENCODE JSON objects of the
+    * entity type which should be retained.
+    *
+    * Assumption: trimming happens before renaming in the ETL workflow,
+    * so these strings should match the ENCODE names.
+    */
   def fieldsToKeep: Set[String] = Set(
     "@id",
     "accession",
@@ -16,21 +27,67 @@ sealed trait EncodeEntity extends EnumEntry {
     "submitted_by"
   )
 
-  def fieldsToRename: Map[String, String] = Map(
+  /**
+    * `old` -> `new` mappings for fields from ENCODE which
+    * should be renamed.
+    */
+  def fieldsToRename: List[(String, String)] = List(
     "@id" -> "label",
     "accession" -> "close_match",
     "award" -> "sponsor",
     "date_created" -> "created_at"
   )
 
+  /**
+    * ENCODE fields which should be turned into links back to the ENCODE site.
+    *
+    * Assumption: linking happens after renaming, so these strings should match our
+    * data model's names.
+    */
   def linkFields: Set[String] = Set("close_match", "sponsor", "submitted_by")
 
+  /**
+    * ENCODE fields of the form '/<entity-type>/<entity-label>/' which should be
+    * transformed into just '<entity-label>'.
+    *
+    * Assumption: labeling happens after renaming, so these strings should match our
+    * data model's names.
+    */
+  def labelFields: Set[String] = Set("label", "lab")
+
+  /**
+    * Fields which should be collapsed into a single "aliases" array.
+    *
+    * Assumption: collapsing happens after renaming, so these strings should match
+    * our data model's names.
+    */
   def aliasFields: Set[String] = Set("aliases", "dbxrefs")
 }
 
 object EncodeEntity extends Enum[EncodeEntity] {
 
   override val values = findValues
+
+  case object Biosample extends EncodeEntity {
+    override def fieldsToKeep: Set[String] = super.fieldsToKeep.union(
+      Set(
+        "biosample_ontology",
+        "cell_isolation_method",
+        "date_obtained",
+        "source"
+      )
+    )
+
+    override def fieldsToRename: List[(String, String)] =
+      ("biosample_ontology" -> "biosample_type_id") :: super.fieldsToRename
+
+    override def labelFields: Set[String] = super.labelFields.union(
+      Set(
+        "biosample_type_id",
+        "source"
+      )
+    )
+  }
 
   case object Donor extends EncodeEntity {
     override def fieldsToKeep: Set[String] = super.fieldsToKeep.union(
@@ -46,12 +103,14 @@ object EncodeEntity extends Enum[EncodeEntity] {
       )
     )
 
-    override def fieldsToRename: Map[String, String] = super.fieldsToRename ++ Map(
+    override def fieldsToRename: List[(String, String)] = super.fieldsToRename ::: List(
       "health_status" -> "phenotype",
       "organism" -> "organism_id"
     )
 
     override def aliasFields: Set[String] = super.aliasFields + "external_ids"
+
+    override def labelFields: Set[String] = super.labelFields + "organism_id"
   }
 
   case object Experiment extends EncodeEntity {
@@ -73,8 +132,6 @@ object EncodeEntity extends Enum[EncodeEntity] {
         "file_format",
         "file_format_type",
         "file_size",
-        "mapped_read_length",
-        "mapped_run_type",
         "md5sum",
         "notes",
         "output_type",
@@ -88,7 +145,7 @@ object EncodeEntity extends Enum[EncodeEntity] {
       )
     )
 
-    override def fieldsToRename: Map[String, String] = super.fieldsToRename ++ Map(
+    override def fieldsToRename: List[(String, String)] = super.fieldsToRename ::: List(
       "file_format" -> "format",
       "file_format_type" -> "file_sub_type",
       "paired_end" -> "paired_end_identifier",
@@ -98,28 +155,14 @@ object EncodeEntity extends Enum[EncodeEntity] {
     )
 
     override def aliasFields: Set[String] = super.aliasFields + "external_ids"
+
+    override def labelFields: Set[String] = super.labelFields + "platform_id"
   }
 
   case object Library extends EncodeEntity {
     override def fieldsToKeep: Set[String] = super.fieldsToKeep + "strand_specificity"
 
-    override def fieldsToRename: Map[String, String] =
-      super.fieldsToRename + ("strand_specificity" -> "strand_specific")
-  }
-
-  case object Sample extends EncodeEntity {
-    override def fieldsToKeep: Set[String] = super.fieldsToKeep.union(
-      Set(
-        "biosample_term_id",
-        "biosample_type",
-        "date_obtained",
-        "source"
-      )
-    )
-
-    override def fieldsToRename: Map[String, String] = super.fieldsToRename ++ Map(
-      "biosample_term_id" -> "organ_id",
-      "biosample_type" -> "biosample_type_id"
-    )
+    override def fieldsToRename: List[(String, String)] =
+      ("strand_specificity" -> "strand_specific") :: super.fieldsToRename
   }
 }
