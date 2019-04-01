@@ -40,6 +40,7 @@ inThisBuild(
 val betterMonadicForVersion = "0.2.4"
 
 val beamVersion = "2.11.0"
+val enumeratumVersion = "1.5.13"
 val logbackVersion = "1.2.3"
 val scioVersion = "0.7.4"
 
@@ -70,9 +71,11 @@ lazy val encode = project
   .settings(
     libraryDependencies ++= Seq(
       "ch.qos.logback" % "logback-classic" % logbackVersion,
+      "com.beachape" %% "enumeratum" % enumeratumVersion,
       "com.spotify" %% "scio-core" % scioVersion,
       "com.spotify" %% "scio-extra" % scioVersion,
-      "org.apache.beam" % "beam-runners-direct-java" % beamVersion
+      "org.apache.beam" % "beam-runners-direct-java" % beamVersion % Runtime,
+      "org.apache.beam" % "beam-runners-google-cloud-dataflow-java" % beamVersion % Runtime
     ),
     libraryDependencies ++= Seq(
       "com.spotify" %% "scio-test" % scioVersion
