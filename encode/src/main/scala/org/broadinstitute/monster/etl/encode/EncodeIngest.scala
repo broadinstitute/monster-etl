@@ -5,11 +5,7 @@ import com.spotify.scio.{BuildInfo => _, io => _, _}
 import com.spotify.scio.extra.json._
 import io.circe.JsonObject
 import org.broadinstitute.monster.etl.BuildInfo
-import org.broadinstitute.monster.etl.encode.transforms.{
-  DonorTransforms,
-  EncodeTransforms,
-  FileTransforms
-}
+import org.broadinstitute.monster.etl.encode.transforms._
 
 /**
   * ETL workflow for cleaning ENCODE metadata pre-ingest.
@@ -55,26 +51,25 @@ object EncodeIngest {
     val rawSamples = pipelineContext.jsonFile[JsonObject](parsedArgs.samplesJson)
 
     // Generate "cleaned" versions of each entity type, without joins.
-    val cleanedDonors =
-      rawDonors
-        .transform(EncodeTransforms.cleanEntities(EncodeEntity.Donor))
-        .transform(DonorTransforms.splitDonorPhenotypes)
+    val cleanedDonors = List(
+      EncodeTransforms.cleanEntities(EncodeEntity.Donor),
+      DonorTransforms.cleanDonors
+    ).reduce(_ andThen _)(rawDonors)
 
     val cleanedExperiments =
-      rawExperiments.transform(EncodeTransforms.cleanEntities(EncodeEntity.Experiment))
+      EncodeTransforms.cleanEntities(EncodeEntity.Experiment)(rawExperiments)
 
     // TODO: Aggregate & add audit info
-    val cleanedFiles =
-      rawFiles
-        .transform(EncodeTransforms.cleanEntities(EncodeEntity.File))
-        .transform(FileTransforms.extractFileQc)
-        .transform(FileTransforms.markFileRunType)
+    val cleanedFiles = List(
+      EncodeTransforms.cleanEntities(EncodeEntity.File),
+      FileTransforms.cleanFiles
+    ).reduce(_ andThen _)(rawFiles)
 
     val cleanedLibraries =
-      rawLibraries.transform(EncodeTransforms.cleanEntities(EncodeEntity.Library))
+      EncodeTransforms.cleanEntities(EncodeEntity.Library)(rawLibraries)
 
     val cleanedSamples =
-      rawSamples.transform(EncodeTransforms.cleanEntities(EncodeEntity.Biosample))
+      EncodeTransforms.cleanEntities(EncodeEntity.Biosample)(rawSamples)
 
     // TODO: Generate join tables & assay entities.
 
