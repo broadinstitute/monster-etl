@@ -5,6 +5,12 @@ import io.circe.syntax._
 /** Stream transformations run only on file entities during ENCODE ETL. */
 object FileTransforms {
 
+  /** Extra ETL processing only for File entities from ENCODE. */
+  def cleanFiles: JsonPipe =
+    _.transform("Specialized File Prep") {
+      List(extractQc, markRunType).reduce(_ andThen _)
+    }
+
   /**
     * Extract QC values from the nested "notes" field for File entities.
     *
@@ -12,7 +18,7 @@ object FileTransforms {
     * downloading & processing those entities instead of relying on bespoke
     * nested JSON.
     */
-  def extractFileQc: JsonPipe = _.transform("Extract File QC") {
+  private def extractQc: JsonPipe = _.transform("Extract File QC") {
     _.map { json =>
       import io.circe.parser.parse
 
@@ -44,7 +50,7 @@ object FileTransforms {
   private val pairedEndJson = "paired-ended".asJson
 
   /** Convert ENCODE's string description of paired-ended-ness into a more usable boolean. */
-  def markFileRunType: JsonPipe = _.transform("Mark File Run Type") {
+  private def markRunType: JsonPipe = _.transform("Mark File Run Type") {
     _.map { json =>
       json("paired_end").fold(json) { pairedStr =>
         json.add("paired_end", pairedStr.equals(pairedEndJson).asJson)
