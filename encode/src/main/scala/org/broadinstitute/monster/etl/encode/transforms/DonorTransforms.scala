@@ -37,6 +37,12 @@ object DonorTransforms {
 
   private val unknown = "unknown".asJson
 
+  /**
+    * Remove instances of 'unknown' from all donor JSON, since it's equivalent to no value.
+    *
+    * Especially important when writing to BigQuery because 'unknowns' will show up in
+    * fields that should be numbers (i.e. age), violating the schema.
+    */
   private def removeUnknowns: JsonPipe = _.transform("Remove Donor 'unknown's") {
     _.map { json =>
       json.filter {
@@ -49,6 +55,15 @@ object DonorTransforms {
 
   private val approxDaysPerMonth = 365.0 / 12.0
 
+  /**
+    * Normalize donor ages to remove ranges and reduce the number of possible units.
+    *
+    * We decided on these rules:
+    *   1. Use separate columns for "min" and "max" ages to allow for ranges
+    *   2. Convert any age less than 1 year to days, and anything above to years
+    *   3. Remove age values for embryonic donors, since they can't be sensibly
+    *      compared against post-birth donors.
+    */
   private def normalizeAges: JsonPipe = _.transform("Normalize Donor Ages") {
     _.map { json =>
       val ageRangeAndUnit = for {
