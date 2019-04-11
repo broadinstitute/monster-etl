@@ -1,10 +1,11 @@
 workflow UntarFiles {
-    Array[File] tarballs
+    File tarball_list
     String project_name
     String file_extension
+    String gsutil_output_path
     File? monitoring_script
 
-    scatter (tarball in tarballs) {
+    scatter (tarball in read_lines(tarball_list)) {
         call GetTarBallSize {
             input:
                 tarball = tarball,
@@ -15,15 +16,12 @@ workflow UntarFiles {
         call ExtractFiles {
             input:
                 tarball = tarball,
-                tarball_size = size(tarball, "GB"),
+                tarball_size = GetTarBallSize.tarball_size,
                 project_name = project_name,
                 file_extension = file_extension,
+                gsutil_output_path = gsutil_output_path,
                 monitoring_script = monitoring_script
         }
-    }
-
-    output {
-        Array[File] untarred_files = flatten(ExtractFiles.untarred_files)
     }
 }
 
@@ -66,6 +64,7 @@ task ExtractFiles {
     Float tarball_size
     String project_name
     String file_extension
+    String gsutil_output_path
     File? monitoring_script
 
     command <<<
@@ -81,19 +80,20 @@ task ExtractFiles {
 
         # untar the file (pipe using gsutil -u cat and ignore dir structure using --transform)
         tar -vxf <(gsutil -u ${project_name} cat ${tarball}) --transform 's/.*\///g'
+
+         # copy to bucket
+         gsutil -m cp *${file_extension} ${gsutil_output_path}
     >>>
 
     runtime {
         docker: "google/cloud-sdk:slim"
         # if the input size is less than 1 GB adjust to min input size of 1 GB
-        # disks should be set to 2 * input file size
         disks: "local-disk " + ceil(1 * (if tarball_size < 1 then 1 else tarball_size)) + " HDD"
         cpu: 1
         memory: "3.5 GB"
     }
 
     output {
-        Array[File] untarred_files = glob("*" + file_extension)
         File monitoring_log = "monitoring.log"
     }
 }

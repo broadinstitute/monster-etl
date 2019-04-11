@@ -1,0 +1,6 @@
+{
+  "UntarFiles.tarball_list": "gs://broad-biccn-dev-test-data/methylC_NeMO_3E_dataset/tarball_paths/methylC_NeMO_3E_dataset_tarball_paths.subset_of_50_1KOemU",
+  "UntarFiles.project_name": "broad-biccn-dev",
+  "UntarFiles.file_extension": ".fastq.gz",
+  "UntarFiles.gsutil_output_path": "gs://broad-biccn-dev-test-data/methylC_NeMO_3E_dataset/fastq_files"
+}
