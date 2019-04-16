@@ -2,13 +2,13 @@ version 1.0
 
 workflow UntarFiles {
     input {
-        File tarball_list
+        Array[File] tarballs
         String project_name
         String file_extension
         String gsutil_output_path
     }
 
-    scatter (tarball in read_lines(tarball_list)) {
+    scatter (tarball in tarballs) {
         call ExtractFiles {
             input:
                 tarball = tarball,
