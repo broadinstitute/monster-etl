@@ -45,7 +45,7 @@ task ExtractFiles {
         # if the input size is less than 1 GB adjust to min input size of 1 GB
         disks: "local-disk " + ceil(1 * (if tarball_size < 1 then 1 else tarball_size)) + " HDD"
         cpu: 1
-        memory: "3.5 GB"
+        memory: "1 GB"
     }
 
     output {
