@@ -62,6 +62,8 @@ sealed trait EncodeEntity extends EnumEntry {
     * our data model's names.
     */
   def aliasFields: Set[String] = Set("aliases", "dbxrefs")
+
+  def entityType: String
 }
 
 object EncodeEntity extends Enum[EncodeEntity] {
@@ -87,6 +89,8 @@ object EncodeEntity extends Enum[EncodeEntity] {
         "source"
       )
     )
+
+    override def entityType: String = "Biosample"
   }
 
   case object Donor extends EncodeEntity {
@@ -111,6 +115,8 @@ object EncodeEntity extends Enum[EncodeEntity] {
     override def aliasFields: Set[String] = super.aliasFields + "external_ids"
 
     override def labelFields: Set[String] = super.labelFields + "organism_id"
+
+    override def entityType: String = "HumanDonor"
   }
 
   case object Experiment extends EncodeEntity {
@@ -124,6 +130,8 @@ object EncodeEntity extends Enum[EncodeEntity] {
     )
 
     override def linkFields: Set[String] = super.linkFields + "target"
+
+    override def entityType = "Experiment"
   }
 
   case object File extends EncodeEntity {
@@ -157,6 +165,9 @@ object EncodeEntity extends Enum[EncodeEntity] {
     override def aliasFields: Set[String] = super.aliasFields + "external_ids"
 
     override def labelFields: Set[String] = super.labelFields + "platform_id"
+
+    override def entityType = "File"
+
   }
 
   case object Library extends EncodeEntity {
@@ -164,5 +175,7 @@ object EncodeEntity extends Enum[EncodeEntity] {
 
     override def fieldsToRename: List[(String, String)] =
       ("strand_specificity" -> "strand_specific") :: super.fieldsToRename
+
+    override def entityType = "Library"
   }
 }

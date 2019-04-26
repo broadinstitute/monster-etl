@@ -44,6 +44,9 @@ val enumeratumVersion = "1.5.13"
 val logbackVersion = "1.2.3"
 val scioVersion = "0.7.4"
 
+// http4s
+val http4sVersion = "0.20.0"
+
 // Settings to apply to all sub-projects.
 // Can't be applied at the build level because of scoping rules.
 val commonSettings = Seq(
@@ -75,7 +78,9 @@ lazy val encode = project
       "com.spotify" %% "scio-core" % scioVersion,
       "com.spotify" %% "scio-extra" % scioVersion,
       "org.apache.beam" % "beam-runners-direct-java" % beamVersion % Runtime,
-      "org.apache.beam" % "beam-runners-google-cloud-dataflow-java" % beamVersion % Runtime
+      "org.apache.beam" % "beam-runners-google-cloud-dataflow-java" % beamVersion % Runtime,
+      "org.http4s" %% "http4s-blaze-client" % http4sVersion,
+      "org.http4s" %% "http4s-circe" % http4sVersion
     ),
     libraryDependencies ++= Seq(
       "com.spotify" %% "scio-test" % scioVersion
