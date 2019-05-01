@@ -31,10 +31,12 @@ object EncodeIngestExtract extends IOApp {
       val experimentsSearchParams = encodeExtractions.getExperimentSearchParams(
         EncodeEntity.Experiment.entryName
       )(pipelineContext.parallelize(parsedArgs.assayTypes))
+
       val experiments = encodeExtractions.extractExperimentSearchParams(
         EncodeEntity.Experiment.entryName,
-        EncodeEntity.Experiment.entityType
+        EncodeEntity.Experiment.encodeApiName
       )(experimentsSearchParams)
+
       experiments.saveAsJsonFile(
         s"${parsedArgs.outputDir}/${EncodeEntity.Experiment.entryName}.json"
       )
@@ -44,50 +46,63 @@ object EncodeIngestExtract extends IOApp {
         referenceField = "files",
         manyReferences = true
       )(experiments)
+
       val filteredFiles = filterFiles(EncodeEntity.File.entryName)(
         encodeExtractions.extractIDParamEntities(
           EncodeEntity.File.entryName,
-          EncodeEntity.File.entityType
+          EncodeEntity.File.encodeApiName
         )(fileIDParams)
       )
+
       filteredFiles.saveAsJsonFile(
         s"${parsedArgs.outputDir}/${EncodeEntity.File.entryName}.json"
       )
 
-      val auditEntryName: String = "Audits"
       val auditIDParams = encodeExtractions.getIDParams(
-        auditEntryName,
+        EncodeEntity.Audit.entryName,
         referenceField = "@id",
         manyReferences = false
       )(filteredFiles)
-      val transformedAudits = transformAudits(auditEntryName)(
-        encodeExtractions.extractIDParamEntities(auditEntryName, entityType = "File")(
+
+      val transformedAudits = transformAudits(EncodeEntity.Audit.entryName)(
+        encodeExtractions.extractIDParamEntities(
+          EncodeEntity.Audit.entryName,
+          EncodeEntity.Audit.encodeApiName
+        )(
           auditIDParams
         )
       )
-      transformedAudits.saveAsJsonFile(s"${parsedArgs.outputDir}/$auditEntryName.json")
 
-      val replicateEntryName: String = "Replicates"
+      transformedAudits.saveAsJsonFile(
+        s"${parsedArgs.outputDir}/${EncodeEntity.Audit.entryName}.json"
+      )
+
       val replicateIDParams = encodeExtractions.getIDParams(
-        replicateEntryName,
+        EncodeEntity.Replicate.entryName,
         referenceField = "replicates",
         manyReferences = true
       )(experiments)
+
       val replicates = encodeExtractions.extractIDParamEntities(
-        replicateEntryName,
-        entityType = "Replicate"
+        EncodeEntity.Replicate.entryName,
+        EncodeEntity.Replicate.encodeApiName
       )(replicateIDParams)
-      replicates.saveAsJsonFile(s"${parsedArgs.outputDir}/$replicateEntryName.json")
+
+      replicates.saveAsJsonFile(
+        s"${parsedArgs.outputDir}/${EncodeEntity.Replicate.entryName}.json"
+      )
 
       val libraryIDParams = encodeExtractions.getIDParams(
         EncodeEntity.Library.entryName,
         referenceField = "library",
         manyReferences = false
       )(replicates)
+
       val libraries = encodeExtractions.extractIDParamEntities(
         EncodeEntity.Library.entryName,
-        EncodeEntity.Library.entityType
+        EncodeEntity.Library.encodeApiName
       )(libraryIDParams)
+
       libraries.saveAsJsonFile(
         s"${parsedArgs.outputDir}/${EncodeEntity.Library.entryName}.json"
       )
@@ -97,10 +112,12 @@ object EncodeIngestExtract extends IOApp {
         referenceField = "biosample",
         manyReferences = false
       )(libraries)
+
       val samples = encodeExtractions.extractIDParamEntities(
         EncodeEntity.Biosample.entryName,
-        EncodeEntity.Biosample.entityType
+        EncodeEntity.Biosample.encodeApiName
       )(sampleIDParams)
+
       samples.saveAsJsonFile(
         s"${parsedArgs.outputDir}/${EncodeEntity.Biosample.entryName}.json"
       )
@@ -110,10 +127,12 @@ object EncodeIngestExtract extends IOApp {
         referenceField = "donor",
         manyReferences = false
       )(samples)
+
       val donors = encodeExtractions.extractIDParamEntities(
         EncodeEntity.Donor.entryName,
-        EncodeEntity.Donor.entityType
+        EncodeEntity.Donor.encodeApiName
       )(donorIDParams)
+
       donors.saveAsJsonFile(
         s"${parsedArgs.outputDir}/${EncodeEntity.Donor.entryName}.json"
       )
@@ -126,18 +145,17 @@ object EncodeIngestExtract extends IOApp {
   def filterFiles(
     entryName: String
   ): SCollection[JsonObject] => SCollection[JsonObject] =
-    _.transform(s"filterFiles - $entryName") {
-      _.filter(
-        jsonObj =>
-          jsonObj("no_file_available").fold(true)(_.equals(false.asJson)) &&
-            jsonObj("restricted").fold(true)(_.equals(false.asJson))
-      )
+    _.transform(s"Filter $entryName") {
+      _.filter { jsonObj =>
+        jsonObj("no_file_available").fold(true)(_.equals(false.asJson)) &&
+        jsonObj("restricted").fold(true)(_.equals(false.asJson))
+      }
     }
 
   def transformAudits(
     entryName: String
   ): SCollection[JsonObject] => SCollection[JsonObject] =
-    _.transform(s"filterFiles - $entryName") {
+    _.transform(s"Transform $entryName") {
       _.map { jsonObj =>
         Set("@id", "audit").foldLeft(JsonObject.empty) { (acc, field) =>
           jsonObj(field).fold(acc)(acc.add(field, _))

@@ -12,14 +12,14 @@ class EncodeExtractions(client: EncodeClient) {
 
   def extractEntities(
     entryName: String,
-    entityType: String
+    encodeApiName: String
   ): SCollection[List[(String, String)]] => SCollection[JsonObject] =
-    _.transform(s"extractEntities - $entryName") {
+    _.transform(s"Extract $entryName entities") {
       _.flatMap { params =>
         //generic operation on SCollection[List[(String, String)]] for all steps of extractions
         client
           .search(
-            entityType,
+            encodeApiName,
             List("frame" -> "object", "status" -> "released") ::: params
           )
           .compile
@@ -31,20 +31,18 @@ class EncodeExtractions(client: EncodeClient) {
   def getExperimentSearchParams(
     entryName: String
   ): SCollection[String] => SCollection[List[(String, String)]] =
-    _.transform(s"getExperimentSearchParams - $entryName") {
-      for {
-        assayType <- _
-      } yield {
+    _.transform(s"Get $entryName experiment search parameters") {
+      _.map { assayType =>
         List("assay_title" -> assayType)
       }
     }
 
   def extractExperimentSearchParams(
     entryName: String,
-    entityType: String
+    encodeApiName: String
   ): SCollection[List[(String, String)]] => SCollection[JsonObject] =
-    _.transform(s"extractExperimentSearchParams - $entryName") { collections =>
-      extractEntities(entityType, entityType)(collections)
+    _.transform(s"Extract $entryName experiment search parameters") { collections =>
+      extractEntities(entryName, encodeApiName)(collections)
     }
 
   def getIDParams(
@@ -52,9 +50,9 @@ class EncodeExtractions(client: EncodeClient) {
     referenceField: String,
     manyReferences: Boolean
   ): SCollection[JsonObject] => SCollection[String] =
-    _.transform(s"getIDParams - $entryName") {
-      _.map {
-        _(referenceField)
+    _.transform(s"Get $entryName id parameters") {
+      _.map { json =>
+        json(referenceField)
       }.collect {
         case Some(thing) =>
           thing
@@ -76,9 +74,9 @@ class EncodeExtractions(client: EncodeClient) {
 
   def extractIDParamEntities(
     entryName: String,
-    entityType: String
+    encodeApiName: String
   ): SCollection[String] => SCollection[JsonObject] = { collections =>
-    val extractIDs = collections.transform(s"extractIDParamEntities - $entryName") {
+    val extractIDs = collections.transform(s"Extract $entryName id parameter entities") {
       collection =>
         collection.map { value =>
           KV.of("key", value)
@@ -88,6 +86,6 @@ class EncodeExtractions(client: EncodeClient) {
           }
         }
     }
-    extractEntities(entityType, entityType)(extractIDs)
+    extractEntities(entryName, encodeApiName)(extractIDs)
   }
 }
