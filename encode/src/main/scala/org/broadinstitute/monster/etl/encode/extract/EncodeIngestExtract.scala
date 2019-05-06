@@ -11,6 +11,9 @@ import com.spotify.scio.values.SCollection
 import io.circe.JsonObject
 import io.circe.syntax._
 
+/**
+  * Extract raw metadata from ENCODE
+  */
 object EncodeIngestExtract extends IOApp {
 
   case class Args(
@@ -20,6 +23,11 @@ object EncodeIngestExtract extends IOApp {
     outputDir: String
   )
 
+  /**
+    * pulling raw metadata using the ENCODE search client API for the following specific entity types...
+    * Experiments, Files, Audits, Replicates, Libraries, Samples and Donors
+    * @param rawArgs assayTypes: a list of strings containing the assay types for the experiments; outputDir: where to output the raw metadata
+    */
   override def run(rawArgs: List[String]): IO[ExitCode] = {
     val (pipelineContext, parsedArgs) = ContextAndArgs.typed[Args](rawArgs.toArray)
 
@@ -142,6 +150,10 @@ object EncodeIngestExtract extends IOApp {
     }
   }
 
+  /**
+    * Filter the files to make sure they are not any restricted or unavailable files
+    * @param entryName the name of the entity type to be displayed as a step within the pipeline
+    **/
   def filterFiles(
     entryName: String
   ): SCollection[JsonObject] => SCollection[JsonObject] =
@@ -152,6 +164,10 @@ object EncodeIngestExtract extends IOApp {
       }
     }
 
+  /**
+    * Retain the Encode ID field ("@id") and Encode Audit field, ("audit") for Audits
+    * @param entryName the name of the entity type to be displayed as a step within the pipeline
+    **/
   def transformAudits(
     entryName: String
   ): SCollection[JsonObject] => SCollection[JsonObject] =

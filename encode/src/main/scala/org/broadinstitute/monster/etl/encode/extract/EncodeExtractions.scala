@@ -8,8 +8,15 @@ import org.apache.beam.sdk.values.KV
 import com.spotify.scio.values.SCollection
 import scala.collection.JavaConverters._
 
+/** Ingest step responsible for pulling raw metadata for a specific entity type from the ENCODE API. */
 class EncodeExtractions(client: EncodeClient) {
 
+  /**
+    * add [("frame", "object"), ("status", "released")] to the parameters
+    * and then call the ENCODE search client API using the query id/search parameters
+    * @param entryName the name of the entity type to be displayed as a step within the pipeline
+    * @param encodeApiName the entity type that will be queried
+    **/
   def extractEntities(
     entryName: String,
     encodeApiName: String
@@ -28,6 +35,10 @@ class EncodeExtractions(client: EncodeClient) {
       }
     }
 
+  /**
+    * gets the assay types for the experiment entity type and returns a list of tuples with "assay_title" -> assayType'
+    * @param entryName the name of the entity type to be displayed as a step within the pipeline
+    **/
   def getExperimentSearchParams(
     entryName: String
   ): SCollection[String] => SCollection[List[(String, String)]] =
@@ -37,6 +48,11 @@ class EncodeExtractions(client: EncodeClient) {
       }
     }
 
+  /**
+    * given the experiemnt search parameters, query the ENCODE search client API
+    * @param entryName the name of the entity type to be displayed as a step within the pipeline
+    * @param encodeApiName the entity type that will be queried
+    **/
   def extractExperimentSearchParams(
     entryName: String,
     encodeApiName: String
@@ -45,6 +61,12 @@ class EncodeExtractions(client: EncodeClient) {
       extractEntities(entryName, encodeApiName)(collections)
     }
 
+  /**
+    * given an entity type json's reference field , get each reference as a list of string id parameters
+    * @param entryName the name of the entity type to be displayed as a step within the pipeline
+    * @param referenceField string containing reference values to query in the objects read in
+    * @param manyReferences is the enitiy has more than one reference
+    **/
   def getIDParams(
     entryName: String,
     referenceField: String,
@@ -72,6 +94,13 @@ class EncodeExtractions(client: EncodeClient) {
       }
     }
 
+  /**
+    * batch references into groups of 100 using GroupIntoBatches,
+    * then get list of tuples with "@id" -> reference
+    * and then given those id parameters, query the ENCODE search client API
+    * @param entryName the name of the entity type to be displayed as a step within the pipeline
+    * @param encodeApiName the entity type that will be queried
+    **/
   def extractIDParamEntities(
     entryName: String,
     encodeApiName: String
