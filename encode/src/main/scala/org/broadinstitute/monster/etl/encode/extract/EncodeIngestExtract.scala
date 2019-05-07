@@ -1,5 +1,6 @@
 package org.broadinstitute.monster.etl.encode.extract
 
+import org.broadinstitute.monster.etl.encode.transforms._
 import caseapp.HelpMessage
 import com.spotify.scio.ContextAndArgs
 import org.broadinstitute.monster.etl.encode.EncodeEntity
@@ -16,6 +17,11 @@ import io.circe.syntax._
   */
 object EncodeIngestExtract extends IOApp {
 
+  /**
+    * Arguments for the pipeline
+    * @param assayTypes a list of strings containing the assay types for the experiments
+    * @param outputDir where to output the raw metadata
+    */
   case class Args(
     @HelpMessage("List of Assays")
     assayTypes: List[String],
@@ -26,7 +32,6 @@ object EncodeIngestExtract extends IOApp {
   /**
     * pulling raw metadata using the ENCODE search client API for the following specific entity types...
     * Experiments, Files, Audits, Replicates, Libraries, Samples and Donors
-    * @param rawArgs assayTypes: a list of strings containing the assay types for the experiments; outputDir: where to output the raw metadata
     */
   override def run(rawArgs: List[String]): IO[ExitCode] = {
     val (pipelineContext, parsedArgs) = ContextAndArgs.typed[Args](rawArgs.toArray)
@@ -40,7 +45,7 @@ object EncodeIngestExtract extends IOApp {
         EncodeEntity.Experiment.entryName
       )(pipelineContext.parallelize(parsedArgs.assayTypes))
 
-      val experiments = encodeExtractions.extractExperimentSearchParams(
+      val experiments = encodeExtractions.extractSearchParams(
         EncodeEntity.Experiment.entryName,
         EncodeEntity.Experiment.encodeApiName
       )(experimentsSearchParams)
@@ -151,7 +156,7 @@ object EncodeIngestExtract extends IOApp {
   }
 
   /**
-    * Filter the files to make sure they are not any restricted or unavailable files
+    * Filter the files to make sure they are not any restricted or unavailable files.
     * @param entryName the name of the entity type to be displayed as a step within the pipeline
     **/
   def filterFiles(
@@ -165,7 +170,7 @@ object EncodeIngestExtract extends IOApp {
     }
 
   /**
-    * Retain the Encode ID field ("@id") and Encode Audit field, ("audit") for Audits
+    * Retain the Encode ID field ("@id") and Encode Audit field, ("audit") for Audits.
     * @param entryName the name of the entity type to be displayed as a step within the pipeline
     **/
   def transformAudits(

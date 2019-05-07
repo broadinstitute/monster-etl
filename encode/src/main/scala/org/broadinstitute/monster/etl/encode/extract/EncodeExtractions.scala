@@ -1,19 +1,21 @@
 package org.broadinstitute.monster.etl.encode.extract
 
-import io.circe.JsonObject
+import org.broadinstitute.monster.etl.encode.transforms._
+import io.circe.{JsonObject}
 import org.broadinstitute.monster.etl.encode.extract.client.EncodeClient
-import cats.implicits._
 import org.apache.beam.sdk.transforms.GroupIntoBatches
 import org.apache.beam.sdk.values.KV
 import com.spotify.scio.values.SCollection
+
 import scala.collection.JavaConverters._
 
 /** Ingest step responsible for pulling raw metadata for a specific entity type from the ENCODE API. */
 class EncodeExtractions(client: EncodeClient) {
 
   /**
-    * add [("frame", "object"), ("status", "released")] to the parameters
-    * and then call the ENCODE search client API using the query id/search parameters
+    * Add [("frame", "object"), ("status", "released")] to the parameters
+    * and then call the ENCODE search client API using the query id/search parameters.
+    *
     * @param entryName the name of the entity type to be displayed as a step within the pipeline
     * @param encodeApiName the entity type that will be queried
     **/
@@ -36,7 +38,9 @@ class EncodeExtractions(client: EncodeClient) {
     }
 
   /**
-    * gets the assay types for the experiment entity type and returns a list of tuples with "assay_title" -> assayType'
+    * Gets the assay types for the experiment entity type
+    * and returns a list of tuples with "assay_title" -> assayType'.
+    *
     * @param entryName the name of the entity type to be displayed as a step within the pipeline
     **/
   def getExperimentSearchParams(
@@ -48,12 +52,14 @@ class EncodeExtractions(client: EncodeClient) {
       }
     }
 
+  // change var name (remove exp)
   /**
-    * given the experiemnt search parameters, query the ENCODE search client API
+    * Given the search parameters, query the ENCODE search client API.
+    *
     * @param entryName the name of the entity type to be displayed as a step within the pipeline
     * @param encodeApiName the entity type that will be queried
     **/
-  def extractExperimentSearchParams(
+  def extractSearchParams(
     entryName: String,
     encodeApiName: String
   ): SCollection[List[(String, String)]] => SCollection[JsonObject] =
@@ -62,7 +68,9 @@ class EncodeExtractions(client: EncodeClient) {
     }
 
   /**
-    * given an entity type json's reference field , get each reference as a list of string id parameters
+    * Given an entity type json's reference field
+    * and get each reference as a list of string id parameters
+    *
     * @param entryName the name of the entity type to be displayed as a step within the pipeline
     * @param referenceField string containing reference values to query in the objects read in
     * @param manyReferences is the enitiy has more than one reference
@@ -72,32 +80,30 @@ class EncodeExtractions(client: EncodeClient) {
     referenceField: String,
     manyReferences: Boolean
   ): SCollection[JsonObject] => SCollection[String] =
-    _.transform(s"Get $entryName id parameters") {
-      _.map { json =>
-        json(referenceField)
-      }.collect {
-        case Some(thing) =>
-          thing
-      }.flatMap { referenceJson =>
-        val references = for {
-          refValues <- if (manyReferences) {
-            referenceJson.as[List[String]]
-          } else {
-            referenceJson.as[String].map { reference =>
-              List(reference)
+    _.transform(s"Get $entryName id parameters") { collection =>
+      collection.flatMap { jsonObj =>
+        jsonObj(referenceField).toIterable.flatMap { referenceJson =>
+          val references = for {
+            refValues <- if (manyReferences) {
+              referenceJson.as[List[String]]
+            } else {
+              referenceJson.as[String].map { reference =>
+                List(reference)
+              }
             }
+          } yield {
+            refValues
           }
-        } yield {
-          refValues
-        }
-        references.valueOr(throw _)
-      }
+          references.toOption
+        }.flatten
+      }.distinct
     }
 
   /**
-    * batch references into groups of 100 using GroupIntoBatches,
+    * Batch references into groups of 100 using GroupIntoBatches,
     * then get list of tuples with "@id" -> reference
-    * and then given those id parameters, query the ENCODE search client API
+    * and then given those id parameters, query the ENCODE search client API.
+    *
     * @param entryName the name of the entity type to be displayed as a step within the pipeline
     * @param encodeApiName the entity type that will be queried
     **/
