@@ -1,11 +1,12 @@
 package org.broadinstitute.monster.etl.encode.extract
 
 import org.broadinstitute.monster.etl.encode.transforms._
-import io.circe.{JsonObject}
+import io.circe.JsonObject
 import org.broadinstitute.monster.etl.encode.extract.client.EncodeClient
 import org.apache.beam.sdk.transforms.GroupIntoBatches
 import org.apache.beam.sdk.values.KV
 import com.spotify.scio.values.SCollection
+import org.apache.beam.sdk.coders.{KvCoder, StringUtf8Coder}
 
 import scala.collection.JavaConverters._
 
@@ -113,13 +114,16 @@ class EncodeExtractions(client: EncodeClient) {
   ): SCollection[String] => SCollection[JsonObject] = { collections =>
     val extractIDs = collections.transform(s"Extract $entryName id parameter entities") {
       collection =>
-        collection.map { value =>
-          KV.of("key", value)
-        }.applyKvTransform(GroupIntoBatches.ofSize(100)).map { _.getValue.asScala }.map {
-          _.foldLeft(List.empty[(String, String)]) { (acc, ref) =>
-            ("@id" -> ref) :: acc
+        collection
+          .map(KV.of("key", _))
+          .setCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
+          .applyKvTransform(GroupIntoBatches.ofSize(100))
+          .map(_.getValue.asScala)
+          .map {
+            _.foldLeft(List.empty[(String, String)]) { (acc, ref) =>
+              ("@id" -> ref) :: acc
+            }
           }
-        }
     }
     extractEntities(entryName, encodeApiName)(extractIDs)
   }
