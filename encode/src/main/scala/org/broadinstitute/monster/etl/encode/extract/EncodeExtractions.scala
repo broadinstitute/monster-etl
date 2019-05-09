@@ -1,17 +1,94 @@
 package org.broadinstitute.monster.etl.encode.extract
 
+import java.io.IOException
+
+import com.google.common.util.concurrent.{
+  Futures,
+  ListenableFuture,
+  MoreExecutors,
+  SettableFuture
+}
+import com.spotify.scio.coders.Coder
+import com.spotify.scio.transforms.AsyncLookupDoFn.Try
+import com.spotify.scio.transforms._
 import org.broadinstitute.monster.etl.encode.transforms._
 import io.circe.JsonObject
-import org.broadinstitute.monster.etl.encode.extract.client.EncodeClient
-import org.apache.beam.sdk.transforms.GroupIntoBatches
+import org.apache.beam.sdk.transforms.{GroupIntoBatches, ParDo}
 import org.apache.beam.sdk.values.KV
 import com.spotify.scio.values.SCollection
+import com.squareup.okhttp.{Callback, OkHttpClient, Request, Response}
 import org.apache.beam.sdk.coders.{KvCoder, StringUtf8Coder}
 
 import scala.collection.JavaConverters._
+import scala.util.Success
+
+class EncodeSearch(encodeApiName: String)
+    extends AsyncLookupDoFn[List[(String, String)], String, AsyncHttpClient](100) {
+
+  override def asyncLookup(
+    client: AsyncHttpClient,
+    params: List[(String, String)]
+  ): ListenableFuture[String] = {
+    val paramsString = List(
+      "frame=object",
+      "status=released",
+      s"type=$encodeApiName",
+      "limit=all",
+      "format=json"
+    ) ::: params.map {
+      case (key, value) =>
+        s"$key=$value"
+    }
+
+    Futures.transform(
+      client.get(
+        "https://www.encodeproject.org/search/?" + paramsString.mkString(sep = "&")
+      ),
+      (input: Option[String]) => input.get,
+      MoreExecutors.directExecutor
+    )
+  }
+
+  override protected def newClient(): AsyncHttpClient = new AsyncHttpClient
+}
+
+class AsyncHttpClient {
+
+  def get(url: String): ListenableFuture[Option[String]] = {
+    val request = new Request.Builder()
+      .url(url)
+      .get
+      .build
+
+    val result: SettableFuture[Option[String]] = SettableFuture.create()
+    EncodeExtractions.client
+      .newCall(request)
+      .enqueue(new Callback() {
+        def onFailure(request: Request, exception: IOException): Unit = {
+          result.setException(exception)
+          ()
+        }
+
+        def onResponse(response: Response): Unit = {
+          if (response.isSuccessful) {
+            result.set(Option(response.body.string))
+            ()
+          } else {
+            result.set(Option("Default Value"))
+            ()
+          }
+        }
+      })
+    result
+  }
+}
 
 /** Ingest step responsible for pulling raw metadata for a specific entity type from the ENCODE API. */
-class EncodeExtractions(client: EncodeClient) {
+object EncodeExtractions {
+
+  val client = new OkHttpClient()
+
+  implicit def coderTry: Coder[Try[String]] = Coder.kryo[Try[String]]
 
   /**
     * Add [("frame", "object"), ("status", "released")] to the parameters
@@ -25,16 +102,18 @@ class EncodeExtractions(client: EncodeClient) {
     encodeApiName: String
   ): SCollection[List[(String, String)]] => SCollection[JsonObject] =
     _.transform(s"Extract $entryName entities") {
-      _.flatMap { params =>
-        //generic operation on SCollection[List[(String, String)]] for all steps of extractions
-        client
-          .search(
-            encodeApiName,
-            List("frame" -> "object", "status" -> "released") ::: params
-          )
-          .compile
-          .toList
-          .unsafeRunSync()
+      _.applyKvTransform(ParDo.of(new EncodeSearch(encodeApiName))).flatMap { kv =>
+        kv.getValue.asScala match {
+          case Success(value) =>
+            io.circe.parser
+              .parse(value)
+              .flatMap { json =>
+                json.as[Vector[JsonObject]]
+              }
+              .right
+              .get
+          case _ => ???
+        }
       }
     }
 
