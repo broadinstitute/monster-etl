@@ -11,156 +11,143 @@ import com.google.common.util.concurrent.{
 import com.spotify.scio.coders.Coder
 import com.spotify.scio.transforms.AsyncLookupDoFn.Try
 import com.spotify.scio.transforms._
-import org.broadinstitute.monster.etl.encode.transforms._
-import io.circe.JsonObject
-import org.apache.beam.sdk.transforms.{GroupIntoBatches, ParDo}
-import org.apache.beam.sdk.values.KV
 import com.spotify.scio.values.SCollection
 import com.squareup.okhttp.{Callback, OkHttpClient, Request, Response}
+import io.circe.JsonObject
 import org.apache.beam.sdk.coders.{KvCoder, StringUtf8Coder}
+import org.apache.beam.sdk.transforms.{GroupIntoBatches, ParDo}
+import org.apache.beam.sdk.values.KV
+import org.broadinstitute.monster.etl.encode._
 
 import scala.collection.JavaConverters._
-import scala.util.Success
-
-class EncodeSearch(encodeApiName: String)
-    extends AsyncLookupDoFn[List[(String, String)], String, AsyncHttpClient](100) {
-
-  override def asyncLookup(
-    client: AsyncHttpClient,
-    params: List[(String, String)]
-  ): ListenableFuture[String] = {
-    val paramsString = List(
-      "frame=object",
-      "status=released",
-      s"type=$encodeApiName",
-      "limit=all",
-      "format=json"
-    ) ::: params.map {
-      case (key, value) =>
-        s"$key=$value"
-    }
-
-    Futures.transform(
-      client.get(
-        "https://www.encodeproject.org/search/?" + paramsString.mkString(sep = "&")
-      ),
-      (input: Option[String]) => input.get,
-      MoreExecutors.directExecutor
-    )
-  }
-
-  override protected def newClient(): AsyncHttpClient = new AsyncHttpClient
-}
-
-class AsyncHttpClient {
-
-  def get(url: String): ListenableFuture[Option[String]] = {
-    val request = new Request.Builder()
-      .url(url)
-      .get
-      .build
-
-    val result: SettableFuture[Option[String]] = SettableFuture.create()
-    EncodeExtractions.client
-      .newCall(request)
-      .enqueue(new Callback() {
-        def onFailure(request: Request, exception: IOException): Unit = {
-          result.setException(exception)
-          ()
-        }
-
-        def onResponse(response: Response): Unit = {
-          if (response.isSuccessful) {
-            result.set(Option(response.body.string))
-            ()
-          } else {
-            result.set(Option("Default Value"))
-            ()
-          }
-        }
-      })
-    result
-  }
-}
 
 /** Ingest step responsible for pulling raw metadata for a specific entity type from the ENCODE API. */
 object EncodeExtractions {
 
-  val client = new OkHttpClient()
-
+  /** Boilerplate needed to tell scio how to (de)serialize its internal Try type. */
   implicit def coderTry: Coder[Try[String]] = Coder.kryo[Try[String]]
 
+  /** HTTP client to use for querying ENCODE APIs. */
+  val client = new OkHttpClient()
+
   /**
-    * Add [("frame", "object"), ("status", "released")] to the parameters
-    * and then call the ENCODE search client API using the query id/search parameters.
+    * Pipeline stage which maps batches of query params to output payloads
+    * by sending the query params to the ENCODE search API.
     *
-    * @param entryName the name of the entity type to be displayed as a step within the pipeline
-    * @param encodeApiName the entity type that will be queried
-    **/
-  def extractEntities(
-    entryName: String,
-    encodeApiName: String
+    * @param encodeEntity the type of ENCODE entity the stage should query
+    */
+  class EncodeLookup(encodeEntity: EncodeEntity)
+      extends AsyncLookupDoFn[List[(String, String)], String, OkHttpClient] {
+
+    private val baseParams =
+      List("frame=object", "status=released", "limit=all", "format=json")
+
+    override def asyncLookup(
+      client: OkHttpClient,
+      params: List[(String, String)]
+    ): ListenableFuture[String] = {
+      val paramStrings = params.map {
+        case (key, value) =>
+          s"$key=$value"
+      }
+      val allParams = s"type=${encodeEntity.encodeApiName}" :: baseParams ::: paramStrings
+
+      Futures.transform(
+        get(
+          client,
+          s"https://www.encodeproject.org/search/?${allParams.mkString(sep = "&")}"
+        ),
+        identity[String],
+        MoreExecutors.directExecutor
+      )
+    }
+
+    /**
+      * Construct a future which will either complete with the stringified
+      * payload resulting from querying a url, or fail.
+      *
+      * @param client the HTTP client to use in the query
+      * @param url the URL to query
+      */
+    private def get(client: OkHttpClient, url: String): ListenableFuture[String] = {
+      val request = new Request.Builder()
+        .url(url)
+        .get
+        .build
+
+      val result = SettableFuture.create[String]()
+
+      client
+        .newCall(request)
+        .enqueue(new Callback {
+          override def onFailure(request: Request, e: IOException): Unit = {
+            result.setException(e)
+            ()
+          }
+
+          override def onResponse(response: Response): Unit = {
+            if (response.isSuccessful) {
+              result.set(response.body.string)
+            } else if (response.code() == 404) {
+              result.set("""{ "@graph": [] }""")
+            } else {
+              result.setException(
+                new RuntimeException(s"ENCODE lookup failed: $response")
+              )
+            }
+            ()
+          }
+        })
+
+      result
+    }
+
+    override protected def newClient(): OkHttpClient = client
+  }
+
+  /**
+    * Pipeline stage which maps batches of search parameters into JSON entities
+    * from ENCODE matching those parameters.
+    *
+    * @param encodeEntity the type of ENCODE entity the stage should query
+    */
+  def getEntities(
+    encodeEntity: EncodeEntity
   ): SCollection[List[(String, String)]] => SCollection[JsonObject] =
-    _.transform(s"Extract $entryName entities") {
-      _.applyKvTransform(ParDo.of(new EncodeSearch(encodeApiName))).flatMap { kv =>
-        kv.getValue.asScala match {
-          case Success(value) =>
-            io.circe.parser
-              .parse(value)
-              .flatMap { json =>
-                json.as[Vector[JsonObject]]
-              }
-              .right
-              .get
-          case _ => ???
-        }
+    _.transform(s"Download ${encodeEntity.entryName} Entities") {
+      _.applyKvTransform(ParDo.of(new EncodeLookup(encodeEntity))).flatMap { kv =>
+        kv.getValue.asScala.fold(
+          throw _,
+          value => {
+            val decoded = for {
+              json <- io.circe.parser.parse(value)
+              cursor = json.hcursor
+              objects <- cursor.downField("@graph").as[Vector[JsonObject]]
+            } yield {
+              objects
+            }
+            decoded.fold(throw _, identity)
+          }
+        )
       }
     }
 
   /**
-    * Gets the assay types for the experiment entity type
-    * and returns a list of tuples with "assay_title" -> assayType'.
+    * Pipeline stage which extracts IDs from downloaded JSON entities for
+    * use in subsequent queries.
     *
-    * @param entryName the name of the entity type to be displayed as a step within the pipeline
-    **/
-  def getExperimentSearchParams(
-    entryName: String
-  ): SCollection[String] => SCollection[List[(String, String)]] =
-    _.transform(s"Get $entryName experiment search parameters") {
-      _.map { assayType =>
-        List("assay_title" -> assayType)
-      }
-    }
-
-  // change var name (remove exp)
-  /**
-    * Given the search parameters, query the ENCODE search client API.
-    *
-    * @param entryName the name of the entity type to be displayed as a step within the pipeline
-    * @param encodeApiName the entity type that will be queried
-    **/
-  def extractSearchParams(
-    entryName: String,
-    encodeApiName: String
-  ): SCollection[List[(String, String)]] => SCollection[JsonObject] =
-    _.transform(s"Extract $entryName experiment search parameters") { collections =>
-      extractEntities(entryName, encodeApiName)(collections)
-    }
-
-  /**
-    * Given an entity type json's reference field
-    * and get each reference as a list of string id parameters
-    *
-    * @param entryName the name of the entity type to be displayed as a step within the pipeline
-    * @param referenceField string containing reference values to query in the objects read in
-    * @param manyReferences is the enitiy has more than one reference
-    **/
-  def getIDParams(
+    * @param entryName display name for the type of entity whose IDs will
+    *                  be extracted in this stage
+    * @param referenceField field in the input JSONs containing the IDs
+    *                       to extract
+    * @param manyReferences whether or not `referenceField` is an array
+    */
+  def getIds(
     entryName: String,
     referenceField: String,
     manyReferences: Boolean
   ): SCollection[JsonObject] => SCollection[String] =
-    _.transform(s"Get $entryName id parameters") { collection =>
+    _.transform(s"Get $entryName IDs") { collection =>
       collection.flatMap { jsonObj =>
         jsonObj(referenceField).toIterable.flatMap { referenceJson =>
           val references = for {
@@ -180,21 +167,17 @@ object EncodeExtractions {
     }
 
   /**
-    * Batch references into groups of 100 using GroupIntoBatches,
-    * then get list of tuples with "@id" -> reference
-    * and then given those id parameters, query the ENCODE search client API.
+    * Pipeline stage which maps entity IDs into corresponding JSON entities
+    * downloaded from ENCODE.
     *
-    * @param entryName the name of the entity type to be displayed as a step within the pipeline
-    * @param encodeApiName the entity type that will be queried
-    **/
-  def extractIDParamEntities(
-    entryName: String,
-    encodeApiName: String
-  ): SCollection[String] => SCollection[JsonObject] = { collections =>
-    val extractIDs = collections.transform(s"Extract $entryName id parameter entities") {
-      collection =>
-        collection
-          .map(KV.of("key", _))
+    * @param encodeEntity the type of ENCODE entity the input IDs correspond to
+    */
+  def getEntitiesById(
+    encodeEntity: EncodeEntity
+  ): SCollection[String] => SCollection[JsonObject] = { idStream =>
+    val paramsBatchStream =
+      idStream.transform(s"Build ${encodeEntity.entryName} ID Queries") {
+        _.map(KV.of("key", _))
           .setCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
           .applyKvTransform(GroupIntoBatches.ofSize(100))
           .map(_.getValue.asScala)
@@ -203,7 +186,8 @@ object EncodeExtractions {
               ("@id" -> ref) :: acc
             }
           }
-    }
-    extractEntities(entryName, encodeApiName)(extractIDs)
+      }
+
+    getEntities(encodeEntity)(paramsBatchStream)
   }
 }

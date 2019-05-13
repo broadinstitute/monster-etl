@@ -2,6 +2,7 @@ package org.broadinstitute.monster.etl.encode.transforms
 
 import io.circe.Json
 import io.circe.syntax._
+import org.broadinstitute.monster.etl.encode._
 
 /** Stream transformations run only on donor entities during ENCODE ETL. */
 object DonorTransforms {
