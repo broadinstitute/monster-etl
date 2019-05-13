@@ -4,7 +4,7 @@ import java.util.UUID
 
 import io.circe.Json
 import io.circe.syntax._
-import org.broadinstitute.monster.etl.encode.EncodeEntity
+import org.broadinstitute.monster.etl.encode._
 
 /**
   * Stream transformations run on all entity types during ENCODE ETL.

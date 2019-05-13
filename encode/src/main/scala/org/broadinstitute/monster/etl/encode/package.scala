@@ -1,4 +1,4 @@
-package org.broadinstitute.monster.etl.encode
+package org.broadinstitute.monster.etl
 
 import java.io.{InputStream, OutputStream}
 import java.nio.ByteBuffer
@@ -13,7 +13,7 @@ import org.apache.beam.sdk.coders.{CoderException, StructuredCoder, Coder => JCo
 import org.apache.beam.sdk.util.VarInt
 import org.apache.beam.vendor.guava.v20_0.com.google.common.io.ByteStreams
 
-package object transforms {
+package object encode {
 
   /** Convenience alias for transformations that operate on JSON. */
   type JsonPipe = SCollection[JsonObject] => SCollection[JsonObject]

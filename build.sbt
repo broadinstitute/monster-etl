@@ -37,7 +37,7 @@ inThisBuild(
   )
 )
 
-val betterMonadicForVersion = "0.2.4"
+val betterMonadicForVersion = "0.3.0"
 
 val beamVersion = "2.11.0"
 val enumeratumVersion = "1.5.13"
