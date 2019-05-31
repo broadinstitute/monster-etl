@@ -43,6 +43,8 @@ val beamVersion = "2.11.0"
 val enumeratumVersion = "1.5.13"
 val logbackVersion = "1.2.3"
 val scioVersion = "0.7.4"
+val tototoshiVersion = "1.3.5"
+val pathikritVersion = "3.8.0"
 
 // Settings to apply to all sub-projects.
 // Can't be applied at the build level because of scoping rules.
@@ -62,7 +64,7 @@ val commonSettings = Seq(
 
 lazy val `monster-etl` = project
   .in(file("."))
-  .aggregate(encode)
+  .aggregate(encode, v2f)
 
 lazy val encode = project
   .in(file("encode"))
@@ -76,6 +78,29 @@ lazy val encode = project
       "com.spotify" %% "scio-extra" % scioVersion,
       "org.apache.beam" % "beam-runners-direct-java" % beamVersion % Runtime,
       "org.apache.beam" % "beam-runners-google-cloud-dataflow-java" % beamVersion % Runtime
+    ),
+    libraryDependencies ++= Seq(
+      "com.spotify" %% "scio-test" % scioVersion
+    ).map(_ % Test),
+    // Force a compilation failure if we end up falling back to reflection-based Coders.
+    scalacOptions += "-Xmacro-settings:show-coder-fallback=true",
+    buildInfoKeys := Seq(version),
+    buildInfoPackage := "org.broadinstitute.monster.etl"
+  )
+
+lazy val v2f = project
+  .in(file("v2f"))
+  .enablePlugins(BuildInfoPlugin)
+  .settings(commonSettings)
+  .settings(
+    libraryDependencies ++= Seq(
+      "ch.qos.logback" % "logback-classic" % logbackVersion,
+      "com.spotify" %% "scio-core" % scioVersion,
+      "com.spotify" %% "scio-extra" % scioVersion,
+      "org.apache.beam" % "beam-runners-direct-java" % beamVersion % Runtime,
+      "org.apache.beam" % "beam-runners-google-cloud-dataflow-java" % beamVersion % Runtime,
+      "com.github.tototoshi" %% "scala-csv" % tototoshiVersion,
+      "com.github.pathikrit" %% "better-files" % pathikritVersion
     ),
     libraryDependencies ++= Seq(
       "com.spotify" %% "scio-test" % scioVersion
