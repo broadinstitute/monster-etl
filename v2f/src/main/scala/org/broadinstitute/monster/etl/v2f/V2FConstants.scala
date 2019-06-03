@@ -55,7 +55,7 @@ case object FrequencyAnalysis extends V2FConstants {
     "maf"
   )
 
-  override def fieldsToConvertToJsonInt: List[String] = Nil
+  override def fieldsToConvertToJsonInt: List[String] = List("position")
 
   override def fieldsToConvertToJsonBoolean: List[String] = Nil
 
@@ -70,14 +70,14 @@ case object MetaAnalysisAncestrySpecific extends V2FConstants {
   override def tsvPattern: String = "meta-analysis/ancestry-specific"
 
   override def fieldsToConvertToJsonDouble: List[String] = List(
-    "position",
     "p_value",
     "beta",
     "std_err"
   )
 
   override def fieldsToConvertToJsonInt: List[String] = List(
-    "n"
+    "n",
+    "position"
   )
 
   override def fieldsToConvertToJsonBoolean: List[String] = Nil
@@ -93,14 +93,15 @@ case object MetaAnalysisTransEthnic extends V2FConstants {
   override def tsvPattern: String = "meta-analysis/trans-ethnic"
 
   override def fieldsToConvertToJsonDouble: List[String] = List(
-    "position",
     "p_value",
     "z_score",
-    "std_err"
+    "std_err",
+    "beta"
   )
 
   override def fieldsToConvertToJsonInt: List[String] = List(
-    "n"
+    "n",
+    "position"
   )
 
   override def fieldsToConvertToJsonBoolean: List[String] = Nil
@@ -242,6 +243,7 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
     "siphy_29way_pi",
     "vest3_score",
     "polyphen2_hdiv_score",
-    "polyphen2_hvar_score"
+    "polyphen2_hvar_score",
+    "sift_score"
   )
 }
