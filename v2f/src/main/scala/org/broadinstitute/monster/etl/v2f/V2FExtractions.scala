@@ -10,6 +10,8 @@ import com.spotify.scio.values.SCollection
 import io.circe.{Json, JsonObject}
 import org.apache.beam.sdk.io.FileIO
 import org.apache.beam.sdk.io.FileIO.ReadableFile
+
+import scala.util.matching.Regex
 import util.Try
 
 /**
@@ -19,32 +21,49 @@ import util.Try
 object V2FExtractions {
 
   /**
-    * Given a root path that contains tsv(s) convert each tsv to json
+    * Given a root path that contains tsv(s) get the tsv as a ReadableFile
     *
     * @param tsvPath the root path containing tsv's to be converted
     * @param context the pipeline context for converting
     */
-  def tsvToJson(tsvPath: String, context: ScioContext): SCollection[JsonObject] =
+  def getReadableFile(
+    tsvPath: String,
+    context: ScioContext
+  ): SCollection[FileIO.ReadableFile] =
     context.wrap {
       context.pipeline.apply(FileIO.`match`().filepattern(tsvPath))
-    }.applyTransform[ReadableFile](FileIO.readMatches()).flatMap { file =>
-      Channels
-        .newInputStream(file.open())
-        .autoClosed
-        .apply { path =>
-          implicit val format: CSVFormat = new TSVFormat {}
-          val reader = CSVReader.open(new InputStreamReader(path))
-          reader.allWithHeaders().map { map =>
-            JsonObject.fromMap(map.map {
-              case (key, value) =>
-                (camelCaseToSnakeCase(key), value)
-            }.mapValues(Json.fromString))
+    }.applyTransform[ReadableFile](FileIO.readMatches())
+
+  /**
+    * Given the ReadableFile that contains tsv(s) convert each tsv to json and get is filepath
+    *
+    * @param tableName the name of the tsv table that was converted to json
+    */
+  def tsvToJson(
+    tableName: String
+  ): SCollection[FileIO.ReadableFile] => SCollection[(JsonObject, String)] =
+    _.transform(s"converting $tableName tsv(s) to json") { collection =>
+      collection.flatMap { file =>
+        Channels
+          .newInputStream(file.open())
+          .autoClosed
+          .apply { path =>
+            implicit val format: CSVFormat = new TSVFormat {}
+            val reader = CSVReader.open(new InputStreamReader(path))
+            reader.allWithHeaders().map { map =>
+              val jsonObj = JsonObject.fromMap(map.map {
+                case (key, value) =>
+                  (camelCaseToSnakeCase(key), value)
+              }.mapValues(Json.fromString))
+              val filePath = file.getMetadata.resourceId.getCurrentDirectory.toString
+              (jsonObj, filePath)
+            }
           }
-        }
+      }
     }
 
   /**
-    * converts a string in camel case format to a string in snake case format using regex
+    * converts a string in camel case format to a string in snake case format using regex, replaces - with _'s as well
     *
     * @param string the string being converted
     */
@@ -62,40 +81,37 @@ object V2FExtractions {
       .toLowerCase
   }
 
-  /**
-    * adds given field(s) to a json object
-    *
-    * @param jsonObj the json that will have the fields to be added to it
-    * @param fields the fields to be added where the key is the name and the value is the json
-    */
-  def addFields(jsonObj: JsonObject, fields: Map[String, Json]): JsonObject =
-    fields.foldLeft(jsonObj) {
-      case (currentJsonObj, currentField) =>
-        addField(currentJsonObj, currentField._1, currentField._2)
-    }
+  // the pattern of where the ancestryID is located in the tsv path
+  // e.g: gs://path/to/metaanalysis/ancestry-specific/phenotype/ancestry=ancestryID/file
+  val ancestryIDPattern: Regex = "\\/ancestry=([^\\/]+)\\/".r
 
   /**
-    * renames given field(s) of a json object
+    * adds the ancestry ID from the ReadableFile path as a field with a key, value of "ancestry" -> ancestryID to the json object
     *
-    * @param jsonObj the json that will have the fields renamed
-    * @param fieldNamesToChange the fields to be added where the key is the old name and the value is the new name
+    * @param tableName the name of the tsv table that was converted to json
     */
-  def renameFields(
-    jsonObj: JsonObject,
-    fieldNamesToChange: Map[String, String]
-  ): JsonObject =
-    fieldNamesToChange.foldLeft(jsonObj) {
-      case (currentJsonObj, fieldNameToChange) =>
-        currentJsonObj
-          .apply(fieldNameToChange._1)
-          .fold(
-            throw new Exception(
-              s"renameFields: error when calling apply on ${fieldNameToChange._1}"
+  def addAncestryID(
+    tableName: String
+  ): SCollection[(JsonObject, String)] => SCollection[(JsonObject, String)] = {
+    _.transform(s"adding ancestry ID from $tableName's tsv path to its json") {
+      collection =>
+        collection.map {
+          case (jsonObj, filePath) =>
+            val ancestryID = Json.fromString(
+              ancestryIDPattern
+                .findFirstMatchIn(filePath)
+                .getOrElse(
+                  throw new Exception(
+                    s"addAncestryID: error when finding ancestry ID from $tableName tsv path, ($filePath), using $ancestryIDPattern as a pattern"
+                  )
+                )
+                .group(1)
             )
-          ) { jsonValue =>
-            addField(currentJsonObj, fieldNameToChange._2, jsonValue)
-          }
+            val jsonObjWithAddedField = addField(jsonObj, "ancestry", ancestryID)
+            (jsonObjWithAddedField, filePath)
+        }
     }
+  }
 
   /**
     * adds a field to a json object, and overwrites the field if it already exists
@@ -118,22 +134,24 @@ object V2FExtractions {
     tableName: String,
     fieldNames: List[String],
     convertJsonString: (String, Json) => Json
-  ): SCollection[JsonObject] => SCollection[JsonObject] =
+  ): SCollection[(JsonObject, String)] => SCollection[(JsonObject, String)] =
     _.transform(s"enforing types to $tableName json values") { collection =>
-      collection.map { jsonObj =>
-        fieldNames.foldLeft(jsonObj) {
-          case (currentJsonObj, fieldName) =>
-            val jsonValue = currentJsonObj
-              .apply(fieldName)
-              .fold(
-                throw new Exception(
-                  s"convertJsonFieldsValueType: error when calling apply on $fieldName"
-                )
-              ) { json =>
-                convertJsonString(fieldName, json)
-              }
-            addField(currentJsonObj, fieldName, jsonValue)
-        }
+      collection.map {
+        case (jsonObj, filePath) =>
+          fieldNames.foldLeft((jsonObj, filePath)) {
+            case ((currentJsonObj, currentFilePath), fieldName) =>
+              val jsonValue = currentJsonObj
+                .apply(fieldName)
+                .fold(
+                  throw new Exception(
+                    s"convertJsonFieldsValueType: error when calling apply on $fieldName"
+                  )
+                ) { json =>
+                  convertJsonString(fieldName, json)
+                }
+              val transformedJson = addField(currentJsonObj, fieldName, jsonValue)
+              (transformedJson, currentFilePath)
+          }
       }
     }
 
@@ -178,7 +196,7 @@ object V2FExtractions {
         case ""  => Json.fromString("nan")
         case str =>
           Json.fromInt(
-            Try((Integer.getInteger(str)))
+            Try(Integer.getInteger(str))
               .getOrElse(
                 throw new Exception(
                   s"jsonStringToJsonInt: error when converting $fieldName value, $json, from type string to type int"

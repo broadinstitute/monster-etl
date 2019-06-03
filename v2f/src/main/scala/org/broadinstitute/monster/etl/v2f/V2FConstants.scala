@@ -11,6 +11,11 @@ sealed trait V2FConstants {
   def tableName: String
 
   /**
+    * relative path to the tsv that will be converted to Json and transformed
+    */
+  def tsvPath: String
+
+  /**
     * the names of json fields that should be converted from a json string to a json double
     */
   def fieldsToConvertToJsonDouble: List[String]
@@ -40,6 +45,8 @@ sealed trait V2FConstants {
 case object FrequencyAnalysis extends V2FConstants {
   override def tableName = "Frequency Analysis"
 
+  override def tsvPath: String = "frequencyanalysis/*/*"
+
   override def fieldsToConvertToJsonDouble: List[String] = List(
     "eaf",
     "maf"
@@ -56,6 +63,8 @@ case object FrequencyAnalysis extends V2FConstants {
 
 case object MetaAnalysisAncestrySpecific extends V2FConstants {
   override def tableName = "Meta Analysis Ancestry Specific"
+
+  override def tsvPath: String = "metaanalysis/ancestry-specific/*/*/*"
 
   override def fieldsToConvertToJsonDouble: List[String] = List(
     "position",
@@ -78,6 +87,8 @@ case object MetaAnalysisAncestrySpecific extends V2FConstants {
 case object MetaAnalysisTransEthnic extends V2FConstants {
   override def tableName = "Meta Analysis Trans Ethnic"
 
+  override def tsvPath: String = "metaanalysis/trans-ethnic/*/*"
+
   override def fieldsToConvertToJsonDouble: List[String] = List(
     "position",
     "p_value",
@@ -99,6 +110,8 @@ case object MetaAnalysisTransEthnic extends V2FConstants {
 case object VariantEffectRegulatoryFeatureConsequences extends V2FConstants {
   override def tableName = "Variant Effect Regulatory Feature Consequences"
 
+  override def tsvPath: String = "varianteffect/regulatory_feature_consequences/*"
+
   override def fieldsToConvertToJsonDouble: List[String] = ???
 
   override def fieldsToConvertToJsonInt: List[String] = ???
@@ -116,6 +129,8 @@ case object VariantEffectRegulatoryFeatureConsequences extends V2FConstants {
 
 case object VariantEffectTranscriptConsequences extends V2FConstants {
   override def tableName = "Variant Effect Transcript Consequences"
+
+  override def tsvPath: String = "varianteffect/transcript_consequences/*"
 
   override def fieldsToConvertToJsonDouble: List[String] = List(
     "cadd_phred",
@@ -211,7 +226,8 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
       "transcript_var_vest3",
       "vest3_score",
       "polyphen2_hdiv_score",
-      "polyphen2_hvar_score"
+      "polyphen2_hvar_score",
+      "interpro_domain"
     ),
     ":" -> List(
       "siphy_29way_pi"
