@@ -1,43 +1,45 @@
 package org.broadinstitute.monster.etl.v2f
 
 /**
-  * constants for v2f that allow for transforms of the converted tsv to json
+  * Constants for V2F that allow for transforms of the converted TSV to JSON.
   */
 sealed trait V2FConstants {
 
   /**
-    * the name of the tsv table that is being converted to Json and transformed
+    * The name of the TSVs that are being converted to JSON and transformed.
     */
   def tableName: String
 
   /**
-    * relative path to the tsv that will be converted to Json and transformed
+    * File pattern matching TSVs to process within the V2F analysis directory.
     */
-  def tsvPath: String
+  def tsvPattern: String
 
   /**
-    * the names of json fields that should be converted from a json string to a json double
+    * The names of JSON fields that should be converted from Strings to Doubles.
     */
   def fieldsToConvertToJsonDouble: List[String]
 
   /**
-    * the names of json fields that should be converted from a json string to a json double
+    * The names of JSON fields that should be converted from Strings to Integers.
     */
+  //TODO: Would also add a note on the 2nd line explaining why we need this one in addition to the "to double" method above.
   def fieldsToConvertToJsonInt: List[String]
 
   /**
-    * the names of json fields that should be converted from a json string to a json boolean
+    * The names of JSON fields that should be converted from Strings to a Booleans.
     */
   def fieldsToConvertToJsonBoolean: List[String]
 
   /**
-    * the names json fields that should be converted from from a json string to a json array
-    * the keys of the map are delimeter's and the values of map are names of json fields for the give delimeter(key)
+    * The names of JSON fields that should be converted from from Strings to Arrays.
+    * The keys of the map are delimiter and the values of map are names of JSON fields for the give delimiter(key).
     */
+  // TODO: Would be nice to give an example in the scaladoc.
   def fieldsToConvertToJsonArray: Map[String, List[String]]
 
   /**
-    * the json fields of a json array that should be converted from a json string to a json double
+    * The names of JSON Arrays that should be converted from arrays Strings to arrays Doubles.
     */
   def fieldsToConvertFromJsonArrayStringToDouble: List[String]
 }
@@ -45,26 +47,26 @@ sealed trait V2FConstants {
 case object FrequencyAnalysis extends V2FConstants {
   override def tableName = "Frequency Analysis"
 
-  override def tsvPath: String = "frequencyanalysis/*/*"
+  override def tsvPattern: String = "frequency-analysis"
 
   override def fieldsToConvertToJsonDouble: List[String] = List(
     "eaf",
     "maf"
   )
 
-  override def fieldsToConvertToJsonInt: List[String] = ???
+  override def fieldsToConvertToJsonInt: List[String] = Nil
 
-  override def fieldsToConvertToJsonBoolean: List[String] = ???
+  override def fieldsToConvertToJsonBoolean: List[String] = Nil
 
-  override def fieldsToConvertToJsonArray: Map[String, List[String]] = ???
+  override def fieldsToConvertToJsonArray: Map[String, List[String]] = Map(Nil -> Nil)
 
-  override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = ???
+  override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = Nil
 }
 
 case object MetaAnalysisAncestrySpecific extends V2FConstants {
-  override def tableName = "Meta Analysis Ancestry Specific"
+  override def tableName = "Ancestry-Specific Meta-Analysis"
 
-  override def tsvPath: String = "metaanalysis/ancestry-specific/*/*/*"
+  override def tsvPattern: String = "meta-analysis/ancestry-specific"
 
   override def fieldsToConvertToJsonDouble: List[String] = List(
     "position",
@@ -77,17 +79,17 @@ case object MetaAnalysisAncestrySpecific extends V2FConstants {
     "n"
   )
 
-  override def fieldsToConvertToJsonBoolean: List[String] = ???
+  override def fieldsToConvertToJsonBoolean: List[String] = Nil
 
-  override def fieldsToConvertToJsonArray: Map[String, List[String]] = ???
+  override def fieldsToConvertToJsonArray: Map[String, List[String]] = Map(Nil -> Nil)
 
-  override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = ???
+  override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = Nil
 }
 
 case object MetaAnalysisTransEthnic extends V2FConstants {
-  override def tableName = "Meta Analysis Trans Ethnic"
+  override def tableName = "Trans-Ethnic Meta-Analysis"
 
-  override def tsvPath: String = "metaanalysis/trans-ethnic/*/*"
+  override def tsvPattern: String = "meta-analysis/trans-ethnic"
 
   override def fieldsToConvertToJsonDouble: List[String] = List(
     "position",
@@ -100,21 +102,21 @@ case object MetaAnalysisTransEthnic extends V2FConstants {
     "n"
   )
 
-  override def fieldsToConvertToJsonBoolean: List[String] = ???
+  override def fieldsToConvertToJsonBoolean: List[String] = Nil
 
-  override def fieldsToConvertToJsonArray: Map[String, List[String]] = ???
+  override def fieldsToConvertToJsonArray: Map[String, List[String]] = Map(Nil -> Nil)
 
-  override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = ???
+  override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = Nil
 }
 
 case object VariantEffectRegulatoryFeatureConsequences extends V2FConstants {
-  override def tableName = "Variant Effect Regulatory Feature Consequences"
+  override def tableName = "Regulatory Feature Consequences"
 
-  override def tsvPath: String = "varianteffect/regulatory_feature_consequences/*"
+  override def tsvPattern: String = "variant-effect/regulatory-feature-consequences"
 
-  override def fieldsToConvertToJsonDouble: List[String] = ???
+  override def fieldsToConvertToJsonDouble: List[String] = Nil
 
-  override def fieldsToConvertToJsonInt: List[String] = ???
+  override def fieldsToConvertToJsonInt: List[String] = Nil
 
   override def fieldsToConvertToJsonBoolean: List[String] = List(
     "pick"
@@ -124,13 +126,13 @@ case object VariantEffectRegulatoryFeatureConsequences extends V2FConstants {
     "," -> List("consequence_terms")
   )
 
-  override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = ???
+  override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = Nil
 }
 
 case object VariantEffectTranscriptConsequences extends V2FConstants {
-  override def tableName = "Variant Effect Transcript Consequences"
+  override def tableName = "Transcript Consequences"
 
-  override def tsvPath: String = "varianteffect/transcript_consequences/*"
+  override def tsvPattern: String = "variant-effect/transcript-consequences"
 
   override def fieldsToConvertToJsonDouble: List[String] = List(
     "cadd_phred",

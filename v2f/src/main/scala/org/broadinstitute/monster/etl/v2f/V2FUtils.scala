@@ -18,15 +18,15 @@ import util.Try
   * Ingest step converting and tranforming tsv's from v2f.
   *
   */
-object V2FExtractions {
+object V2FUtils {
 
   /**
-    * Given a root path that contains tsv(s) get the tsv as a ReadableFile
+    * Given a pattern matching TSVs, get the TSVs as ReadableFiles.
     *
-    * @param tsvPath the root path containing tsv's to be converted
-    * @param context the pipeline context for converting
+    * @param tsvPath the root path containing TSV's to be converted
+    * @param context context of the main V2F pipeline
     */
-  def getReadableFile(
+  def getReadableFiles(
     tsvPath: String,
     context: ScioContext
   ): SCollection[FileIO.ReadableFile] =
@@ -35,14 +35,14 @@ object V2FExtractions {
     }.applyTransform[ReadableFile](FileIO.readMatches())
 
   /**
-    * Given the ReadableFile that contains tsv(s) convert each tsv to json and get is filepath
+    * Given the ReadableFile that contains TSVs convert each TSV to json and get is filepath.
     *
-    * @param tableName the name of the tsv table that was converted to json
+    * @param tableName the name of the TSV table that was converted to JSON
     */
   def tsvToJson(
     tableName: String
-  ): SCollection[FileIO.ReadableFile] => SCollection[(JsonObject, String)] =
-    _.transform(s"converting $tableName tsv(s) to json") { collection =>
+  ): SCollection[FileIO.ReadableFile] => SCollection[(String, JsonObject)] =
+    _.transform(s"Convert $tableName TSVs to JSON") { collection =>
       collection.flatMap { file =>
         Channels
           .newInputStream(file.open())
@@ -56,14 +56,14 @@ object V2FExtractions {
                   (camelCaseToSnakeCase(key), value)
               }.mapValues(Json.fromString))
               val filePath = file.getMetadata.resourceId.getCurrentDirectory.toString
-              (jsonObj, filePath)
+              (filePath, jsonObj)
             }
           }
       }
     }
 
   /**
-    * converts a string in camel case format to a string in snake case format using regex, replaces - with _'s as well
+    * Converts a string in camel case format to a string in snake case format using regex, replaces - with _'s as well.
     *
     * @param string the string being converted
     */
@@ -86,17 +86,17 @@ object V2FExtractions {
   val ancestryIDPattern: Regex = "\\/ancestry=([^\\/]+)\\/".r
 
   /**
-    * adds the ancestry ID from the ReadableFile path as a field with a key, value of "ancestry" -> ancestryID to the json object
+    * Adds the ancestry ID from the ReadableFile paths as a field with a key, value of "ancestry" -> ancestryID to the JSON Objects.
     *
     * @param tableName the name of the tsv table that was converted to json
     */
   def addAncestryID(
     tableName: String
-  ): SCollection[(JsonObject, String)] => SCollection[(JsonObject, String)] = {
-    _.transform(s"adding ancestry ID from $tableName's tsv path to its json") {
+  ): SCollection[(String, JsonObject)] => SCollection[(String, JsonObject)] = {
+    _.transform(s"Adding the ancestry ID from $tableName's tsv path to its json") {
       collection =>
         collection.map {
-          case (jsonObj, filePath) =>
+          case (filePath, jsonObj) =>
             val ancestryID = Json.fromString(
               ancestryIDPattern
                 .findFirstMatchIn(filePath)
@@ -108,13 +108,13 @@ object V2FExtractions {
                 .group(1)
             )
             val jsonObjWithAddedField = addField(jsonObj, "ancestry", ancestryID)
-            (jsonObjWithAddedField, filePath)
+            (filePath, jsonObjWithAddedField)
         }
     }
   }
 
   /**
-    * adds a field to a json object, and overwrites the field if it already exists
+    * Adds a field to a JSON Object, and overwrites the field if it already exists.
     *
     * @param jsonObj the json that will have the fields to be added to it
     * @param fieldName the name of the field to be added to the json
@@ -124,7 +124,7 @@ object V2FExtractions {
     jsonObj.add(fieldName, jsonValue)
 
   /**
-    * Given a converstion function, for all the field names specified, the fields of a provided json object are converted
+    * Given a conversion function, for all the field names specified, the fields of a provided JSON Object are converted based on that function.
     *
     * @param tableName the name of the tsv table that was converted to json
     * @param fieldNames the names of fields to be converted
@@ -134,12 +134,12 @@ object V2FExtractions {
     tableName: String,
     fieldNames: List[String],
     convertJsonString: (String, Json) => Json
-  ): SCollection[(JsonObject, String)] => SCollection[(JsonObject, String)] =
-    _.transform(s"enforing types to $tableName json values") { collection =>
+  ): SCollection[(String, JsonObject)] => SCollection[(String, JsonObject)] =
+    _.transform(s"Convert $tableName fields to expected types") { collection =>
       collection.map {
-        case (jsonObj, filePath) =>
-          fieldNames.foldLeft((jsonObj, filePath)) {
-            case ((currentJsonObj, currentFilePath), fieldName) =>
+        case (filePath, jsonObj) =>
+          fieldNames.foldLeft((filePath, jsonObj)) {
+            case ((currentFilePath, currentJsonObj), fieldName) =>
               val jsonValue = currentJsonObj
                 .apply(fieldName)
                 .fold(
@@ -150,13 +150,13 @@ object V2FExtractions {
                   convertJsonString(fieldName, json)
                 }
               val transformedJson = addField(currentJsonObj, fieldName, jsonValue)
-              (transformedJson, currentFilePath)
+              (currentFilePath, transformedJson)
           }
       }
     }
 
   /**
-    * converts a json string to a json double
+    * Converts a JSON String to a JSON Double.
     *
     * @param fieldName the field name of the json value being converted
     */
@@ -181,7 +181,7 @@ object V2FExtractions {
       }
 
   /**
-    * converts a json string to a json int
+    * Converts a JSON String to a JSON Integer.
     *
     * @param fieldName the field name of the json value being converted
     */
@@ -206,7 +206,7 @@ object V2FExtractions {
       }
 
   /**
-    * converts a json string to a json boolean
+    * Converts a JSON String to a JSON Boolean.
     *
     * @param fieldName the field name of the json value being converted
     */
@@ -217,11 +217,11 @@ object V2FExtractions {
           s"jsonStringToJsonBoolean: error when converting $fieldName value, $json, from type json string to type string"
         )
       ) { str =>
-        Json.fromBoolean(str == "1")
+        Json.fromBoolean(str == "1" || str == "true")
       }
 
   /**
-    * converts a json string to a json array of json strings by splitting the json string with a delimeter
+    * Converts a JSON String to a JSON Array of Strings by splitting the JSON String with a delimiter.
     *
     * @param delimeter the string (regex matching) that splits the json value/string into a json array
     * @param fieldName the field name of the json value being converted
@@ -239,7 +239,7 @@ object V2FExtractions {
       }
 
   /**
-    * converts a json array of json strings to a json array of json doubles
+    * Converts a JSON Array of Strings to a JSON Array of Doubles.
     *
     * @param fieldName the field name of the json value being converted
     */

@@ -43,8 +43,8 @@ val beamVersion = "2.11.0"
 val enumeratumVersion = "1.5.13"
 val logbackVersion = "1.2.3"
 val scioVersion = "0.7.4"
-val tototoshiVersion = "1.3.5"
-val pathikritVersion = "3.8.0"
+val scalaCsvVersion = "1.3.5"
+val betterFilesVersion = "3.8.0"
 
 // Settings to apply to all sub-projects.
 // Can't be applied at the build level because of scoping rules.
@@ -99,8 +99,8 @@ lazy val v2f = project
       "com.spotify" %% "scio-extra" % scioVersion,
       "org.apache.beam" % "beam-runners-direct-java" % beamVersion % Runtime,
       "org.apache.beam" % "beam-runners-google-cloud-dataflow-java" % beamVersion % Runtime,
-      "com.github.tototoshi" %% "scala-csv" % tototoshiVersion,
-      "com.github.pathikrit" %% "better-files" % pathikritVersion
+      "com.github.tototoshi" %% "scala-csv" % scalaCsvVersion,
+      "com.github.pathikrit" %% "better-files" % betterFilesVersion
     ),
     libraryDependencies ++= Seq(
       "com.spotify" %% "scio-test" % scioVersion
