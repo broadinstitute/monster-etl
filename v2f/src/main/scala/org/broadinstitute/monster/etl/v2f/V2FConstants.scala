@@ -59,7 +59,7 @@ case object FrequencyAnalysis extends V2FConstants {
 
   override def fieldsToConvertToJsonBoolean: List[String] = Nil
 
-  override def fieldsToConvertToJsonArray: Map[String, List[String]] = Map(Nil -> Nil)
+  override def fieldsToConvertToJsonArray: Map[String, List[String]] = Map.empty
 
   override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = Nil
 }
@@ -82,7 +82,7 @@ case object MetaAnalysisAncestrySpecific extends V2FConstants {
 
   override def fieldsToConvertToJsonBoolean: List[String] = Nil
 
-  override def fieldsToConvertToJsonArray: Map[String, List[String]] = Map(Nil -> Nil)
+  override def fieldsToConvertToJsonArray: Map[String, List[String]] = Map.empty
 
   override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = Nil
 }
@@ -106,7 +106,7 @@ case object MetaAnalysisTransEthnic extends V2FConstants {
 
   override def fieldsToConvertToJsonBoolean: List[String] = Nil
 
-  override def fieldsToConvertToJsonArray: Map[String, List[String]] = Map(Nil -> Nil)
+  override def fieldsToConvertToJsonArray: Map[String, List[String]] = Map.empty
 
   override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = Nil
 }
