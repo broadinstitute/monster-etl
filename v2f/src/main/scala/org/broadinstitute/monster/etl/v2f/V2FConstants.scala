@@ -22,8 +22,8 @@ sealed trait V2FConstants {
 
   /**
     * The names of JSON fields that should be converted from Strings to Integers.
+    * Converting to int instead due to JSON schema int columns not accepting doubles
     */
-  //TODO: Would also add a note on the 2nd line explaining why we need this one in addition to the "to double" method above.
   def fieldsToConvertToJsonInt: List[String]
 
   /**
@@ -34,12 +34,13 @@ sealed trait V2FConstants {
   /**
     * The names of JSON fields that should be converted from from Strings to Arrays.
     * The keys of the map are delimiter and the values of map are names of JSON fields for the give delimiter(key).
+    * e.g: "24,81,5,8,60" to ["24", "81", "5", "8", "60"]
     */
-  // TODO: Would be nice to give an example in the scaladoc.
   def fieldsToConvertToJsonArray: Map[String, List[String]]
 
   /**
     * The names of JSON Arrays that should be converted from arrays Strings to arrays Doubles.
+    * e.g: "24,81,5,8,60" to [24, 81, 5, 8, 60]
     */
   def fieldsToConvertFromJsonArrayStringToDouble: List[String]
 }
