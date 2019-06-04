@@ -3,7 +3,6 @@ package org.broadinstitute.monster.etl.v2f
 import caseapp.{AppName, AppVersion, HelpMessage, ProgName}
 import com.spotify.scio.ContextAndArgs
 import com.spotify.scio.{BuildInfo => _, io => _}
-import com.spotify.scio.extra.json._
 import org.broadinstitute.monster.etl.BuildInfo
 
 /**
@@ -33,208 +32,103 @@ object ExtractionPipeline {
   def main(rawArgs: Array[String]): Unit = {
     val (pipelineContext, parsedArgs) = ContextAndArgs.typed[Args](rawArgs)
 
-    // convert the TSVs to JSON
-    // frequency analysis
-    val frequencyAnalysisReadableFiles = V2FUtils.getReadableFiles(
-      s"${parsedArgs.inputDir}/${FrequencyAnalysis.tsvPattern}/*/*.csv",
-      pipelineContext
+    // extract and convert TSVs to JSON, transform JSON and then save JSON
+    // FrequencyAnalysis
+    val frequencyAnalysisJsonAndFilePaths = V2FExtractionsAndTransforms.extractAndConvert(
+      FrequencyAnalysis,
+      pipelineContext,
+      inputDir = parsedArgs.inputDir,
+      relativeFilePath = "*/*.csv"
     )
 
-    val frequencyAnalysisJsonAndFilePaths = V2FUtils.tsvToJson(
-      FrequencyAnalysis.tableName
-    )(frequencyAnalysisReadableFiles)
+    val frequencyAnalysisTransformedJsonAndFilePaths = V2FExtractionsAndTransforms
+      .transform(frequencyAnalysisJsonAndFilePaths, FrequencyAnalysis)
 
-    // meta analysis ancestry specific
-    val metaAnalysisAncestrySpecificReadableFiles = V2FUtils.getReadableFiles(
-      s"${parsedArgs.inputDir}/${MetaAnalysisAncestrySpecific.tsvPattern}/*/*/*.csv",
-      pipelineContext
+    V2FExtractionsAndTransforms.writeToDisk(
+      frequencyAnalysisTransformedJsonAndFilePaths,
+      FrequencyAnalysis,
+      parsedArgs.outputDir
     )
 
-    val metaAnalysisAncestrySpecificJsonAndFilePaths = V2FUtils.tsvToJson(
-      MetaAnalysisAncestrySpecific.tableName
-    )(metaAnalysisAncestrySpecificReadableFiles)
-
-    // meta analysis trans ethnic
-    val metaAnalysisTransEthnicReadableFiles = V2FUtils.getReadableFiles(
-      s"${parsedArgs.inputDir}/${MetaAnalysisTransEthnic.tsvPattern}/*/*.csv",
-      pipelineContext
-    )
-
-    val metaAnalysisTransEthnicJsonAndFilePaths = V2FUtils.tsvToJson(
-      MetaAnalysisTransEthnic.tableName
-    )(metaAnalysisTransEthnicReadableFiles)
-
-    // variant effect regulatory feature consequences
-    val variantEffectRegulatoryFeatureConsequencesReadableFiles =
-      V2FUtils.getReadableFiles(
-        s"${parsedArgs.inputDir}/${VariantEffectRegulatoryFeatureConsequences.tsvPattern}/*.csv",
-        pipelineContext
+    // MetaAnalysisAncestrySpecific
+    val metaAnalysisAncestrySpecificJsonAndFilePaths =
+      V2FExtractionsAndTransforms.extractAndConvert(
+        MetaAnalysisAncestrySpecific,
+        pipelineContext,
+        inputDir = parsedArgs.inputDir,
+        relativeFilePath = "*/*/*.csv"
       )
 
+    val metaAnalysisAncestrySpecificTransformedJsonAndFilePaths =
+      V2FExtractionsAndTransforms.transform(
+        metaAnalysisAncestrySpecificJsonAndFilePaths,
+        MetaAnalysisAncestrySpecific
+      )
+
+    V2FExtractionsAndTransforms.writeToDisk(
+      metaAnalysisAncestrySpecificTransformedJsonAndFilePaths,
+      MetaAnalysisAncestrySpecific,
+      parsedArgs.outputDir
+    )
+
+    // MetaAnalysisTransEthnic
+    val metaAnalysisTransEthnicJsonAndFilePaths =
+      V2FExtractionsAndTransforms.extractAndConvert(
+        MetaAnalysisTransEthnic,
+        pipelineContext,
+        inputDir = parsedArgs.inputDir,
+        relativeFilePath = "*/*.csv"
+      )
+
+    val metaAnalysisTransEthnicTransformedJsonAndFilePaths = V2FExtractionsAndTransforms
+      .transform(metaAnalysisTransEthnicJsonAndFilePaths, MetaAnalysisTransEthnic)
+
+    V2FExtractionsAndTransforms.writeToDisk(
+      metaAnalysisTransEthnicTransformedJsonAndFilePaths,
+      MetaAnalysisTransEthnic,
+      parsedArgs.outputDir
+    )
+
+    // VariantEffectRegulatoryFeatureConsequences
     val variantEffectRegulatoryFeatureConsequencesJsonAndFilePaths =
-      V2FUtils.tsvToJson(
-        VariantEffectRegulatoryFeatureConsequences.tableName
-      )(variantEffectRegulatoryFeatureConsequencesReadableFiles)
+      V2FExtractionsAndTransforms.extractAndConvert(
+        VariantEffectRegulatoryFeatureConsequences,
+        pipelineContext,
+        inputDir = parsedArgs.inputDir,
+        relativeFilePath = "*.csv"
+      )
 
-    // variant effect regulatory feature consequences
-    val variantEffectTranscriptConsequencesReadableFiles = V2FUtils.getReadableFiles(
-      s"${parsedArgs.inputDir}/${VariantEffectTranscriptConsequences.tsvPattern}/*.csv",
-      pipelineContext
+    val variantEffectRegulatoryFeatureConsequencesTransformedJsonAndFilePaths =
+      V2FExtractionsAndTransforms.transform(
+        variantEffectRegulatoryFeatureConsequencesJsonAndFilePaths,
+        VariantEffectRegulatoryFeatureConsequences
+      )
+
+    V2FExtractionsAndTransforms.writeToDisk(
+      variantEffectRegulatoryFeatureConsequencesTransformedJsonAndFilePaths,
+      VariantEffectRegulatoryFeatureConsequences,
+      parsedArgs.outputDir
     )
 
-    val variantEffectTranscriptConsequencesJsonAndFilePaths = V2FUtils.tsvToJson(
-      VariantEffectTranscriptConsequences.tableName
-    )(variantEffectTranscriptConsequencesReadableFiles)
+    // VariantEffectTranscriptConsequences
+    val variantEffectTranscriptConsequencesJsonAndFilePaths =
+      V2FExtractionsAndTransforms.extractAndConvert(
+        VariantEffectTranscriptConsequences,
+        pipelineContext,
+        inputDir = parsedArgs.inputDir,
+        relativeFilePath = "*.csv"
+      )
 
-    // transform json by adding fields and enforcing types
-    // convert given fields to json double
-    val frequencyAnalysisTransformed = V2FUtils.convertJsonFieldsValueType(
-      FrequencyAnalysis.tableName,
-      FrequencyAnalysis.fieldsToConvertToJsonDouble,
-      V2FUtils.jsonStringToJsonDouble
-    )(frequencyAnalysisJsonAndFilePaths)
+    val variantEffectTranscriptConsequencesTransformedJsonAndFilePaths =
+      V2FExtractionsAndTransforms.transform(
+        variantEffectTranscriptConsequencesJsonAndFilePaths,
+        VariantEffectTranscriptConsequences
+      )
 
-    // add ancestry id to the json
-    val metaAnalysisAncestrySpecificAddedFields = V2FUtils.addAncestryID(
-      MetaAnalysisAncestrySpecific.tableName
-    )(metaAnalysisAncestrySpecificJsonAndFilePaths)
-
-    // convert given fields to json double
-    val metaAnalysisAncestrySpecificTransformedDoubles =
-      V2FUtils.convertJsonFieldsValueType(
-        MetaAnalysisAncestrySpecific.tableName,
-        MetaAnalysisAncestrySpecific.fieldsToConvertToJsonDouble,
-        V2FUtils.jsonStringToJsonDouble
-      )(metaAnalysisAncestrySpecificAddedFields)
-
-    // convert given fields to json int
-    val metaAnalysisAncestrySpecificTransformed =
-      V2FUtils.convertJsonFieldsValueType(
-        MetaAnalysisAncestrySpecific.tableName,
-        MetaAnalysisAncestrySpecific.fieldsToConvertToJsonInt,
-        V2FUtils.jsonStringToJsonInt
-      )(metaAnalysisAncestrySpecificTransformedDoubles)
-
-    // convert given fields to json double
-    val metaAnalysisTransEthnicTransformedDoubles =
-      V2FUtils.convertJsonFieldsValueType(
-        MetaAnalysisTransEthnic.tableName,
-        MetaAnalysisTransEthnic.fieldsToConvertToJsonDouble,
-        V2FUtils.jsonStringToJsonDouble
-      )(metaAnalysisTransEthnicJsonAndFilePaths)
-
-    // convert given fields to json int
-    val metaAnalysisTransEthnicTransformed =
-      V2FUtils.convertJsonFieldsValueType(
-        MetaAnalysisTransEthnic.tableName,
-        MetaAnalysisTransEthnic.fieldsToConvertToJsonInt,
-        V2FUtils.jsonStringToJsonInt
-      )(metaAnalysisTransEthnicTransformedDoubles)
-
-    // convert given fields to json boolean
-    val variantEffectRegulatoryFeatureConsequencesTransformedBooleans =
-      V2FUtils.convertJsonFieldsValueType(
-        VariantEffectRegulatoryFeatureConsequences.tableName,
-        VariantEffectRegulatoryFeatureConsequences.fieldsToConvertToJsonBoolean,
-        V2FUtils.jsonStringToJsonBoolean
-      )(variantEffectRegulatoryFeatureConsequencesJsonAndFilePaths)
-
-    // then convert given fields to json arrays
-    val variantEffectRegulatoryFeatureConsequencesTransformed =
-      VariantEffectRegulatoryFeatureConsequences.fieldsToConvertToJsonArray.foldLeft(
-        variantEffectRegulatoryFeatureConsequencesTransformedBooleans
-      ) {
-        case (currentTransformedJsonAndFilePaths, currentfieldsToConvertToJsonArray) =>
-          V2FUtils.convertJsonFieldsValueType(
-            VariantEffectRegulatoryFeatureConsequences.tableName,
-            currentfieldsToConvertToJsonArray._2,
-            V2FUtils.jsonStringToJsonArray(
-              delimeter = currentfieldsToConvertToJsonArray._1
-            )
-          )(currentTransformedJsonAndFilePaths)
-      }
-
-    // convert given fields to json double
-    val variantEffectTranscriptConsequencesTransformedDoubles =
-      V2FUtils.convertJsonFieldsValueType(
-        VariantEffectTranscriptConsequences.tableName,
-        VariantEffectTranscriptConsequences.fieldsToConvertToJsonDouble,
-        V2FUtils.jsonStringToJsonDouble
-      )(variantEffectTranscriptConsequencesJsonAndFilePaths)
-
-    // convert given fields to json int
-    val variantEffectTranscriptConsequencesTransformedInts =
-      V2FUtils.convertJsonFieldsValueType(
-        VariantEffectTranscriptConsequences.tableName,
-        VariantEffectTranscriptConsequences.fieldsToConvertToJsonInt,
-        V2FUtils.jsonStringToJsonInt
-      )(variantEffectTranscriptConsequencesTransformedDoubles)
-
-    // then convert given fields to json booleans
-    val variantEffectTranscriptConsequencesTransformedBooleans =
-      V2FUtils.convertJsonFieldsValueType(
-        VariantEffectTranscriptConsequences.tableName,
-        VariantEffectTranscriptConsequences.fieldsToConvertToJsonBoolean,
-        V2FUtils.jsonStringToJsonBoolean
-      )(variantEffectTranscriptConsequencesTransformedInts)
-
-    // then convert given fields to json arrays
-    val variantEffectTranscriptConsequencesTransformedArrays =
-      VariantEffectTranscriptConsequences.fieldsToConvertToJsonArray.foldLeft(
-        variantEffectTranscriptConsequencesTransformedBooleans
-      ) {
-        case (currentTransformedJsonAndFilePaths, currentfieldsToConvertToJsonArray) =>
-          V2FUtils.convertJsonFieldsValueType(
-            VariantEffectTranscriptConsequences.tableName,
-            currentfieldsToConvertToJsonArray._2,
-            V2FUtils.jsonStringToJsonArray(
-              delimeter = currentfieldsToConvertToJsonArray._1
-            )
-          )(currentTransformedJsonAndFilePaths)
-      }
-
-    // then convert given fields of the array from json strings to json double
-    val variantEffectTranscriptConsequencesTransformed =
-      V2FUtils.convertJsonFieldsValueType(
-        VariantEffectTranscriptConsequences.tableName,
-        VariantEffectTranscriptConsequences.fieldsToConvertFromJsonArrayStringToDouble,
-        V2FUtils.convertJsonArrayStringToDouble
-      )(variantEffectTranscriptConsequencesTransformedArrays)
-
-    // Write all the converted/parsed json objects to disk.
-    frequencyAnalysisTransformed.map {
-      case (jsonObj, _) =>
-        jsonObj
-    }.saveAsJsonFile(
-      s"${parsedArgs.outputDir}/${FrequencyAnalysis.tsvPattern}"
-    )
-
-    metaAnalysisAncestrySpecificTransformed.map {
-      case (jsonObj, _) =>
-        jsonObj
-    }.saveAsJsonFile(
-      s"${parsedArgs.outputDir}/${MetaAnalysisAncestrySpecific.tsvPattern}"
-    )
-
-    metaAnalysisTransEthnicTransformed.map {
-      case (jsonObj, _) =>
-        jsonObj
-    }.saveAsJsonFile(
-      s"${parsedArgs.outputDir}/${MetaAnalysisTransEthnic.tsvPattern}"
-    )
-
-    variantEffectRegulatoryFeatureConsequencesTransformed.map {
-      case (jsonObj, _) =>
-        jsonObj
-    }.saveAsJsonFile(
-      s"${parsedArgs.outputDir}/${VariantEffectRegulatoryFeatureConsequences.tsvPattern}"
-    )
-
-    variantEffectTranscriptConsequencesTransformed.map {
-      case (jsonObj, _) =>
-        jsonObj
-    }.saveAsJsonFile(
-      s"${parsedArgs.outputDir}/${VariantEffectTranscriptConsequences.tsvPattern}"
+    V2FExtractionsAndTransforms.writeToDisk(
+      variantEffectTranscriptConsequencesTransformedJsonAndFilePaths,
+      VariantEffectTranscriptConsequences,
+      parsedArgs.outputDir
     )
 
     // waitUntilDone() throws error on failure

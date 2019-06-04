@@ -15,15 +15,14 @@ import scala.util.matching.Regex
 import util.Try
 
 /**
-  * Ingest step converting and tranforming tsv's from v2f.
-  *
+  * Ingest utils converting and transforming TSVs from V2F.
   */
 object V2FUtils {
 
   /**
     * Given a pattern matching TSVs, get the TSVs as ReadableFiles.
     *
-    * @param tsvPath the root path containing TSV's to be converted
+    * @param tsvPath the root path containing TSVs to be converted
     * @param context context of the main V2F pipeline
     */
   def getReadableFiles(
