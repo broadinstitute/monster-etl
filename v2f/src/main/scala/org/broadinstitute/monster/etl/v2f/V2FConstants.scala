@@ -43,6 +43,12 @@ sealed trait V2FConstants {
     * e.g: "24,81,5,8,60" to [24, 81, 5, 8, 60]
     */
   def fieldsToConvertFromJsonArrayStringToDouble: List[String]
+
+  /**
+    * The names of JSON fields that should be renamed.
+    * e.g: "kobe": "Bryant" to "Kobe": "Bryant"
+    */
+  def fieldsToRename: Map[String, String]
 }
 
 case object FrequencyAnalysis extends V2FConstants {
@@ -62,6 +68,8 @@ case object FrequencyAnalysis extends V2FConstants {
   override def fieldsToConvertToJsonArray: Map[String, List[String]] = Map.empty
 
   override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = Nil
+
+  override def fieldsToRename: Map[String, String] = Map("var_id" -> "id")
 }
 
 case object MetaAnalysisAncestrySpecific extends V2FConstants {
@@ -85,6 +93,8 @@ case object MetaAnalysisAncestrySpecific extends V2FConstants {
   override def fieldsToConvertToJsonArray: Map[String, List[String]] = Map.empty
 
   override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = Nil
+
+  override def fieldsToRename: Map[String, String] = Map("var_id" -> "id")
 }
 
 case object MetaAnalysisTransEthnic extends V2FConstants {
@@ -109,6 +119,8 @@ case object MetaAnalysisTransEthnic extends V2FConstants {
   override def fieldsToConvertToJsonArray: Map[String, List[String]] = Map.empty
 
   override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = Nil
+
+  override def fieldsToRename: Map[String, String] = Map("var_id" -> "id")
 }
 
 case object VariantEffectRegulatoryFeatureConsequences extends V2FConstants {
@@ -129,6 +141,8 @@ case object VariantEffectRegulatoryFeatureConsequences extends V2FConstants {
   )
 
   override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = Nil
+
+  override def fieldsToRename: Map[String, String] = Map.empty
 }
 
 case object VariantEffectTranscriptConsequences extends V2FConstants {
@@ -154,12 +168,12 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
     "gerp++_nr",
     "gerp++_rs",
     "gerp++_rs_rankscore",
-    "gm12878_confidence_value",
-    "gm12878_fitcons_score",
-    "gm12878_fitcons_score_rankscore",
-    "h1_hesc_confidence_value",
-    "h1_hesc_fitcons_score",
-    "h1_hesc_fitcons_score_rankscore",
+    "gm_12878_confidence_value",
+    "gm_12878_fitcons_score",
+    "gm_12878_fitcons_score_rankscore",
+    "h_1_hesc_confidence_value",
+    "h_1_hesc_fitcons_score",
+    "h_1_hesc_fitcons_score_rankscore",
     "huvec_confidence_value",
     "huvec_fitcons_score",
     "huvec_fitcons_score_rankscore",
@@ -176,22 +190,22 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
     "mutationassessor_score",
     "mutationassessor_score_rankscore",
     "mutationtaster_converted_rankscore",
-    "phastcons100way_vertebrate",
-    "phastcons100way_vertebrate_rankscore",
-    "phastcons20way_mammalian",
-    "phastcons20way_mammalian_rankscore",
-    "phylop100way_vertebrate",
-    "phylop100way_vertebrate_rankscore",
-    "phylop20way_mammalian",
-    "phylop20way_mammalian_rankscore",
-    "polyphen2_hdiv_rankscore",
-    "polyphen2_hvar_rankscore",
+    "phastcons_100_way_vertebrate",
+    "phastcons_100_way_vertebrate_rankscore",
+    "phastcons_20_way_mammalian",
+    "phastcons_20_way_mammalian_rankscore",
+    "phylop_100_way_vertebrate",
+    "phylop_100_way_vertebrate_rankscore",
+    "phylop_20_way_mammalian",
+    "phylop_20_way_mammalian_rankscore",
+    "polyphen_2_hdiv_rankscore",
+    "polyphen_2_hvar_rankscore",
     "polyphen_score",
     "provean_converted_rankscore",
     "sift_converted_rankscore",
-    "siphy_29way_logodds",
-    "siphy_29way_logodds_rankscore",
-    "vest3_rankscore"
+    "siphy_29_way_logodds",
+    "siphy_29_way_logodds_rankscore",
+    "vest_3_rankscore"
   )
 
   override def fieldsToConvertToJsonInt: List[String] = List(
@@ -226,24 +240,30 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
       "provean_score",
       "sift_pred",
       "sift_score",
-      "transcript_id_vest3",
-      "transcript_var_vest3",
-      "vest3_score",
+      "transcript_id_vest_3",
+      "transcript_var_vest_3",
+      "vest_3_score",
       "polyphen2_hdiv_score",
       "polyphen2_hvar_score",
       "interpro_domain"
     ),
     ":" -> List(
-      "siphy_29way_pi"
+      "siphy_29_way_pi"
     )
   )
 
   override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = List(
     "mutationtaster_score",
-    "siphy_29way_pi",
-    "vest3_score",
-    "polyphen2_hdiv_score",
-    "polyphen2_hvar_score",
+    "siphy_29_way_pi",
+    "vest_3_score",
+    "polyphen_2_hdiv_score",
+    "polyphen_2_hvar_score",
     "sift_score"
+  )
+
+  override def fieldsToRename: Map[String, String] = Map(
+    "gerp++_nr" -> "gerp_plus_plus_nr",
+    "gerp++_rs" -> "gerp_plus_plus_rs",
+    "gerp++_rs_rankscore" -> "gerp_plus_plus_rs_rankscore"
   )
 }

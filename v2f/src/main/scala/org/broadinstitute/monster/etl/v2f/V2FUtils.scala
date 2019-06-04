@@ -50,9 +50,9 @@ object V2FUtils {
             implicit val format: CSVFormat = new TSVFormat {}
             val reader = CSVReader.open(new InputStreamReader(path))
             reader.allWithHeaders().map { map =>
-              val jsonObj = JsonObject.fromMap(map.map {
-                case (key, value) =>
-                  (camelCaseToSnakeCase(key), value)
+              val jsonObj = JsonObject.fromMap(map.collect {
+                case (key, value) if value != "" =>
+                  (camelCaseToSnakeCase(key), value.trim)
               }.mapValues(Json.fromString))
               val filePath = file.getMetadata.resourceId.getCurrentDirectory.toString
               (filePath, jsonObj)
@@ -62,7 +62,7 @@ object V2FUtils {
     }
 
   /**
-    * Converts a string in camel case format to a string in snake case format using regex, replaces - with _'s as well.
+    * Converts a string in camel case format to a string in snake case format using regex, replaces - with _'s, and puts underscores before and after every number.
     *
     * @param string the string being converted
     */
@@ -77,6 +77,8 @@ object V2FUtils {
         "$1_$2"
       )
       .replaceAll("([a-z\\d])([A-Z])", "$1_$2")
+      .replaceAll("([a-z])([\\d])", "$1_$2")
+      .replaceAll("([\\d])([a-z])", "$1_$2")
       .toLowerCase
   }
 
@@ -106,21 +108,11 @@ object V2FUtils {
                 )
                 .group(1)
             )
-            val jsonObjWithAddedField = addField(jsonObj, "ancestry", ancestryID)
+            val jsonObjWithAddedField = jsonObj.add("ancestry", ancestryID)
             (filePath, jsonObjWithAddedField)
         }
     }
   }
-
-  /**
-    * Adds a field to a JSON Object, and overwrites the field if it already exists.
-    *
-    * @param jsonObj the json that will have the fields to be added to it
-    * @param fieldName the name of the field to be added to the json
-    * @param jsonValue the json value of the field to be added to the json
-    */
-  def addField(jsonObj: JsonObject, fieldName: String, jsonValue: Json): JsonObject =
-    jsonObj.add(fieldName, jsonValue)
 
   /**
     * Given a conversion function, for all the field names specified, the fields of a provided JSON Object are converted based on that function.
@@ -148,7 +140,7 @@ object V2FUtils {
                 ) { json =>
                   convertJsonString(fieldName, json)
                 }
-              val transformedJson = addField(currentJsonObj, fieldName, jsonValue)
+              val transformedJson = currentJsonObj.add(fieldName, jsonValue)
               (currentFilePath, transformedJson)
           }
       }
@@ -233,7 +225,7 @@ object V2FUtils {
         )
       ) { jsonStr =>
         Json.fromValues(jsonStr.split(delimeter).map { str =>
-          Json.fromString(str)
+          Json.fromString(str.trim)
         })
       }
 
@@ -252,4 +244,34 @@ object V2FUtils {
         jsonStringToJsonDouble(fieldName, jsonStr)
       })
     }
+
+  /**
+    * Renames JSON fields in a collection of JSON Objects.
+    *
+    * @param tableName the name of the TSV table that was converted to JSON
+    * @param fieldsToRename the map of Json Fields to be renamed (old, new)
+    */
+  def renameFields(
+    tableName: String,
+    fieldsToRename: Map[String, String]
+  ): SCollection[(String, JsonObject)] => SCollection[(String, JsonObject)] = {
+    _.transform(s"Renaming fields in $tableName JSONs") { collection =>
+      collection.map {
+        case (filePath, jsonObj) =>
+          fieldsToRename.foldLeft((filePath, jsonObj)) {
+            case ((currentFilePath, currentJsonObj), (oldFieldName, newFieldName)) =>
+              val jsonValue = currentJsonObj
+                .apply(oldFieldName)
+                .getOrElse(
+                  throw new Exception(
+                    s"renameField: error when calling apply on $oldFieldName"
+                  )
+                )
+              val renamedJsonObj = currentJsonObj.add(newFieldName, jsonValue)
+              (currentFilePath, renamedJsonObj)
+          }
+      }
+    }
+  }
+
 }

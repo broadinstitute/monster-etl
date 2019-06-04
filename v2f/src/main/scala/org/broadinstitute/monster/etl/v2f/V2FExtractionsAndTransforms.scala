@@ -83,11 +83,17 @@ object V2FExtractionsAndTransforms {
       }
 
     // then convert given fields of the array from json strings to json double
-    V2FUtils.convertJsonFieldsValueType(
+    val transformedArrayDoublesJsonAndFilePaths = V2FUtils.convertJsonFieldsValueType(
       v2fConstant.tableName,
       v2fConstant.fieldsToConvertFromJsonArrayStringToDouble,
       V2FUtils.convertJsonArrayStringToDouble
     )(transformedArraysJsonAndFilePaths)
+
+    // then rename given fields from old to new names
+    V2FUtils.renameFields(
+      v2fConstant.tableName,
+      v2fConstant.fieldsToRename
+    )(transformedArrayDoublesJsonAndFilePaths)
   }
 
   /**
