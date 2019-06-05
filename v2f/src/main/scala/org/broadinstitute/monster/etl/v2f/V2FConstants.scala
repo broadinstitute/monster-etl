@@ -165,9 +165,9 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
     "fathmm_mkl_coding_score",
     "genocanyon_score",
     "genocanyon_score_rankscore",
-    "gerp++_nr",
-    "gerp++_rs",
-    "gerp++_rs_rankscore",
+    "gerp_plus_plus_nr",
+    "gerp_plus_plus_rs",
+    "gerp_plus_plus_rs_rankscore",
     "gm_12878_confidence_value",
     "gm_12878_fitcons_score",
     "gm_12878_fitcons_score_rankscore",
@@ -243,8 +243,8 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
       "transcript_id_vest_3",
       "transcript_var_vest_3",
       "vest_3_score",
-      "polyphen2_hdiv_score",
-      "polyphen2_hvar_score",
+      "polyphen_2_hdiv_score",
+      "polyphen_2_hvar_score",
       "interpro_domain"
     ),
     ":" -> List(

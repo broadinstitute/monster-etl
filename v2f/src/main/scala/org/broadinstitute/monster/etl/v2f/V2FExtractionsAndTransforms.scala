@@ -43,13 +43,19 @@ object V2FExtractionsAndTransforms {
     jsonAndFilePaths: SCollection[(String, JsonObject)],
     v2fConstant: V2FConstants
   ): SCollection[(String, JsonObject)] = {
-    // convert given fields to json double
+    // rename given fields from old to new names
+    val transformedRenamedFieldsJSON = V2FUtils.renameFields(
+      v2fConstant.tableName,
+      v2fConstant.fieldsToRename
+    )(jsonAndFilePaths)
+
+    // then convert given fields to json double
     val transformedDoublesJsonAndFilePaths =
       V2FUtils.convertJsonFieldsValueType(
         v2fConstant.tableName,
         v2fConstant.fieldsToConvertToJsonDouble,
         V2FUtils.jsonStringToJsonDouble
-      )(jsonAndFilePaths)
+      )(transformedRenamedFieldsJSON)
 
     // then convert given fields to json int
     val transformedIntsJsonAndFilePaths =
@@ -83,17 +89,11 @@ object V2FExtractionsAndTransforms {
       }
 
     // then convert given fields of the array from json strings to json double
-    val transformedArrayDoublesJsonAndFilePaths = V2FUtils.convertJsonFieldsValueType(
+    V2FUtils.convertJsonFieldsValueType(
       v2fConstant.tableName,
       v2fConstant.fieldsToConvertFromJsonArrayStringToDouble,
       V2FUtils.convertJsonArrayStringToDouble
     )(transformedArraysJsonAndFilePaths)
-
-    // then rename given fields from old to new names
-    V2FUtils.renameFields(
-      v2fConstant.tableName,
-      v2fConstant.fieldsToRename
-    )(transformedArrayDoublesJsonAndFilePaths)
   }
 
   /**

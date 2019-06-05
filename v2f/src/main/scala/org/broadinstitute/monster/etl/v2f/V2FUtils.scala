@@ -129,19 +129,17 @@ object V2FUtils {
     _.transform(s"Convert $tableName fields to expected types") { collection =>
       collection.map {
         case (filePath, jsonObj) =>
-          fieldNames.foldLeft((filePath, jsonObj)) {
-            case ((currentFilePath, currentJsonObj), fieldName) =>
-              val jsonValue = currentJsonObj
+          filePath -> fieldNames.foldLeft((jsonObj)) {
+            case (currentJsonObj, fieldName) =>
+              currentJsonObj
                 .apply(fieldName)
                 .fold(
-                  throw new Exception(
-                    s"convertJsonFieldsValueType: error when calling apply on $fieldName"
-                  )
+                  currentJsonObj
                 ) { json =>
-                  convertJsonString(fieldName, json)
+                  val transformedJson =
+                    currentJsonObj.add(fieldName, convertJsonString(fieldName, json))
+                  transformedJson
                 }
-              val transformedJson = currentJsonObj.add(fieldName, jsonValue)
-              (currentFilePath, transformedJson)
           }
       }
     }
@@ -180,7 +178,7 @@ object V2FUtils {
     json.asString
       .fold(
         throw new Exception(
-          s"jsonStringToJsonInt: error when converting $fieldName value, $json, from type json string to type string"
+          s"jsonStringToJsonInt: error when converting $fieldName: $json from type json string to type string"
         )
       ) {
         case "." => Json.fromString("nan")
@@ -190,7 +188,7 @@ object V2FUtils {
             Try(Integer.getInteger(str))
               .getOrElse(
                 throw new Exception(
-                  s"jsonStringToJsonInt: error when converting $fieldName value, $json, from type string to type int"
+                  s"jsonStringToJsonInt: error when converting $fieldName: $json from type string to type int"
                 )
               )
           )
@@ -205,7 +203,7 @@ object V2FUtils {
     json.asString
       .fold(
         throw new Exception(
-          s"jsonStringToJsonBoolean: error when converting $fieldName value, $json, from type json string to type string"
+          s"jsonStringToJsonBoolean: error when converting $fieldName: $json from type json string to type string"
         )
       ) { str =>
         Json.fromBoolean(str == "1" || str == "true")
@@ -221,7 +219,7 @@ object V2FUtils {
     json.asString
       .fold(
         throw new Exception(
-          s"jsonStringToJsonArray: error when converting $fieldName value, $json, from type json string to type string"
+          s"jsonStringToJsonArray: error when converting $fieldName: $json from type json string to type string"
         )
       ) { jsonStr =>
         Json.fromValues(jsonStr.split(delimeter).map { str =>
@@ -237,7 +235,7 @@ object V2FUtils {
   def convertJsonArrayStringToDouble(fieldName: String, json: Json): Json =
     json.asArray.fold(
       throw new Exception(
-        s"convertJsonArrayStringToDouble: error when converting $fieldName value, $json, from a json array of type string to type Vector[Json]"
+        s"convertJsonArrayStringToDouble: error when converting $fieldName: $json from a json array of type string to type Vector[Json]"
       )
     ) { jsonArray =>
       Json.fromValues(jsonArray.map { jsonStr =>
@@ -260,14 +258,11 @@ object V2FUtils {
         case (filePath, jsonObj) =>
           fieldsToRename.foldLeft((filePath, jsonObj)) {
             case ((currentFilePath, currentJsonObj), (oldFieldName, newFieldName)) =>
-              val jsonValue = currentJsonObj
+              val renamedJsonObj = currentJsonObj
                 .apply(oldFieldName)
-                .getOrElse(
-                  throw new Exception(
-                    s"renameField: error when calling apply on $oldFieldName"
-                  )
-                )
-              val renamedJsonObj = currentJsonObj.add(newFieldName, jsonValue)
+                .fold(currentJsonObj) { jsonValue =>
+                  currentJsonObj.add(newFieldName, jsonValue)
+                }
               (currentFilePath, renamedJsonObj)
           }
       }
