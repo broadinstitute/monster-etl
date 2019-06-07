@@ -21,10 +21,10 @@ sealed trait V2FConstants {
   def fieldsToConvertToJsonDouble: List[String]
 
   /**
-    * The names of JSON fields that should be converted from Strings to Integers.
-    * Converting to int instead due to JSON schema int columns not accepting doubles
+    * The names of JSON fields that should be converted from Strings to Longs.
+    * Converting to Long instead due to JSON schema Long columns not accepting doubles
     */
-  def fieldsToConvertToJsonInt: List[String]
+  def fieldsToConvertToJsonLong: List[String]
 
   /**
     * The names of JSON fields that should be converted from Strings to a Booleans.
@@ -61,7 +61,7 @@ case object FrequencyAnalysis extends V2FConstants {
     "maf"
   )
 
-  override def fieldsToConvertToJsonInt: List[String] = List("position")
+  override def fieldsToConvertToJsonLong: List[String] = List("position")
 
   override def fieldsToConvertToJsonBoolean: List[String] = Nil
 
@@ -83,7 +83,7 @@ case object MetaAnalysisAncestrySpecific extends V2FConstants {
     "std_err"
   )
 
-  override def fieldsToConvertToJsonInt: List[String] = List(
+  override def fieldsToConvertToJsonLong: List[String] = List(
     "n",
     "position"
   )
@@ -109,7 +109,7 @@ case object MetaAnalysisTransEthnic extends V2FConstants {
     "beta"
   )
 
-  override def fieldsToConvertToJsonInt: List[String] = List(
+  override def fieldsToConvertToJsonLong: List[String] = List(
     "n",
     "position"
   )
@@ -130,7 +130,7 @@ case object VariantEffectRegulatoryFeatureConsequences extends V2FConstants {
 
   override def fieldsToConvertToJsonDouble: List[String] = Nil
 
-  override def fieldsToConvertToJsonInt: List[String] = Nil
+  override def fieldsToConvertToJsonLong: List[String] = Nil
 
   override def fieldsToConvertToJsonBoolean: List[String] = List(
     "pick"
@@ -208,7 +208,7 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
     "vest_3_rankscore"
   )
 
-  override def fieldsToConvertToJsonInt: List[String] = List(
+  override def fieldsToConvertToJsonLong: List[String] = List(
     "cdna_end",
     "cdna_start",
     "cds_end",

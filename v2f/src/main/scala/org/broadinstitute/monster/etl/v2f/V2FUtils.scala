@@ -170,25 +170,31 @@ object V2FUtils {
       }
 
   /**
-    * Converts a JSON String to a JSON Integer.
+    * Converts a JSON String to a JSON Long.
     *
     * @param fieldName the field name of the json value being converted
     */
-  def jsonStringToJsonInt(fieldName: String, json: Json): Json =
+  def jsonStringToJsonLong(fieldName: String, json: Json): Json =
     json.asString
       .fold(
         throw new Exception(
-          s"jsonStringToJsonInt: error when converting $fieldName: $json from type json string to type string"
+          s"jsonStringToJsonLong: error when converting $fieldName: $json from type json string to type string"
         )
       ) {
         case "." => Json.fromString("nan")
         case ""  => Json.fromString("nan")
         case str =>
-          Json.fromInt(
-            Try(Integer.getInteger(str))
+          val strippedStr =
+            if (str.endsWith(".0")) {
+              str.dropRight(2)
+            } else {
+              str
+            }
+          Json.fromLong(
+            Try(strippedStr.toLong)
               .getOrElse(
                 throw new Exception(
-                  s"jsonStringToJsonInt: error when converting $fieldName: $json from type string to type int"
+                  s"jsonStringToJsonLong: error when converting $fieldName: $json from type string to type Long"
                 )
               )
           )
@@ -261,7 +267,7 @@ object V2FUtils {
               val renamedJsonObj = currentJsonObj
                 .apply(oldFieldName)
                 .fold(currentJsonObj) { jsonValue =>
-                  currentJsonObj.add(newFieldName, jsonValue)
+                  currentJsonObj.add(newFieldName, jsonValue).remove(oldFieldName)
                 }
               (currentFilePath, renamedJsonObj)
           }

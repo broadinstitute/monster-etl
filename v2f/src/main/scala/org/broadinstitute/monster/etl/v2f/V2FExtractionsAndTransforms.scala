@@ -57,12 +57,12 @@ object V2FExtractionsAndTransforms {
         V2FUtils.jsonStringToJsonDouble
       )(transformedRenamedFieldsJSON)
 
-    // then convert given fields to json int
-    val transformedIntsJsonAndFilePaths =
+    // then convert given fields to json Long
+    val transformedLongsJsonAndFilePaths =
       V2FUtils.convertJsonFieldsValueType(
         v2fConstant.tableName,
-        v2fConstant.fieldsToConvertToJsonInt,
-        V2FUtils.jsonStringToJsonInt
+        v2fConstant.fieldsToConvertToJsonLong,
+        V2FUtils.jsonStringToJsonLong
       )(transformedDoublesJsonAndFilePaths)
 
     // then convert given fields to json booleans
@@ -71,7 +71,7 @@ object V2FExtractionsAndTransforms {
         v2fConstant.tableName,
         v2fConstant.fieldsToConvertToJsonBoolean,
         V2FUtils.jsonStringToJsonBoolean
-      )(transformedIntsJsonAndFilePaths)
+      )(transformedLongsJsonAndFilePaths)
 
     // then convert given fields to json arrays
     val transformedArraysJsonAndFilePaths =

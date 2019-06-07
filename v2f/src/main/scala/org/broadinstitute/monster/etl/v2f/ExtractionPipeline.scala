@@ -10,13 +10,13 @@ import org.broadinstitute.monster.etl.BuildInfo
   */
 object ExtractionPipeline {
 
-  @AppName("v2f Extraction Pipeline")
+  @AppName("V2F Extraction Pipeline")
   @AppVersion(BuildInfo.version)
   @ProgName("org.broadinstitute.monster.etl.v2f.ExtractionPipeline")
   /**
     * Command-line arguments for the ETL workflow.
     *
-    * scio's `ContextAndArgs.typed` delegates down to `caseapp`, which will generate
+    * Scio's `ContextAndArgs.typed` delegates down to `caseapp`, which will generate
     * parsers + help text for these args (as well as Beams' underlying options)
     */
   case class Args(
