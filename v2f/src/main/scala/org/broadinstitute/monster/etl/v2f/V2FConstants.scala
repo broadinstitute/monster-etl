@@ -114,7 +114,7 @@ case object MetaAnalysisTransEthnic extends V2FConstants {
     "position"
   )
 
-  override def fieldsToConvertToJsonBoolean: List[String] = Nil
+  override def fieldsToConvertToJsonBoolean: List[String] = List("top")
 
   override def fieldsToConvertToJsonArray: Map[String, List[String]] = Map.empty
 
@@ -258,7 +258,9 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
     "vest_3_score",
     "polyphen_2_hdiv_score",
     "polyphen_2_hvar_score",
-    "sift_score"
+    "sift_score",
+    "fathmm_score",
+    "provean_score"
   )
 
   override def fieldsToRename: Map[String, String] = Map(
