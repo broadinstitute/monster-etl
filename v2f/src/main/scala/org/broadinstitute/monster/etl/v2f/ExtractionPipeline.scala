@@ -41,6 +41,12 @@ object ExtractionPipeline {
       relativeFilePath = "*/*.csv"
     )
 
+    val frequencyAnalysisVariantEffectJsonAndFilePaths =
+      V2FExtractionsAndTransforms.extractAndTransformVariants(
+        FrequencyAnalysis,
+        frequencyAnalysisJsonAndFilePaths
+      )
+
     val frequencyAnalysisTransformedJsonAndFilePaths = V2FExtractionsAndTransforms
       .transform(frequencyAnalysisJsonAndFilePaths, FrequencyAnalysis)
 
@@ -57,6 +63,12 @@ object ExtractionPipeline {
         pipelineContext,
         inputDir = parsedArgs.inputDir,
         relativeFilePath = "*/*/*.csv"
+      )
+
+    val metaAnalysisAncestrySpecificVariantEffectJsonAndFilePaths =
+      V2FExtractionsAndTransforms.extractAndTransformVariants(
+        MetaAnalysisAncestrySpecific,
+        metaAnalysisAncestrySpecificJsonAndFilePaths
       )
 
     val metaAnalysisAncestrySpecificTransformedJsonAndFilePaths =
@@ -78,6 +90,12 @@ object ExtractionPipeline {
         pipelineContext,
         inputDir = parsedArgs.inputDir,
         relativeFilePath = "*/*.csv"
+      )
+
+    val metaAnalysisTransEthnicVariantEffectJsonAndFilePaths =
+      V2FExtractionsAndTransforms.extractAndTransformVariants(
+        MetaAnalysisTransEthnic,
+        metaAnalysisTransEthnicJsonAndFilePaths
       )
 
     val metaAnalysisTransEthnicTransformedJsonAndFilePaths = V2FExtractionsAndTransforms
@@ -128,6 +146,15 @@ object ExtractionPipeline {
     V2FExtractionsAndTransforms.writeToDisk(
       variantEffectTranscriptConsequencesTransformedJsonAndFilePaths,
       VariantEffectTranscriptConsequences,
+      parsedArgs.outputDir
+    )
+
+    V2FExtractionsAndTransforms.mergeVariantJsonAndFilePathsAndWriteToDisk(
+      List(
+        frequencyAnalysisVariantEffectJsonAndFilePaths,
+        metaAnalysisAncestrySpecificVariantEffectJsonAndFilePaths,
+        metaAnalysisTransEthnicVariantEffectJsonAndFilePaths
+      ),
       parsedArgs.outputDir
     )
 

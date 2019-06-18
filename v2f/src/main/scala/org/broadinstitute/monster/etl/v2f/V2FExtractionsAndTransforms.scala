@@ -34,6 +34,31 @@ object V2FExtractionsAndTransforms {
   }
 
   /**
+    * Extracts variant JSON fields from a collection of JSON Objects and transforms selected field(s) from String to Long.
+    *
+    * @param v2fConstant the type of tsv(s) that will be extracted and converted to Json
+    * @param jsonAndFilePaths tthe collection of JSON Objects and associated file paths that will be extracted and then transformed
+    */
+  def extractAndTransformVariants(
+    v2fConstant: V2FConstants,
+    jsonAndFilePaths: SCollection[(String, JsonObject)]
+  ): SCollection[(String, JsonObject)] = {
+    // extract the variant fields from the input JSON
+    val variantEffectJsonAndFilePaths =
+      V2FUtils.extractVariantFields(
+        v2fConstant.tableName,
+        v2fConstant.variantFieldsToExtract
+      )(jsonAndFilePaths)
+
+    // convert position from string to long
+    V2FUtils.convertJsonFieldsValueType(
+      v2fConstant.tableName,
+      v2fConstant.fieldsToConvertToJsonLong,
+      V2FUtils.jsonStringToJsonLong
+    )(variantEffectJsonAndFilePaths)
+  }
+
+  /**
     * Given conversion functions, for the field names specified, the fields of a provided JSON Object are converted based on the given functions.
     *
     * @param jsonAndFilePaths the collection of JSON Objects and associated file paths that will be transformed
@@ -49,13 +74,20 @@ object V2FExtractionsAndTransforms {
       v2fConstant.fieldsToRename
     )(jsonAndFilePaths)
 
+    // remove the given fields from the json object
+    val transformedRemovedVariantFieldsJsonAndFilePaths =
+      V2FUtils.removeFields(
+        v2fConstant.tableName,
+        v2fConstant.fieldsToRemove
+      )(transformedRenamedFieldsJSON)
+
     // then convert given fields to json double
     val transformedDoublesJsonAndFilePaths =
       V2FUtils.convertJsonFieldsValueType(
         v2fConstant.tableName,
         v2fConstant.fieldsToConvertToJsonDouble,
         V2FUtils.jsonStringToJsonDouble
-      )(transformedRenamedFieldsJSON)
+      )(transformedRemovedVariantFieldsJsonAndFilePaths)
 
     // then convert given fields to json Long
     val transformedLongsJsonAndFilePaths =
@@ -114,6 +146,29 @@ object V2FExtractionsAndTransforms {
     }.saveAsJsonFile(
       s"$outputDir/${v2fConstant.tsvPattern}"
     )
+    ()
+  }
+
+  /**
+    *  Merge the variant JSON Objects and then write the merged JSON to disk.
+    *
+    * @param variantJsonAndFilePaths a list of the collections of JSON Objects and associated file paths that will be merged and then saved as a JSON file
+    * @param outputDir the root outputs directory where the JSON file(s) will be saved
+    */
+  def mergeVariantJsonAndFilePathsAndWriteToDisk(
+    variantJsonAndFilePaths: List[SCollection[(String, JsonObject)]],
+    outputDir: String
+  ): Unit = {
+    SCollection
+      .unionAll(variantJsonAndFilePaths.map { collection =>
+        collection.map {
+          case (_, jsonObj) =>
+            jsonObj
+        }
+      })
+      .saveAsJsonFile(
+        s"$outputDir/variants"
+      )
     ()
   }
 }

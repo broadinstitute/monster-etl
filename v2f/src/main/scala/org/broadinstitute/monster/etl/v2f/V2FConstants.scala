@@ -49,6 +49,16 @@ sealed trait V2FConstants {
     * e.g: "kobe": "Bryant" to "Kobe": "Bryant"
     */
   def fieldsToRename: Map[String, String]
+
+  /**
+    * The names of JSON fields that should be removed.
+    */
+  def fieldsToRemove: List[String]
+
+  /**
+    * The names of JSON fields that should be extracted to there own JSON.
+    */
+  def variantFieldsToExtract: List[String]
 }
 
 case object FrequencyAnalysis extends V2FConstants {
@@ -61,7 +71,9 @@ case object FrequencyAnalysis extends V2FConstants {
     "maf"
   )
 
-  override def fieldsToConvertToJsonLong: List[String] = List("position")
+  override def fieldsToConvertToJsonLong: List[String] = List(
+    "position"
+  )
 
   override def fieldsToConvertToJsonBoolean: List[String] = Nil
 
@@ -69,7 +81,13 @@ case object FrequencyAnalysis extends V2FConstants {
 
   override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = Nil
 
-  override def fieldsToRename: Map[String, String] = Map("var_id" -> "id")
+  override def fieldsToRename: Map[String, String] = Map("var_id" -> "variant_id")
+
+  override def fieldsToRemove: List[String] =
+    List("chromosome", "position", "reference", "alt")
+
+  override def variantFieldsToExtract: List[String] =
+    List("chromosome", "position", "reference", "alt")
 }
 
 case object MetaAnalysisAncestrySpecific extends V2FConstants {
@@ -94,7 +112,13 @@ case object MetaAnalysisAncestrySpecific extends V2FConstants {
 
   override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = Nil
 
-  override def fieldsToRename: Map[String, String] = Map("var_id" -> "id")
+  override def fieldsToRename: Map[String, String] = Map("var_id" -> "variant_id")
+
+  override def fieldsToRemove: List[String] =
+    List("chromosome", "position", "reference", "alt")
+
+  override def variantFieldsToExtract: List[String] =
+    List("chromosome", "position", "reference", "alt")
 }
 
 case object MetaAnalysisTransEthnic extends V2FConstants {
@@ -120,7 +144,13 @@ case object MetaAnalysisTransEthnic extends V2FConstants {
 
   override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = Nil
 
-  override def fieldsToRename: Map[String, String] = Map("var_id" -> "id")
+  override def fieldsToRename: Map[String, String] = Map("var_id" -> "variant_id")
+
+  override def fieldsToRemove: List[String] =
+    List("chromosome", "position", "reference", "alt")
+
+  override def variantFieldsToExtract: List[String] =
+    List("chromosome", "position", "reference", "alt")
 }
 
 case object VariantEffectRegulatoryFeatureConsequences extends V2FConstants {
@@ -142,7 +172,11 @@ case object VariantEffectRegulatoryFeatureConsequences extends V2FConstants {
 
   override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = Nil
 
-  override def fieldsToRename: Map[String, String] = Map.empty
+  override def fieldsToRename: Map[String, String] = Map("id" -> "variant_id")
+
+  override def fieldsToRemove: List[String] = Nil
+
+  override def variantFieldsToExtract: List[String] = Nil
 }
 
 case object VariantEffectTranscriptConsequences extends V2FConstants {
@@ -266,6 +300,11 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
   override def fieldsToRename: Map[String, String] = Map(
     "gerp++_nr" -> "gerp_plus_plus_nr",
     "gerp++_rs" -> "gerp_plus_plus_rs",
-    "gerp++_rs_rankscore" -> "gerp_plus_plus_rs_rankscore"
+    "gerp++_rs_rankscore" -> "gerp_plus_plus_rs_rankscore",
+    "id" -> "variant_id"
   )
+
+  override def fieldsToRemove: List[String] = Nil
+
+  override def variantFieldsToExtract: List[String] = Nil
 }
