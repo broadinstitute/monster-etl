@@ -13,7 +13,7 @@ sealed trait V2FConstants {
   /**
     * File pattern matching TSVs to process within the V2F analysis directory.
     */
-  def tsvPattern: String
+  def filePath: String
 
   /**
     * The names of JSON fields that should be converted from Strings to Doubles.
@@ -64,7 +64,7 @@ sealed trait V2FConstants {
 case object FrequencyAnalysis extends V2FConstants {
   override def tableName = "Frequency Analysis"
 
-  override def tsvPattern: String = "frequency-analysis"
+  override def filePath: String = "frequency-analysis"
 
   override def fieldsToConvertToJsonDouble: List[String] = List(
     "eaf",
@@ -93,7 +93,7 @@ case object FrequencyAnalysis extends V2FConstants {
 case object MetaAnalysisAncestrySpecific extends V2FConstants {
   override def tableName = "Ancestry-Specific Meta-Analysis"
 
-  override def tsvPattern: String = "meta-analysis/ancestry-specific"
+  override def filePath: String = "meta-analysis/ancestry-specific"
 
   override def fieldsToConvertToJsonDouble: List[String] = List(
     "p_value",
@@ -124,7 +124,7 @@ case object MetaAnalysisAncestrySpecific extends V2FConstants {
 case object MetaAnalysisTransEthnic extends V2FConstants {
   override def tableName = "Trans-Ethnic Meta-Analysis"
 
-  override def tsvPattern: String = "meta-analysis/trans-ethnic"
+  override def filePath: String = "meta-analysis/trans-ethnic"
 
   override def fieldsToConvertToJsonDouble: List[String] = List(
     "p_value",
@@ -156,7 +156,7 @@ case object MetaAnalysisTransEthnic extends V2FConstants {
 case object VariantEffectRegulatoryFeatureConsequences extends V2FConstants {
   override def tableName = "Regulatory Feature Consequences"
 
-  override def tsvPattern: String = "variant-effect/regulatory-feature-consequences"
+  override def filePath: String = "variant-effect/regulatory-feature-consequences"
 
   override def fieldsToConvertToJsonDouble: List[String] = Nil
 
@@ -182,7 +182,7 @@ case object VariantEffectRegulatoryFeatureConsequences extends V2FConstants {
 case object VariantEffectTranscriptConsequences extends V2FConstants {
   override def tableName = "Transcript Consequences"
 
-  override def tsvPattern: String = "variant-effect/transcript-consequences"
+  override def filePath: String = "variant-effect/transcript-consequences"
 
   override def fieldsToConvertToJsonDouble: List[String] = List(
     "cadd_phred",

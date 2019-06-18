@@ -148,72 +148,64 @@ object V2FUtils {
     * Converts a JSON String to a JSON Double.
     *
     * @param fieldName the field name of the json value being converted
+    * @param json the json value being converted
     */
-  def jsonStringToJsonDouble(fieldName: String, json: Json): Json =
-    json.asString
-      .fold(
-        throw new Exception(
-          s"jsonStringToJsonDouble: error when converting $fieldName value, $json, from type json string to type string"
-        )
-      ) {
-        case "." => Json.fromString("nan")
-        case ""  => Json.fromString("nan")
-        case str =>
-          Json.fromDoubleOrString(
-            Try(str.toDouble)
-              .getOrElse(
-                throw new Exception(
-                  s"jsonStringToJsonDouble: error when converting $fieldName value, $json, from type string to type double"
-                )
+  def jsonStringToJsonDouble(fieldName: String, json: Json): Json = {
+    val jsonStr = jsonStringToString(fieldName, json)
+    jsonStr match {
+      case "." => Json.fromString("nan")
+      case ""  => Json.fromString("nan")
+      case str =>
+        Json.fromDoubleOrString(
+          Try(str.toDouble)
+            .getOrElse(
+              throw new Exception(
+                s"jsonStringToJsonDouble: error when converting $fieldName value, $json, from type string to type double"
               )
-          )
-      }
+            )
+        )
+    }
+  }
 
   /**
     * Converts a JSON String to a JSON Long.
     *
     * @param fieldName the field name of the json value being converted
+    * @param json the json value being converted
     */
-  def jsonStringToJsonLong(fieldName: String, json: Json): Json =
-    json.asString
-      .fold(
-        throw new Exception(
-          s"jsonStringToJsonLong: error when converting $fieldName: $json from type json string to type string"
-        )
-      ) {
-        case "." => Json.fromString("nan")
-        case ""  => Json.fromString("nan")
-        case str =>
-          val strippedStr =
-            if (str.endsWith(".0")) {
-              str.dropRight(2)
-            } else {
-              str
-            }
-          Json.fromLong(
-            Try(strippedStr.toLong)
-              .getOrElse(
-                throw new Exception(
-                  s"jsonStringToJsonLong: error when converting $fieldName: $json from type string to type Long"
-                )
+  def jsonStringToJsonLong(fieldName: String, json: Json): Json = {
+    val jsonStr = jsonStringToString(fieldName, json)
+    jsonStr match {
+      case "." => Json.fromString("nan")
+      case ""  => Json.fromString("nan")
+      case str =>
+        val strippedStr =
+          if (str.endsWith(".0")) {
+            str.dropRight(2)
+          } else {
+            str
+          }
+        Json.fromLong(
+          Try(strippedStr.toLong)
+            .getOrElse(
+              throw new Exception(
+                s"jsonStringToJsonLong: error when converting $fieldName: $json from type string to type Long"
               )
-          )
-      }
+            )
+        )
+    }
+  }
 
   /**
     * Converts a JSON String to a JSON Boolean.
     *
     * @param fieldName the field name of the json value being converted
+    * @param json the json value being converted
     */
-  def jsonStringToJsonBoolean(fieldName: String, json: Json): Json =
-    json.asString
-      .fold(
-        throw new Exception(
-          s"jsonStringToJsonBoolean: error when converting $fieldName: $json from type json string to type string"
-        )
-      ) { str =>
-        Json.fromBoolean(str == "1" || str == "true")
-      }
+  def jsonStringToJsonBoolean(fieldName: String, json: Json): Json = {
+    val jsonStr = jsonStringToString(fieldName, json)
+    Json.fromBoolean(jsonStr == "1" || jsonStr == "true")
+  }
 
   /**
     * Converts a JSON String to a JSON Array of Strings by splitting the JSON String with a delimiter.
@@ -221,22 +213,18 @@ object V2FUtils {
     * @param delimeter the string (regex matching) that splits the json value/string into a json array
     * @param fieldName the field name of the json value being converted
     */
-  def jsonStringToJsonArray(delimeter: String)(fieldName: String, json: Json): Json =
-    json.asString
-      .fold(
-        throw new Exception(
-          s"jsonStringToJsonArray: error when converting $fieldName: $json from type json string to type string"
-        )
-      ) { jsonStr =>
-        Json.fromValues(jsonStr.split(delimeter).map { str =>
-          Json.fromString(str.trim)
-        })
-      }
+  def jsonStringToJsonArray(delimeter: String)(fieldName: String, json: Json): Json = {
+    val jsonStr = jsonStringToString(fieldName, json)
+    Json.fromValues(jsonStr.split(delimeter).map { str =>
+      Json.fromString(str.trim)
+    })
+  }
 
   /**
     * Converts a JSON Array of Strings to a JSON Array of Doubles.
     *
     * @param fieldName the field name of the json value being converted
+    * @param json the json value being converted
     */
   def convertJsonArrayStringToDouble(fieldName: String, json: Json): Json =
     json.asArray.fold(
@@ -275,4 +263,78 @@ object V2FUtils {
     }
   }
 
+  /**
+    * Extracts variant JSON fields from a collection of JSON Objects and outputs a new JSON Object with those fields.
+    *
+    * @param tableName the name of the TSV table that was converted to JSON
+    * @param variantFieldNames the lists of Json Fields names to be extracted
+    */
+  def extractVariantFields(
+    tableName: String,
+    variantFieldNames: List[String]
+  ): SCollection[(String, JsonObject)] => SCollection[(String, JsonObject)] = {
+    _.transform(s"Extracting variant fields from $tableName") { collection =>
+      collection.map {
+        case (filePath, jsonObj) =>
+          filePath -> JsonObject.fromMap(
+            variantFieldNames
+              .foldLeft(Map.empty[String, String]) {
+                case (currentMap, currentVariantFieldName) =>
+                  val currentVariantFieldValue = jsonObj
+                    .apply(currentVariantFieldName)
+                    .fold(
+                      throw new Exception(
+                        s"extractVariantFields: error when getting variant $currentVariantFieldName from $tableName's JSON"
+                      )
+                    ) { jsonValue =>
+                      jsonStringToString(currentVariantFieldName, jsonValue)
+                    }
+                  val updatedMap =
+                    currentMap.updated(currentVariantFieldName, currentVariantFieldValue)
+                  val variantId = updatedMap.get("id").fold(currentVariantFieldValue) {
+                    currentVariantId =>
+                      s"$currentVariantId:$currentVariantFieldValue"
+                  }
+                  updatedMap.updated("id", variantId)
+              }
+              .mapValues(Json.fromString)
+          )
+      }
+    }
+  }
+
+  /**
+    * Removes JSON fields from a collection of JSON Objects.
+    *
+    * @param tableName the name of the TSV table that was converted to JSON
+    * @param fieldNamesToRemove the lists of Json Fields to be removed
+    */
+  def removeFields(
+    tableName: String,
+    fieldNamesToRemove: List[String]
+  ): SCollection[(String, JsonObject)] => SCollection[(String, JsonObject)] = {
+    _.transform(s"Removing fields from $tableName") { collection =>
+      collection.map {
+        case (filePath, jsonObj) =>
+          filePath -> fieldNamesToRemove.foldLeft(jsonObj) {
+            case (currentJsonObj, currentVariantFieldName) =>
+              currentJsonObj.remove(currentVariantFieldName)
+          }
+      }
+    }
+  }
+
+  /**
+    * Converts JSON fields values from type JSON String to type String.
+    *
+    * @param fieldName the field name of the json value being converted
+    * @param json the json value being converted
+    */
+  def jsonStringToString(fieldName: String, json: Json): String =
+    json.asString
+      .getOrElse(
+        throw new Exception(
+          s"jsonStringToJsonBoolean: error when converting $fieldName: $json from type json string to type string"
+        )
+      )
 }

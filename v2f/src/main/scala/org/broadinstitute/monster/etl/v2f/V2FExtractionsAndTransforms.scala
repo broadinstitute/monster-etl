@@ -2,7 +2,6 @@ package org.broadinstitute.monster.etl.v2f
 
 import com.spotify.scio.ScioContext
 import com.spotify.scio.values.SCollection
-import com.spotify.scio.extra.json._
 import io.circe.JsonObject
 
 object V2FExtractionsAndTransforms {
@@ -23,7 +22,7 @@ object V2FExtractionsAndTransforms {
   ): SCollection[(String, JsonObject)] = {
     // get the readable files for the given input path
     val readableFiles = V2FUtils.getReadableFiles(
-      s"$inputDir/${v2fConstant.tsvPattern}/$relativeFilePath",
+      s"$inputDir/${v2fConstant.filePath}/$relativeFilePath",
       context
     )
 
@@ -129,36 +128,13 @@ object V2FExtractionsAndTransforms {
   }
 
   /**
-    *  Write all the converted and transformed JSON Objects to disk.
-    *
-    * @param jsonAndFilePaths the collection of JSON Objects and associated file paths that will be saved as a JSON file
-    * @param v2fConstant the type of tsv(s) that will be saved as a JSON file
-    * @param outputDir the root outputs directory where the JSON file(s) will be saved
-    */
-  def writeToDisk(
-    jsonAndFilePaths: SCollection[(String, JsonObject)],
-    v2fConstant: V2FConstants,
-    outputDir: String
-  ): Unit = {
-    jsonAndFilePaths.map {
-      case (_, jsonObj) =>
-        jsonObj
-    }.saveAsJsonFile(
-      s"$outputDir/${v2fConstant.tsvPattern}"
-    )
-    ()
-  }
-
-  /**
     *  Merge the variant JSON Objects and then write the merged JSON to disk.
     *
     * @param variantJsonAndFilePaths a list of the collections of JSON Objects and associated file paths that will be merged and then saved as a JSON file
-    * @param outputDir the root outputs directory where the JSON file(s) will be saved
     */
-  def mergeVariantJsonAndFilePathsAndWriteToDisk(
-    variantJsonAndFilePaths: List[SCollection[(String, JsonObject)]],
-    outputDir: String
-  ): Unit = {
+  def mergeVariantJsons(
+    variantJsonAndFilePaths: List[SCollection[(String, JsonObject)]]
+  ): SCollection[JsonObject] = {
     SCollection
       .unionAll(variantJsonAndFilePaths.map { collection =>
         collection.map {
@@ -166,9 +142,6 @@ object V2FExtractionsAndTransforms {
             jsonObj
         }
       })
-      .saveAsJsonFile(
-        s"$outputDir/variants"
-      )
-    ()
+      .distinct
   }
 }
