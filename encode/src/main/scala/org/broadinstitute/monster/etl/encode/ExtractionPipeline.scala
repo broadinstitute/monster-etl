@@ -3,7 +3,7 @@ package org.broadinstitute.monster.etl.encode
 import caseapp.{AppName, AppVersion, HelpMessage, ProgName}
 import com.spotify.scio.{BuildInfo => _, io => _, _}
 import com.spotify.scio.extra.json._
-import org.broadinstitute.monster.etl.BuildInfo
+import org.broadinstitute.monster.etl._
 import org.broadinstitute.monster.etl.encode.extract.{
   AuditExtractions,
   EncodeExtractions,

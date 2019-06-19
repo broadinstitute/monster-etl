@@ -254,7 +254,7 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
     "strand"
   )
 
-  override def fieldsToConvertToJsonBoolean: List[(String)] = List(
+  override def fieldsToConvertToJsonBoolean: List[String] = List(
     "canonical",
     "pick"
   )

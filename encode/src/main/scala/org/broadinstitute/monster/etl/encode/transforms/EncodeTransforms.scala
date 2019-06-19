@@ -4,6 +4,7 @@ import java.util.UUID
 
 import io.circe.Json
 import io.circe.syntax._
+import org.broadinstitute.monster.etl._
 import org.broadinstitute.monster.etl.encode._
 
 /**

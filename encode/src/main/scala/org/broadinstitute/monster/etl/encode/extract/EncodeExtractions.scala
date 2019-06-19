@@ -17,6 +17,7 @@ import io.circe.JsonObject
 import org.apache.beam.sdk.coders.{KvCoder, StringUtf8Coder}
 import org.apache.beam.sdk.transforms.{GroupIntoBatches, ParDo}
 import org.apache.beam.sdk.values.KV
+import org.broadinstitute.monster.etl._
 import org.broadinstitute.monster.etl.encode._
 
 import scala.collection.JavaConverters._

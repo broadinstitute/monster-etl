@@ -5,7 +5,7 @@ import com.spotify.scio.ContextAndArgs
 import com.spotify.scio.values.SCollection
 import com.spotify.scio.{BuildInfo => _, io => _}
 import io.circe.JsonObject
-import org.broadinstitute.monster.etl.BuildInfo
+import org.broadinstitute.monster.etl._
 import com.spotify.scio.extra.json._
 
 /**

@@ -6,18 +6,22 @@ import java.nio.channels.Channels
 import better.files._
 import com.github.tototoshi.csv.{CSVFormat, CSVReader, TSVFormat}
 import com.spotify.scio.ScioContext
+import com.spotify.scio.coders.Coder
 import com.spotify.scio.values.SCollection
 import io.circe.{Json, JsonObject}
 import org.apache.beam.sdk.io.FileIO
 import org.apache.beam.sdk.io.FileIO.ReadableFile
+import org.broadinstitute.monster.etl._
 
+import scala.util.Try
 import scala.util.matching.Regex
-import util.Try
 
 /**
   * Ingest utils converting and transforming TSVs from V2F.
   */
 object V2FUtils {
+
+  implicit val readableFileCoder: Coder[ReadableFile] = Coder.kryo[ReadableFile]
 
   /**
     * Given a pattern matching TSVs, get the TSVs as ReadableFiles.
@@ -40,7 +44,7 @@ object V2FUtils {
     */
   def tsvToJson(
     tableName: String
-  ): SCollection[FileIO.ReadableFile] => SCollection[(String, JsonObject)] =
+  ): SCollection[ReadableFile] => SCollection[(String, JsonObject)] =
     _.transform(s"Convert $tableName TSVs to JSON") { collection =>
       collection.flatMap { file =>
         Channels
