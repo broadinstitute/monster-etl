@@ -168,7 +168,7 @@ object ExtractionPipeline {
     )
 
     // waitUntilDone() throws error on failure
-    pipelineContext.close().waitUntilDone()
+    pipelineContext.close() //.waitUntilDone()
     ()
   }
 

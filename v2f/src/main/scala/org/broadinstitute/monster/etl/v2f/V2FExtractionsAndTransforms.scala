@@ -143,6 +143,10 @@ object V2FExtractionsAndTransforms {
             jsonObj
         }
       })
-      .distinct
+      .distinctBy(
+        _.apply("id")
+          .flatMap(_.asString)
+          .getOrElse(throw new RuntimeException("Got variant without an ID!"))
+      )
   }
 }
