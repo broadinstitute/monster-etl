@@ -1,8 +1,10 @@
 package org.broadinstitute.monster.etl.encode
 
 import caseapp.{AppName, AppVersion, HelpMessage, ProgName}
+import com.spotify.scio.coders.Coder
 import com.spotify.scio.{BuildInfo => _, io => _, _}
 import com.spotify.scio.extra.json._
+import io.circe.JsonObject
 import org.broadinstitute.monster.etl._
 import org.broadinstitute.monster.etl.encode.extract.{
   AuditExtractions,
@@ -14,6 +16,8 @@ import org.broadinstitute.monster.etl.encode.extract.{
   * ETL workflow for scraping the latest entity metadata from ENCODE.
   */
 object ExtractionPipeline {
+
+  implicit val jsonCoder: Coder[JsonObject] = Coder.kryo[JsonObject]
 
   val DefaultAssays = List(
     "ATAC-seq",

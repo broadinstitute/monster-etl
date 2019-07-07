@@ -1,6 +1,7 @@
 package org.broadinstitute.monster.etl.encode
 
 import caseapp._
+import com.spotify.scio.coders.Coder
 import com.spotify.scio.{BuildInfo => _, io => _, _}
 import com.spotify.scio.extra.json._
 import io.circe.JsonObject
@@ -14,6 +15,8 @@ import org.broadinstitute.monster.etl.encode.transforms._
   * into a location that Apache Beam can access (local storage or GCS).
   */
 object EncodeIngest {
+
+  implicit val jsonCoder: Coder[JsonObject] = Coder.kryo[JsonObject]
 
   @AppName("ENCODE Ingest")
   @AppVersion(BuildInfo.version)

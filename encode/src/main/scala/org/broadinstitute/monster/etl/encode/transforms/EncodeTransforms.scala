@@ -2,15 +2,17 @@ package org.broadinstitute.monster.etl.encode.transforms
 
 import java.util.UUID
 
-import io.circe.Json
+import com.spotify.scio.coders.Coder
+import io.circe.{Json, JsonObject}
 import io.circe.syntax._
-import org.broadinstitute.monster.etl._
 import org.broadinstitute.monster.etl.encode._
 
 /**
   * Stream transformations run on all entity types during ENCODE ETL.
   */
 object EncodeTransforms {
+
+  implicit val jsonCoder: Coder[JsonObject] = Coder.kryo[JsonObject]
 
   /** Main ETL flow for all ENCODE entities which map to an entity type in our data model. */
   def cleanEntities(entityType: EncodeEntity): JsonPipe =

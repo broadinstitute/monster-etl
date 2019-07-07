@@ -11,7 +11,6 @@ import com.spotify.scio.values.SCollection
 import io.circe.{Json, JsonObject}
 import org.apache.beam.sdk.io.FileIO
 import org.apache.beam.sdk.io.FileIO.ReadableFile
-import org.broadinstitute.monster.etl._
 
 import scala.util.Try
 import scala.util.matching.Regex
@@ -21,6 +20,7 @@ import scala.util.matching.Regex
   */
 object V2FUtils {
 
+  implicit val jsonCoder: Coder[JsonObject] = Coder.kryo[JsonObject]
   implicit val readableFileCoder: Coder[ReadableFile] = Coder.kryo[ReadableFile]
 
   /**

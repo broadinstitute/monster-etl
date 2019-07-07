@@ -2,6 +2,7 @@ package org.broadinstitute.monster.etl.v2f
 
 import caseapp.{AppName, AppVersion, HelpMessage, ProgName}
 import com.spotify.scio.ContextAndArgs
+import com.spotify.scio.coders.Coder
 import com.spotify.scio.values.SCollection
 import com.spotify.scio.{BuildInfo => _, io => _}
 import io.circe.JsonObject
@@ -12,6 +13,8 @@ import com.spotify.scio.extra.json._
   * ETL workflow for converting and transforming TSVs from V2F.
   */
 object ExtractionPipeline {
+
+  implicit val jsonCoder: Coder[JsonObject] = Coder.kryo[JsonObject]
 
   @AppName("V2F Extraction Pipeline")
   @AppVersion(BuildInfo.version)

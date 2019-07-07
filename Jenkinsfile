@@ -18,11 +18,19 @@ pipeline {
         }
         stage('Compile') {
             steps {
-                sh 'sbt Compile/compile'
+                sh 'sbt Compile/compile Test/compile'
+            }
+        }
+        stage('Test') {
+            steps {
+                sh 'sbt test'
             }
         }
     }
     post {
+        always {
+            junit '**/target/test-reports/*'
+        }
         cleanup {
             cleanWs()
         }

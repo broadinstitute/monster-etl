@@ -1,11 +1,14 @@
 package org.broadinstitute.monster.etl.encode.transforms
 
+import com.spotify.scio.coders.Coder
+import io.circe.JsonObject
 import io.circe.syntax._
-import org.broadinstitute.monster.etl._
 import org.broadinstitute.monster.etl.encode._
 
 /** Stream transformations run only on file entities during ENCODE ETL. */
 object FileTransforms {
+
+  implicit val jsonCoder: Coder[JsonObject] = Coder.kryo[JsonObject]
 
   /** Extra ETL processing only for File entities from ENCODE. */
   def cleanFiles: JsonPipe =

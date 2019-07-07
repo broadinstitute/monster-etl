@@ -17,13 +17,14 @@ import io.circe.JsonObject
 import org.apache.beam.sdk.coders.{KvCoder, StringUtf8Coder}
 import org.apache.beam.sdk.transforms.{GroupIntoBatches, ParDo}
 import org.apache.beam.sdk.values.KV
-import org.broadinstitute.monster.etl._
 import org.broadinstitute.monster.etl.encode._
 
 import scala.collection.JavaConverters._
 
 /** Ingest step responsible for pulling raw metadata for a specific entity type from the ENCODE API. */
 object EncodeExtractions {
+
+  implicit val jsonCoder: Coder[JsonObject] = Coder.kryo[JsonObject]
 
   /** Boilerplate needed to tell scio how to (de)serialize its internal Try type. */
   implicit def coderTry: Coder[Try[String]] = Coder.kryo[Try[String]]
