@@ -397,18 +397,20 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
       Str("first") -> Str("a;b"),
       Str("second") -> Str("b;c"),
       Str("third") -> Str("c;d"),
-      Str("fourth") -> Str("d;e"),
+      Str("fourth") -> Str("d"),
       Str("fifth") -> Str("e;f")
     )
 
     val parsedstrings =
-      MsgTransformations.parseStringArrays(Set("first", "third", "fifth"), ";")(input)
+      MsgTransformations.parseStringArrays(Set("first", "third", "fourth", "fifth"), ";")(
+        input
+      )
 
     parsedstrings shouldBe Obj(
       Str("first") -> Arr(Str("a"), Str("b")),
       Str("second") -> Str("b;c"),
       Str("third") -> Arr(Str("c"), Str("d")),
-      Str("fourth") -> Str("d;e"),
+      Str("fourth") -> Arr(Str("d")),
       Str("fifth") -> Arr(Str("e"), Str("f"))
     )
   }
