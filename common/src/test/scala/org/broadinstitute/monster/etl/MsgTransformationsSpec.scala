@@ -60,11 +60,40 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
   }
 
   it should "collect object fields into an array" in {
-    ???
+    val input = Obj(
+      Str("a") -> Int32(100),
+      Str("b") -> Int32(101),
+      Str("c") -> Int32(102),
+      Str("d") -> Int32(103),
+      Str("z") -> Int32(200)
+    )
+
+    val collected =
+      MsgTransformations.collectFields(List("a", "b", "c"), "e")(input)
+
+    collected shouldBe Obj(
+      Str("e") -> Arr(Int32(100), Int32(101), Int32(102)),
+      Str("d") -> Int32(103),
+      Str("z") -> Int32(200)
+    )
   }
 
   it should "preserve the order of input field names in the collected array" in {
-    ???
+    val input = Obj(
+      Str("a") -> Int32(100),
+      Str("b") -> Int32(101),
+      Str("c") -> Int32(102),
+      Str("d") -> Int32(103),
+      Str("z") -> Int32(200)
+    )
+
+    val collected =
+      MsgTransformations.collectFields(List("b", "a", "d", "c"), "e")(input)
+
+    collected shouldBe Obj(
+      Str("e") -> Arr(Int32(101), Int32(100), Int32(103), Int32(102)),
+      Str("z") -> Int32(200)
+    )
   }
 
   it should "continue if a field-to-collect doesn't exist in a message" in {
