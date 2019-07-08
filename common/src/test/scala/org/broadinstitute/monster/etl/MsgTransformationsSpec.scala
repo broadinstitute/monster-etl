@@ -199,8 +199,30 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     }
   }
 
+  // keysToSnakeCase
   it should "convert all fields in an object message to snake-case" in {
-    ???
+    val input = Obj(
+      Str("hi-There") -> Str("a"),
+      Str("HIThere") -> Str("b"),
+      Str("hiThere") -> Str("c"),
+      Str("hi11There") -> Str("d"),
+      Str("hi11there") -> Str("e"),
+      Str("hiThere11") -> Str("f"),
+      Str("11hiThere") -> Str("g")
+    )
+
+    val snakecased =
+      MsgTransformations.keysToSnakeCase(input)
+
+    snakecased shouldBe Obj(
+      Str("hi_there") -> Str("a"),
+      Str("hi_there") -> Str("b"),
+      Str("hi_there") -> Str("c"),
+      Str("hi_11_there") -> Str("d"),
+      Str("hi_11_there") -> Str("e"),
+      Str("hi_there_11") -> Str("f"),
+      Str("11_hi_there") -> Str("g")
+    )
   }
 
   it should "convert designated fields from strings to longs" in {
