@@ -6,6 +6,7 @@ import upack._
 class MsgTransformationsSpec extends FlatSpec with Matchers {
   behavior of "MsgTransformations"
 
+  // renameFields
   it should "rename fields in object messages" in {
     val input = Obj(
       Str("foo") -> Str("bar"),
@@ -59,6 +60,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
   }
 
+  // collectFields
   it should "collect object fields into an array" in {
     val input = Obj(
       Str("a") -> Int32(100),
@@ -97,9 +99,48 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
   }
 
   it should "continue if a field-to-collect doesn't exist in a message" in {
-    ???
+    val input = Obj(
+      Str("a") -> Int32(100),
+      Str("b") -> Int32(101),
+      Str("c") -> Int32(102),
+      Str("d") -> Int32(103),
+      Str("z") -> Int32(200)
+    )
+
+    val collected =
+      MsgTransformations.collectFields(List("a", "b", "g", "h"), "i")(input)
+
+    collected shouldBe Obj(
+      Str("i") -> Arr(Int32(100), Int32(101)),
+      Str("c") -> Int32(102),
+      Str("d") -> Int32(103),
+      Str("z") -> Int32(200)
+    )
   }
 
+  it should "continue if none of the fields-to-collect exist in a message" in {
+    val input = Obj(
+      Str("a") -> Int32(100),
+      Str("b") -> Int32(101),
+      Str("c") -> Int32(102),
+      Str("d") -> Int32(103),
+      Str("z") -> Int32(200)
+    )
+
+    val collected =
+      MsgTransformations.collectFields(List("e", "f", "g", "h"), "i")(input)
+
+    collected shouldBe Obj(
+      Str("a") -> Int32(100),
+      Str("b") -> Int32(101),
+      Str("c") -> Int32(102),
+      Str("d") -> Int32(103),
+      Str("z") -> Int32(200),
+      Str("i") -> Arr()
+    )
+  }
+
+  // concatFields
   it should "concatenate string fields into a single value" in {
     ???
   }
