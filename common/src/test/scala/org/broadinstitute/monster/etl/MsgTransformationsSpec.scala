@@ -225,20 +225,80 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
   }
 
+  // parseLongs
   it should "convert designated fields from strings to longs" in {
-    ???
+    val input = Obj(
+      Str("a") -> Str("100"),
+      Str("b") -> Str("1000"),
+      Str("c") -> Str("10000"),
+      Str("d") -> Str("100000"),
+      Str("e") -> Str("1000000")
+    )
+
+    val parsedlongs =
+      MsgTransformations.parseLongs(Set("a", "b", "c"))(input)
+
+    parsedlongs shouldBe Obj(
+      Str("a") -> Int64(100),
+      Str("b") -> Int64(1000),
+      Str("c") -> Int64(10000),
+      Str("d") -> Str("100000"),
+      Str("e") -> Str("1000000")
+    )
   }
 
   it should "strip zero-valued trailing decimal precision when converting to longs" in {
-    ???
+    val input = Obj(
+      Str("a") -> Str("100.0"),
+      Str("b") -> Str("1000.0"),
+      Str("c") -> Str("10000.0"),
+      Str("d") -> Str("100000.0"),
+      Str("e") -> Str("1000000.0")
+    )
+
+    val parsedlongs =
+      MsgTransformations.parseLongs(Set("a", "b", "c", "d", "z"))(input)
+
+    parsedlongs shouldBe Obj(
+      Str("a") -> Int64(100),
+      Str("b") -> Int64(1000),
+      Str("c") -> Int64(10000),
+      Str("d") -> Int64(100000),
+      Str("e") -> Str("1000000.0")
+    )
   }
 
   it should "fail to convert true floats/doubles to longs" in {
-    ???
+    val input = Obj(
+      Str("a") -> Str("100.0"),
+      Str("b") -> Str("1000.23"),
+      Str("c") -> Str("10000.1")
+    )
+
+    an[Exception] shouldBe thrownBy {
+      MsgTransformations.parseLongs(Set("a", "b", "c"))(input)
+    }
   }
 
   it should "support converting designated strings to 'nan' instead of longs" in {
-    ???
+    val input = Obj(
+      Str("a") -> Str("100"),
+      Str("b") -> Str("1000"),
+      Str("c") -> Str("10000"),
+      Str("d") -> Str(";"),
+      Str("e") -> Str(".")
+    )
+
+    val parsedlongs =
+      MsgTransformations.parseLongs(Set("a", "b", "c", "d", "e"), Set(";", "."))(input)
+
+    parsedlongs shouldBe Obj(
+      Str("a") -> Int64(100),
+      Str("b") -> Int64(1000),
+      Str("c") -> Int64(10000),
+      Str("d") -> Str("nan"),
+      Str("e") -> Str("nan")
+    )
   }
 
   it should "convert designated fields from strings to doubles" in {
