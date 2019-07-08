@@ -23,7 +23,26 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
   }
 
-  it should "continue if a field-to-rename doesn't exist in a message" in {
+  it should "continue if a field-to-rename doesn't exist" in {
+    val input = Obj(
+      Str("foo") -> Str("bar"),
+      Str("foobar") -> Int32(123),
+      Str("baz") -> Arr(Str("qux"), Float64(1.23)),
+      Str("abc") -> Int32(121)
+    )
+
+    val renamed =
+      MsgTransformations.renameFields(Map("abc" -> "xyz", "lol" -> "haha"))(input)
+
+    renamed shouldBe Obj(
+      Str("foo") -> Str("bar"),
+      Str("foobar") -> Int32(123),
+      Str("baz") -> Arr(Str("qux"), Float64(1.23)),
+      Str("xyz") -> Int32(121)
+    )
+  }
+
+  it should "continue if none of the fields-to-rename exist" in {
     val input = Obj(
       Str("foo") -> Str("bar"),
       Str("foobar") -> Int32(123),
