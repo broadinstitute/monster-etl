@@ -346,6 +346,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
   }
 
+  // parseBooleans
   it should "convert designated fields from strings to booleans" in {
     val input = Obj(
       Str("a") -> Str("10.01"),
@@ -390,14 +391,34 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
   }
 
+  // parseStringArrays
   it should "convert designated fields from strings to arrays of strings" in {
-    ???
+    val input = Obj(
+      Str("first") -> Str("a;b"),
+      Str("second") -> Str("b;c"),
+      Str("third") -> Str("c;d"),
+      Str("fourth") -> Str("d;e"),
+      Str("fifth") -> Str("e;f")
+    )
+
+    val parsedstrings =
+      MsgTransformations.parseStringArrays(Set("first", "third", "fifth"), ";")(input)
+
+    parsedstrings shouldBe Obj(
+      Str("first") -> Arr(Str("a"), Str("b")),
+      Str("second") -> Str("b;c"),
+      Str("third") -> Arr(Str("c"), Str("d")),
+      Str("fourth") -> Str("d;e"),
+      Str("fifth") -> Arr(Str("e"), Str("f"))
+    )
   }
 
+  // parseLongArrays
   it should "convert designated fields from strings to arrays of longs" in {
     ???
   }
 
+  // parseDoubleArrays
   it should "convert designated fields from strings to arrays of doubles" in {
     ???
   }
