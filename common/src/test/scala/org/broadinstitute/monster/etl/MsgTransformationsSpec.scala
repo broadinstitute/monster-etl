@@ -417,7 +417,43 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
 
   // parseLongArrays
   it should "convert designated fields from strings to arrays of longs" in {
-    ???
+    val input = Obj(
+      Str("a") -> Str("100;200"),
+      Str("b") -> Str("1000;2000"),
+      Str("c") -> Str("10000;20000")
+    )
+
+    val parsedlongs =
+      MsgTransformations.parseLongArrays(Set("a", "c"), ";")(input)
+
+    parsedlongs shouldBe Obj(
+      Str("a") -> Arr(Int64(100), Int64(200)),
+      Str("b") -> Str("1000;2000"),
+      Str("c") -> Arr(Int64(10000), Int64(20000))
+    )
+  }
+
+  it should "continue if white-listed strings are present and passed" in {
+    val input = Obj(
+      Str("a") -> Str("100;200"),
+      Str("b") -> Str("1000;2000"),
+      Str("c") -> Str("10000;20000"),
+      Str("d") -> Str("tabouleh;falafel")
+    )
+
+    val parsedlongs =
+      MsgTransformations.parseLongArrays(
+        Set("a", "c", "d"),
+        ";",
+        Set("tabouleh", "falafel")
+      )(input)
+
+    parsedlongs shouldBe Obj(
+      Str("a") -> Arr(Int64(100), Int64(200)),
+      Str("b") -> Str("1000;2000"),
+      Str("c") -> Arr(Int64(10000), Int64(20000)),
+      Str("d") -> Arr(Str("nan"), Str("nan"))
+    )
   }
 
   // parseDoubleArrays
