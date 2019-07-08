@@ -230,7 +230,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     val input = Obj(
       Str("a") -> Str("100"),
       Str("b") -> Str("1000"),
-      Str("c") -> Str("10000"),
+      Str("c") -> Str("-10000"),
       Str("d") -> Str("100000"),
       Str("e") -> Str("1000000")
     )
@@ -241,7 +241,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     parsedlongs shouldBe Obj(
       Str("a") -> Int64(100),
       Str("b") -> Int64(1000),
-      Str("c") -> Int64(10000),
+      Str("c") -> Int64(-10000),
       Str("d") -> Str("100000"),
       Str("e") -> Str("1000000")
     )
@@ -251,7 +251,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     val input = Obj(
       Str("a") -> Str("100.0"),
       Str("b") -> Str("1000.0"),
-      Str("c") -> Str("10000.0"),
+      Str("c") -> Str("-10000.0"),
       Str("d") -> Str("100000.0"),
       Str("e") -> Str("1000000.0")
     )
@@ -262,7 +262,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     parsedlongs shouldBe Obj(
       Str("a") -> Int64(100),
       Str("b") -> Int64(1000),
-      Str("c") -> Int64(10000),
+      Str("c") -> Int64(-10000),
       Str("d") -> Int64(100000),
       Str("e") -> Str("1000000.0")
     )
@@ -306,7 +306,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     val input = Obj(
       Str("a") -> Str("10.01"),
       Str("b") -> Str("100.23"),
-      Str("c") -> Str("1000.45"),
+      Str("c") -> Str("-1000.45"),
       Str("d") -> Str("1.67"),
       Str("e") -> Str("0.89")
     )
@@ -317,7 +317,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     parseddoubles shouldBe Obj(
       Str("a") -> Float64(10.01),
       Str("b") -> Str("100.23"),
-      Str("c") -> Float64(1000.45),
+      Str("c") -> Float64(-1000.45),
       Str("d") -> Str("1.67"),
       Str("e") -> Float64(0.89)
     )
@@ -418,7 +418,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
   // parseLongArrays
   it should "convert designated fields from strings to arrays of longs" in {
     val input = Obj(
-      Str("a") -> Str("100;200"),
+      Str("a") -> Str("-100;200"),
       Str("b") -> Str("1000;2000"),
       Str("c") -> Str("10000;20000")
     )
@@ -427,7 +427,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
       MsgTransformations.parseLongArrays(Set("a", "c"), ";")(input)
 
     parsedlongs shouldBe Obj(
-      Str("a") -> Arr(Int64(100), Int64(200)),
+      Str("a") -> Arr(Int64(-100), Int64(200)),
       Str("b") -> Str("1000;2000"),
       Str("c") -> Arr(Int64(10000), Int64(20000))
     )
@@ -435,7 +435,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
 
   it should "convert designated fields from strings to arrays of longs without breaking if white-listed strings are present and passed" in {
     val input = Obj(
-      Str("a") -> Str("100;200"),
+      Str("a") -> Str("-100;200"),
       Str("b") -> Str("1000;2000"),
       Str("c") -> Str("10000;20000"),
       Str("d") -> Str("tabouleh;falafel")
@@ -449,7 +449,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
       )(input)
 
     parsedlongs shouldBe Obj(
-      Str("a") -> Arr(Int64(100), Int64(200)),
+      Str("a") -> Arr(Int64(-100), Int64(200)),
       Str("b") -> Str("1000;2000"),
       Str("c") -> Arr(Int64(10000), Int64(20000)),
       Str("d") -> Arr(Str("nan"), Str("nan"))
@@ -459,7 +459,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
   // parseDoubleArrays
   it should "convert designated fields from strings to arrays of doubles" in {
     val input = Obj(
-      Str("a") -> Str("1.01;1.23"),
+      Str("a") -> Str("-1.01;1.23"),
       Str("b") -> Str("1.45;1.67"),
       Str("c") -> Str("1.89;2.01")
     )
@@ -468,7 +468,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
       MsgTransformations.parseDoubleArrays(Set("a", "c"), ";")(input)
 
     parseddoubles shouldBe Obj(
-      Str("a") -> Arr(Float64(1.01), Float64(1.23)),
+      Str("a") -> Arr(Float64(-1.01), Float64(1.23)),
       Str("b") -> Str("1.45;1.67"),
       Str("c") -> Arr(Float64(1.89), Float64(2.01))
     )
@@ -476,7 +476,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
 
   it should "convert designated fields from strings to arrays of doubles without breaking if white-listed strings are present and passed" in {
     val input = Obj(
-      Str("a") -> Str("1.01;1.23"),
+      Str("a") -> Str("-1.01;1.23"),
       Str("b") -> Str("1.45;1.67"),
       Str("c") -> Str("1.89;2.01"),
       Str("d") -> Str("tabouleh;falafel")
@@ -490,7 +490,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
       )(input)
 
     parseddoubles shouldBe Obj(
-      Str("a") -> Arr(Float64(1.01), Float64(1.23)),
+      Str("a") -> Arr(Float64(-1.01), Float64(1.23)),
       Str("b") -> Str("1.45;1.67"),
       Str("c") -> Arr(Float64(1.89), Float64(2.01)),
       Str("d") -> Arr(Str("nan"), Str("nan"))
