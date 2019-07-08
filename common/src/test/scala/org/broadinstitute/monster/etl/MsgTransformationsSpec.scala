@@ -301,8 +301,26 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
   }
 
+  // parseDoubles
   it should "convert designated fields from strings to doubles" in {
-    ???
+    val input = Obj(
+      Str("a") -> Str("10.01"),
+      Str("b") -> Str("100.23"),
+      Str("c") -> Str("1000.45"),
+      Str("d") -> Str("1.67"),
+      Str("e") -> Str("0.89")
+    )
+
+    val parseddoubles =
+      MsgTransformations.parseDoubles(Set("a", "c", "e"))(input)
+
+    parseddoubles shouldBe Obj(
+      Str("a") -> Float64(10.01),
+      Str("b") -> Str("100.23"),
+      Str("c") -> Float64(1000.45),
+      Str("d") -> Str("1.67"),
+      Str("e") -> Float64(0.89)
+    )
   }
 
   it should "support converting designated strings to 'nan' instead of doubles" in {
@@ -329,11 +347,47 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
   }
 
   it should "convert designated fields from strings to booleans" in {
-    ???
+    val input = Obj(
+      Str("a") -> Str("10.01"),
+      Str("b") -> Str("false"),
+      Str("c") -> Str("true"),
+      Str("d") -> Str("0"),
+      Str("e") -> Str("1")
+    )
+
+    val parsedbooleans =
+      MsgTransformations.parseBooleans(Set("a", "b", "c", "d", "e"))(input)
+
+    parsedbooleans shouldBe Obj(
+      Str("a") -> Bool(false),
+      Str("b") -> Bool(false),
+      Str("c") -> Bool(true),
+      Str("d") -> Bool(false),
+      Str("e") -> Bool(false)
+    )
   }
 
   it should "support user-specified definitions of 'true' strings" in {
-    ???
+    val input = Obj(
+      Str("a") -> Str("10.01"),
+      Str("b") -> Str("false"),
+      Str("c") -> Str("truuu"),
+      Str("d") -> Str("0"),
+      Str("e") -> Str("1")
+    )
+
+    val parsedbooleans =
+      MsgTransformations.parseBooleans(Set("a", "b", "c", "d", "e"), Set("truuu", "1"))(
+        input
+      )
+
+    parsedbooleans shouldBe Obj(
+      Str("a") -> Bool(false),
+      Str("b") -> Bool(false),
+      Str("c") -> Bool(true),
+      Str("d") -> Bool(false),
+      Str("e") -> Bool(true)
+    )
   }
 
   it should "convert designated fields from strings to arrays of strings" in {
