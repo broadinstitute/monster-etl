@@ -165,7 +165,26 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
   }
 
   it should "preserve the order of input field names in the concatenated string" in {
-    ???
+    val input = Obj(
+      Str("first") -> Str("a"),
+      Str("second") -> Str("b"),
+      Str("third") -> Str("c"),
+      Str("fourth") -> Str("d"),
+      Str("fifth") -> Str("e")
+    )
+
+    val concatenated =
+      MsgTransformations.concatFields(
+        List("second", "third", "first"),
+        "concatenated",
+        ";"
+      )(input)
+
+    concatenated shouldBe Obj(
+      Str("concatenated") -> Str("b;c;a"),
+      Str("fourth") -> Str("d"),
+      Str("fifth") -> Str("e")
+    )
   }
 
   it should "fail if an expected field is missing during concatenation" in {
