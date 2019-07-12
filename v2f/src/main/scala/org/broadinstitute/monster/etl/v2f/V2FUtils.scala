@@ -1,5 +1,7 @@
 package org.broadinstitute.monster.etl.v2f
 
+import upack._
+
 import java.io.InputStreamReader
 import java.nio.channels.Channels
 
@@ -60,6 +62,35 @@ object V2FUtils {
               }.mapValues(Json.fromString))
               val filePath = file.getMetadata.resourceId.getCurrentDirectory.toString
               (filePath, jsonObj)
+            }
+          }
+      }
+    }
+
+  /**
+    * Given the ReadableFile that contains TSVs convert each TSV to a Msg and get is filepath.
+    *
+    * @param tableName the name of the TSV table that was converted to Msg
+    */
+  def tsvToMsg(
+    tableName: String
+  ): SCollection[ReadableFile] => SCollection[(String, Msg)] =
+    _.transform(s"Convert $tableName TSVs to Msg") { collection =>
+      collection.flatMap { file =>
+        Channels
+          .newInputStream(file.open())
+          .autoClosed
+          .apply { path =>
+            implicit val format: CSVFormat = new TSVFormat {}
+            val reader = CSVReader.open(new InputStreamReader(path))
+            reader.allWithHeaders().map { map =>
+              val msgObj = Obj()
+              map.foreach {
+                case (key, value) if value != "" =>
+                  msgObj.value.update(Str(key), Str(value.trim))
+              }
+              val filePath = file.getMetadata.resourceId.getCurrentDirectory.toString
+              (filePath, msgObj)
             }
           }
       }
