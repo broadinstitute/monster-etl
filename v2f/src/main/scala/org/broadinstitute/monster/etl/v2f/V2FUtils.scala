@@ -69,7 +69,7 @@ object V2FUtils {
     }
 
   /**
-    * Given the ReadableFile that contains TSVs convert each TSV to a Msg and get its filepath.
+    * Given the SCollection of ReadableFiles that contains TSVs convert each TSV to a Msg and get its filepath.
     *
     * @param tableName the name of the TSV table that was converted to Msg
     */
@@ -87,8 +87,10 @@ object V2FUtils {
             reader.allWithHeaders().map { map =>
               val msgObj = Obj()
               map.foreach {
-                case (key, value) if value != "" =>
-                  msgObj.value.update(Str(key), Str(value.trim))
+                case (key, value) =>
+                  if (value != "") {
+                    msgObj.value.update(Str(key), Str(value.trim))
+                  }
               }
               val filePath = file.getMetadata.resourceId.getCurrentDirectory.toString
               (filePath, msgObj)

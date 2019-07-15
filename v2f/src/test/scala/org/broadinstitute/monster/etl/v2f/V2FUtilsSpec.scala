@@ -29,6 +29,21 @@ class V2FUtilsSpec extends PipelineSpec with Matchers {
     )
   }
 
+  private val tsvMsgMissingValues = List {
+    Obj(
+      Str("key1") -> Str("v11"),
+      Str("key2") -> Str("v21"),
+      Str("key4") -> Str("v41"),
+      Str("key5") -> Str("v51")
+    )
+    Obj(
+      Str("key1") -> Str("v12"),
+      Str("key2") -> Str("v22"),
+      Str("key3") -> Str("v32"),
+      Str("key5") -> Str("v52")
+    )
+  }
+
   private val tsvMsgDiffOrder = List {
     Obj(
       Str("key1") -> Str("v11"),
@@ -63,8 +78,44 @@ class V2FUtilsSpec extends PipelineSpec with Matchers {
     )
   }
 
+  // tsvToMsg
   it should "convert each row of the TSV in an input stream to a Msg" in {
 
+    val (_, readMessages) = runWithLocalOutput { sc =>
+      {
+        V2FUtils.tsvToMsg("testTableName")(
+          V2FUtils.getReadableFiles(
+            "/Users/rarshad/Projects/monster-etl/v2f/src/test/scala/org/broadinstitute/monster/etl/v2f/tsvTestFileOriginal.txt",
+            sc
+          )
+        )
+      }
+    }
+
+    val out = readMessages.map(_._2)
+
+    out should contain allElementsOf tsvMsgOriginal
+  }
+
+  it should "skip key-value pairs in a TSV where the value is an empty string" in {
+
+    val (_, readMessages) = runWithLocalOutput { sc =>
+      {
+        V2FUtils.tsvToMsg("testTableName")(
+          V2FUtils.getReadableFiles(
+            "/Users/rarshad/Projects/monster-etl/v2f/src/test/scala/org/broadinstitute/monster/etl/v2f/tsvTestFileMissingValues.txt",
+            sc
+          )
+        )
+      }
+    }
+
+    val out = readMessages.map(_._2)
+
+    out should contain allElementsOf tsvMsgMissingValues
+  }
+
+  it should "convert multiple TSVs correctly even if the columns are different" in {
     val (_, readMessages) = runWithLocalOutput { sc =>
       {
         V2FUtils.tsvToMsg("testTableName")(
@@ -78,9 +129,9 @@ class V2FUtilsSpec extends PipelineSpec with Matchers {
 
     val out = readMessages.map(_._2)
 
+    out should contain allElementsOf tsvMsgMissingValues
     out should contain allElementsOf tsvMsgOriginal
+    out should contain allElementsOf tsvMsgDiffOrder
+    out should contain allElementsOf tsvMsgDiffCols
   }
-
-//  it should "skip key-value pairs in a TSV where the value is an empty string" in {
-//  }
 }
