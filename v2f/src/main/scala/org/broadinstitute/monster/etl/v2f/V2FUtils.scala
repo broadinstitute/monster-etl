@@ -1,7 +1,6 @@
 package org.broadinstitute.monster.etl.v2f
 
 import upack._
-
 import java.io.InputStreamReader
 import java.nio.channels.Channels
 
@@ -13,6 +12,7 @@ import com.spotify.scio.values.SCollection
 import io.circe.{Json, JsonObject}
 import org.apache.beam.sdk.io.FileIO
 import org.apache.beam.sdk.io.FileIO.ReadableFile
+import org.broadinstitute.monster.etl.UpackMsgCoder
 
 import scala.util.Try
 import scala.util.matching.Regex
@@ -23,6 +23,7 @@ import scala.util.matching.Regex
 object V2FUtils {
 
   implicit val jsonCoder: Coder[JsonObject] = Coder.kryo[JsonObject]
+  implicit val msgCoder: Coder[Msg] = Coder.beam(new UpackMsgCoder)
   implicit val readableFileCoder: Coder[ReadableFile] = Coder.kryo[ReadableFile]
 
   /**
@@ -68,7 +69,7 @@ object V2FUtils {
     }
 
   /**
-    * Given the ReadableFile that contains TSVs convert each TSV to a Msg and get is filepath.
+    * Given the ReadableFile that contains TSVs convert each TSV to a Msg and get its filepath.
     *
     * @param tableName the name of the TSV table that was converted to Msg
     */
