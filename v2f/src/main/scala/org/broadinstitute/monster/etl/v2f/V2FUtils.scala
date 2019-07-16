@@ -1,6 +1,5 @@
 package org.broadinstitute.monster.etl.v2f
 
-import upack._
 import java.io.InputStreamReader
 import java.nio.channels.Channels
 
@@ -13,6 +12,7 @@ import io.circe.{Json, JsonObject}
 import org.apache.beam.sdk.io.FileIO
 import org.apache.beam.sdk.io.FileIO.ReadableFile
 import org.broadinstitute.monster.etl.UpackMsgCoder
+import upack._
 
 import scala.util.Try
 import scala.util.matching.Regex
@@ -76,7 +76,7 @@ object V2FUtils {
   def tsvToMsg(
     tableName: String
   ): SCollection[ReadableFile] => SCollection[(String, Msg)] =
-    _.transform(s"Convert $tableName TSVs to Msg") { collection =>
+    _.transform(s"Extract $tableName TSV rows") { collection =>
       collection.flatMap { file =>
         Channels
           .newInputStream(file.open())
@@ -88,8 +88,9 @@ object V2FUtils {
               val msgObj = Obj()
               map.foreach {
                 case (key, value) =>
-                  if (value != "") {
-                    msgObj.value.update(Str(key), Str(value.trim))
+                  val trimmed = value.trim
+                  if (trimmed != "") {
+                    msgObj.value.update(Str(key), Str(trimmed))
                   }
               }
               val filePath = file.getMetadata.resourceId.getCurrentDirectory.toString
