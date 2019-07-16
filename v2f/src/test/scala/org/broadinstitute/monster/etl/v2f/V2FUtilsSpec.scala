@@ -2,8 +2,8 @@ package org.broadinstitute.monster.etl.v2f
 
 import com.spotify.scio.coders.Coder
 import com.spotify.scio.testing._
-import org.scalatest.Matchers
 import org.broadinstitute.monster.etl.UpackMsgCoder
+import org.scalatest.Matchers
 import upack.{Msg, Obj, Str}
 
 class V2FUtilsSpec extends PipelineSpec with Matchers {
