@@ -4,10 +4,13 @@ import com.spotify.scio.ScioContext
 import com.spotify.scio.coders.Coder
 import com.spotify.scio.values.SCollection
 import io.circe.JsonObject
+import org.broadinstitute.monster.etl.{MsgTransformations, UpackMsgCoder}
+import upack.Msg
 
 object V2FExtractionsAndTransforms {
 
   implicit val jsonCoder: Coder[JsonObject] = Coder.kryo[JsonObject]
+  implicit val msgCoder: Coder[Msg] = Coder.beam(new UpackMsgCoder)
 
   /**
     * Given a pattern matching TSVs, get the TSVs as ReadableFiles and convert each TSV to json and get is filepath.
@@ -22,15 +25,15 @@ object V2FExtractionsAndTransforms {
     context: ScioContext,
     inputDir: String,
     relativeFilePath: String
-  ): SCollection[(String, JsonObject)] = {
+  ): SCollection[(String, Msg)] = {
     // get the readable files for the given input path
     val readableFiles = V2FUtils.getReadableFiles(
       s"$inputDir/${v2fConstant.filePath}/$relativeFilePath",
       context
     )
 
-    // then convert tsv to json and get the filepath
-    V2FUtils.tsvToJson(
+    // then convert tsv to msg and get the filepath
+    V2FUtils.tsvToMsg(
       v2fConstant.tableName
     )(readableFiles)
   }
@@ -63,13 +66,29 @@ object V2FExtractionsAndTransforms {
   /**
     * Given conversion functions, for the field names specified, the fields of a provided JSON Object are converted based on the given functions.
     *
-    * @param jsonAndFilePaths the collection of JSON Objects and associated file paths that will be transformed
     * @param v2fConstant the type of tsv(s) that will be transformed
     */
   def transform(
-    jsonAndFilePaths: SCollection[(String, JsonObject)],
     v2fConstant: V2FConstants
-  ): SCollection[(String, JsonObject)] = {
+  ): SCollection[(String, Msg)] => SCollection[(String, Msg)] = { jsonAndFilePaths =>
+    jsonAndFilePaths.map {
+      case (path, msg) =>
+        val withSnakeCase = MsgTransformations.keysToSnakeCase(msg)
+        val withRenamedFields =
+          MsgTransformations.renameFields(v2fConstant.fieldsToRename)(withSnakeCase)
+        val withDoubles = MsgTransformations.parseDoubles(
+          Set(v2fConstant.fieldsToConvertToJsonDouble)
+        )(withRenamedFields)
+        val withLongs = MsgTransformations.parseLongs(
+          Set(v2fConstant.fieldsToConvertToJsonLong)
+        )(withDoubles)
+        val withBooleans = MsgTransformations.parseBooleans(
+          Set(v2fConstant.fieldsToConvertToJsonBoolean)
+        )(withLongs)
+        val withBooleans = MsgTransformations.parseBooleans(
+          Set(v2fConstant.fieldsToConvertToJsonBoolean)
+        )(withLongs)
+    }
     // rename given fields from old to new names
     val transformedRenamedFieldsJSON = V2FUtils.renameFields(
       v2fConstant.tableName,
@@ -82,30 +101,6 @@ object V2FExtractionsAndTransforms {
         v2fConstant.tableName,
         v2fConstant.fieldsToRemove
       )(transformedRenamedFieldsJSON)
-
-    // then convert given fields to json double
-    val transformedDoublesJsonAndFilePaths =
-      V2FUtils.convertJsonFieldsValueType(
-        v2fConstant.tableName,
-        v2fConstant.fieldsToConvertToJsonDouble,
-        V2FUtils.jsonStringToJsonDouble
-      )(transformedRemovedVariantFieldsJsonAndFilePaths)
-
-    // then convert given fields to json Long
-    val transformedLongsJsonAndFilePaths =
-      V2FUtils.convertJsonFieldsValueType(
-        v2fConstant.tableName,
-        v2fConstant.fieldsToConvertToJsonLong,
-        V2FUtils.jsonStringToJsonLong
-      )(transformedDoublesJsonAndFilePaths)
-
-    // then convert given fields to json booleans
-    val transformedBooleansJsonAndFilePaths =
-      V2FUtils.convertJsonFieldsValueType(
-        v2fConstant.tableName,
-        v2fConstant.fieldsToConvertToJsonBoolean,
-        V2FUtils.jsonStringToJsonBoolean
-      )(transformedLongsJsonAndFilePaths)
 
     // then convert given fields to json arrays
     val transformedArraysJsonAndFilePaths =
