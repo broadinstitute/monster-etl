@@ -85,7 +85,7 @@ class V2FUtilsSpec extends PipelineSpec with Matchers {
       {
         V2FUtils.tsvToMsg("testTableName")(
           V2FUtils.getReadableFiles(
-            "/Users/rarshad/Projects/monster-etl/v2f/src/test/scala/org/broadinstitute/monster/etl/v2f/tsvTestFileOriginal.txt",
+            "src/test/scala/org/broadinstitute/monster/etl/v2f/tsvTestFileOriginal.txt",
             sc
           )
         )
@@ -103,7 +103,7 @@ class V2FUtilsSpec extends PipelineSpec with Matchers {
       {
         V2FUtils.tsvToMsg("testTableName")(
           V2FUtils.getReadableFiles(
-            "/Users/rarshad/Projects/monster-etl/v2f/src/test/scala/org/broadinstitute/monster/etl/v2f/tsvTestFileMissingValues.txt",
+            "src/test/scala/org/broadinstitute/monster/etl/v2f/tsvTestFileMissingValues.txt",
             sc
           )
         )
@@ -120,7 +120,7 @@ class V2FUtilsSpec extends PipelineSpec with Matchers {
       {
         V2FUtils.tsvToMsg("testTableName")(
           V2FUtils.getReadableFiles(
-            "/Users/rarshad/Projects/monster-etl/v2f/src/test/scala/org/broadinstitute/monster/etl/v2f/*.txt",
+            "src/test/scala/org/broadinstitute/monster/etl/v2f/*.txt",
             sc
           )
         )
