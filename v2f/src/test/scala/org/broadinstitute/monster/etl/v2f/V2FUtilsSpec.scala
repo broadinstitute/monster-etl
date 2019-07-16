@@ -1,8 +1,8 @@
 package org.broadinstitute.monster.etl.v2f
 
 import com.spotify.scio.coders.Coder
-import org.scalatest.Matchers
 import com.spotify.scio.testing._
+import org.scalatest.Matchers
 import org.broadinstitute.monster.etl.UpackMsgCoder
 import upack.{Msg, Obj, Str}
 
