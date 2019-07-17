@@ -11,6 +11,8 @@ import com.spotify.scio.values.SCollection
 import io.circe.{Json, JsonObject}
 import org.apache.beam.sdk.io.FileIO
 import org.apache.beam.sdk.io.FileIO.ReadableFile
+import org.broadinstitute.monster.etl.UpackMsgCoder
+import upack._
 
 import scala.util.Try
 import scala.util.matching.Regex
@@ -21,6 +23,7 @@ import scala.util.matching.Regex
 object V2FUtils {
 
   implicit val jsonCoder: Coder[JsonObject] = Coder.kryo[JsonObject]
+  implicit val msgCoder: Coder[Msg] = Coder.beam(new UpackMsgCoder)
   implicit val readableFileCoder: Coder[ReadableFile] = Coder.kryo[ReadableFile]
 
   /**
@@ -60,6 +63,38 @@ object V2FUtils {
               }.mapValues(Json.fromString))
               val filePath = file.getMetadata.resourceId.getCurrentDirectory.toString
               (filePath, jsonObj)
+            }
+          }
+      }
+    }
+
+  /**
+    * Given the SCollection of ReadableFiles that contains TSVs convert each TSV to a Msg and get its filepath.
+    *
+    * @param tableName the name of the TSV table that was converted to Msg
+    */
+  def tsvToMsg(
+    tableName: String
+  ): SCollection[ReadableFile] => SCollection[(String, Msg)] =
+    _.transform(s"Extract $tableName TSV rows") { collection =>
+      collection.flatMap { file =>
+        Channels
+          .newInputStream(file.open())
+          .autoClosed
+          .apply { path =>
+            implicit val format: CSVFormat = new TSVFormat {}
+            val reader = CSVReader.open(new InputStreamReader(path))
+            reader.allWithHeaders().map { map =>
+              val msgObj = Obj()
+              map.foreach {
+                case (key, value) =>
+                  val trimmed = value.trim
+                  if (trimmed != "") {
+                    msgObj.value.update(Str(key), Str(trimmed))
+                  }
+              }
+              val filePath = file.getMetadata.resourceId.getCurrentDirectory.toString
+              (filePath, msgObj)
             }
           }
       }

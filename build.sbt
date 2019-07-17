@@ -77,6 +77,7 @@ lazy val common = project
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(
+      "ch.qos.logback" % "logback-classic" % logbackVersion,
       "com.lihaoyi" %% "upickle" % uPickleVersion,
       "com.spotify" %% "scio-core" % scioVersion,
       "io.circe" %% "circe-parser" % circeVersion
@@ -115,7 +116,6 @@ lazy val v2f = project
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "ch.qos.logback" % "logback-classic" % logbackVersion,
       "com.spotify" %% "scio-extra" % scioVersion,
       "com.github.tototoshi" %% "scala-csv" % scalaCsvVersion,
       "com.github.pathikrit" %% "better-files" % betterFilesVersion,
