@@ -18,31 +18,31 @@ sealed trait V2FConstants {
   /**
     * The names of JSON fields that should be converted from Strings to Doubles.
     */
-  def fieldsToConvertToJsonDouble: List[String]
+  def fieldsToConvertToJsonDouble: Set[String]
 
   /**
     * The names of JSON fields that should be converted from Strings to Longs.
     * Converting to Long instead due to JSON schema Long columns not accepting doubles
     */
-  def fieldsToConvertToJsonLong: List[String]
+  def fieldsToConvertToJsonLong: Set[String]
 
   /**
     * The names of JSON fields that should be converted from Strings to a Booleans.
     */
-  def fieldsToConvertToJsonBoolean: List[String]
+  def fieldsToConvertToJsonBoolean: Set[String]
 
   /**
     * The names of JSON fields that should be converted from from Strings to Arrays.
     * The keys of the map are delimiter and the values of map are names of JSON fields for the give delimiter(key).
     * e.g: "24,81,5,8,60" to ["24", "81", "5", "8", "60"]
     */
-  def fieldsToConvertToJsonArray: Map[String, List[String]]
+  def fieldsToConvertToJsonArray: Map[String, Set[String]]
 
   /**
     * The names of JSON Arrays that should be converted from arrays Strings to arrays Doubles.
     * e.g: "24,81,5,8,60" to [24, 81, 5, 8, 60]
     */
-  def fieldsToConvertFromJsonArrayStringToDouble: List[String]
+  def fieldsToConvertFromJsonArrayStringToDouble: Set[String]
 
   /**
     * The names of JSON fields that should be renamed.
@@ -53,12 +53,12 @@ sealed trait V2FConstants {
   /**
     * The names of JSON fields that should be removed.
     */
-  def fieldsToRemove: List[String]
+  def fieldsToRemove: Set[String]
 
   /**
     * The names of JSON fields that should be extracted to there own JSON.
     */
-  def variantFieldsToExtract: List[String]
+  def variantFieldsToExtract: Set[String]
 }
 
 case object FrequencyAnalysis extends V2FConstants {
@@ -66,28 +66,28 @@ case object FrequencyAnalysis extends V2FConstants {
 
   override def filePath: String = "frequency-analysis"
 
-  override def fieldsToConvertToJsonDouble: List[String] = List(
+  override def fieldsToConvertToJsonDouble: Set[String] = Set(
     "eaf",
     "maf"
   )
 
-  override def fieldsToConvertToJsonLong: List[String] = List(
+  override def fieldsToConvertToJsonLong: Set[String] = Set(
     "position"
   )
 
-  override def fieldsToConvertToJsonBoolean: List[String] = Nil
+  override def fieldsToConvertToJsonBoolean: Set[String] = Set.empty
 
-  override def fieldsToConvertToJsonArray: Map[String, List[String]] = Map.empty
+  override def fieldsToConvertToJsonArray: Map[String, Set[String]] = Map.empty
 
-  override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = Nil
+  override def fieldsToConvertFromJsonArrayStringToDouble: Set[String] = Set.empty
 
   override def fieldsToRename: Map[String, String] = Map("var_id" -> "variant_id")
 
-  override def fieldsToRemove: List[String] =
-    List("chromosome", "position", "reference", "alt")
+  override def fieldsToRemove: Set[String] =
+    Set("chromosome", "position", "reference", "alt")
 
-  override def variantFieldsToExtract: List[String] =
-    List("chromosome", "position", "reference", "alt")
+  override def variantFieldsToExtract: Set[String] =
+    Set("chromosome", "position", "reference", "alt")
 }
 
 case object MetaAnalysisAncestrySpecific extends V2FConstants {
@@ -95,30 +95,30 @@ case object MetaAnalysisAncestrySpecific extends V2FConstants {
 
   override def filePath: String = "meta-analysis/ancestry-specific"
 
-  override def fieldsToConvertToJsonDouble: List[String] = List(
+  override def fieldsToConvertToJsonDouble: Set[String] = Set(
     "p_value",
     "beta",
     "std_err"
   )
 
-  override def fieldsToConvertToJsonLong: List[String] = List(
+  override def fieldsToConvertToJsonLong: Set[String] = Set(
     "n",
     "position"
   )
 
-  override def fieldsToConvertToJsonBoolean: List[String] = Nil
+  override def fieldsToConvertToJsonBoolean: Set[String] = Set.empty
 
-  override def fieldsToConvertToJsonArray: Map[String, List[String]] = Map.empty
+  override def fieldsToConvertToJsonArray: Map[String, Set[String]] = Map.empty
 
-  override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = Nil
+  override def fieldsToConvertFromJsonArrayStringToDouble: Set[String] = Set.empty
 
   override def fieldsToRename: Map[String, String] = Map("var_id" -> "variant_id")
 
-  override def fieldsToRemove: List[String] =
-    List("chromosome", "position", "reference", "alt")
+  override def fieldsToRemove: Set[String] =
+    Set("chromosome", "position", "reference", "alt")
 
-  override def variantFieldsToExtract: List[String] =
-    List("chromosome", "position", "reference", "alt")
+  override def variantFieldsToExtract: Set[String] =
+    Set("chromosome", "position", "reference", "alt")
 }
 
 case object MetaAnalysisTransEthnic extends V2FConstants {
@@ -126,31 +126,31 @@ case object MetaAnalysisTransEthnic extends V2FConstants {
 
   override def filePath: String = "meta-analysis/trans-ethnic"
 
-  override def fieldsToConvertToJsonDouble: List[String] = List(
+  override def fieldsToConvertToJsonDouble: Set[String] = Set(
     "p_value",
     "z_score",
     "std_err",
     "beta"
   )
 
-  override def fieldsToConvertToJsonLong: List[String] = List(
+  override def fieldsToConvertToJsonLong: Set[String] = Set(
     "n",
     "position"
   )
 
-  override def fieldsToConvertToJsonBoolean: List[String] = List("top")
+  override def fieldsToConvertToJsonBoolean: Set[String] = Set("top")
 
-  override def fieldsToConvertToJsonArray: Map[String, List[String]] = Map.empty
+  override def fieldsToConvertToJsonArray: Map[String, Set[String]] = Map.empty
 
-  override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = Nil
+  override def fieldsToConvertFromJsonArrayStringToDouble: Set[String] = Set.empty
 
   override def fieldsToRename: Map[String, String] = Map("var_id" -> "variant_id")
 
-  override def fieldsToRemove: List[String] =
-    List("chromosome", "position", "reference", "alt")
+  override def fieldsToRemove: Set[String] =
+    Set("chromosome", "position", "reference", "alt")
 
-  override def variantFieldsToExtract: List[String] =
-    List("chromosome", "position", "reference", "alt")
+  override def variantFieldsToExtract: Set[String] =
+    Set("chromosome", "position", "reference", "alt")
 }
 
 case object VariantEffectRegulatoryFeatureConsequences extends V2FConstants {
@@ -158,25 +158,25 @@ case object VariantEffectRegulatoryFeatureConsequences extends V2FConstants {
 
   override def filePath: String = "variant-effect/regulatory-feature-consequences"
 
-  override def fieldsToConvertToJsonDouble: List[String] = Nil
+  override def fieldsToConvertToJsonDouble: Set[String] = Set.empty
 
-  override def fieldsToConvertToJsonLong: List[String] = Nil
+  override def fieldsToConvertToJsonLong: Set[String] = Set.empty
 
-  override def fieldsToConvertToJsonBoolean: List[String] = List(
+  override def fieldsToConvertToJsonBoolean: Set[String] = Set(
     "pick"
   )
 
-  override def fieldsToConvertToJsonArray: Map[String, List[String]] = Map(
-    "," -> List("consequence_terms")
+  override def fieldsToConvertToJsonArray: Map[String, Set[String]] = Map(
+    "," -> Set("consequence_terms")
   )
 
-  override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = Nil
+  override def fieldsToConvertFromJsonArrayStringToDouble: Set[String] = Set.empty
 
   override def fieldsToRename: Map[String, String] = Map("id" -> "variant_id")
 
-  override def fieldsToRemove: List[String] = Nil
+  override def fieldsToRemove: Set[String] = Set.empty
 
-  override def variantFieldsToExtract: List[String] = Nil
+  override def variantFieldsToExtract: Set[String] = Set.empty
 }
 
 case object VariantEffectTranscriptConsequences extends V2FConstants {
@@ -184,7 +184,7 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
 
   override def filePath: String = "variant-effect/transcript-consequences"
 
-  override def fieldsToConvertToJsonDouble: List[String] = List(
+  override def fieldsToConvertToJsonDouble: Set[String] = Set(
     "cadd_phred",
     "cadd_raw",
     "cadd_raw_rankscore",
@@ -242,7 +242,7 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
     "vest_3_rankscore"
   )
 
-  override def fieldsToConvertToJsonLong: List[String] = List(
+  override def fieldsToConvertToJsonLong: Set[String] = Set(
     "cdna_end",
     "cdna_start",
     "cds_end",
@@ -254,13 +254,13 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
     "strand"
   )
 
-  override def fieldsToConvertToJsonBoolean: List[String] = List(
+  override def fieldsToConvertToJsonBoolean: Set[String] = Set(
     "canonical",
     "pick"
   )
 
-  override def fieldsToConvertToJsonArray: Map[String, List[String]] = Map(
-    "," -> List(
+  override def fieldsToConvertToJsonArray: Map[String, Set[String]] = Map(
+    "," -> Set(
       "consequence_terms",
       "fathmm_pred",
       "fathmm_score",
@@ -281,12 +281,12 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
       "polyphen_2_hvar_score",
       "interpro_domain"
     ),
-    ":" -> List(
+    ":" -> Set(
       "siphy_29_way_pi"
     )
   )
 
-  override def fieldsToConvertFromJsonArrayStringToDouble: List[String] = List(
+  override def fieldsToConvertFromJsonArrayStringToDouble: Set[String] = Set(
     "mutationtaster_score",
     "siphy_29_way_pi",
     "vest_3_score",
@@ -304,7 +304,7 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
     "id" -> "variant_id"
   )
 
-  override def fieldsToRemove: List[String] = Nil
+  override def fieldsToRemove: Set[String] = Set.empty
 
-  override def variantFieldsToExtract: List[String] = Nil
+  override def variantFieldsToExtract: Set[String] = Set.empty
 }

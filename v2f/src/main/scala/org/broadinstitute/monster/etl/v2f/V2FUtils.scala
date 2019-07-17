@@ -162,7 +162,7 @@ object V2FUtils {
     */
   def convertJsonFieldsValueType(
     tableName: String,
-    fieldNames: List[String],
+    fieldNames: Set[String],
     convertJsonString: (String, Json) => Json
   ): SCollection[(String, JsonObject)] => SCollection[(String, JsonObject)] =
     _.transform(s"Convert $tableName fields to expected types") { collection =>
@@ -310,7 +310,7 @@ object V2FUtils {
     */
   def extractVariantFields(
     tableName: String,
-    variantFieldNames: List[String]
+    variantFieldNames: Set[String]
   ): SCollection[(String, JsonObject)] => SCollection[(String, JsonObject)] = {
     _.transform(s"Extracting variant fields from $tableName") { collection =>
       collection.map {

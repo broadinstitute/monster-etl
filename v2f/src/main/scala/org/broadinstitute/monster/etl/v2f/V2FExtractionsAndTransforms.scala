@@ -74,33 +74,32 @@ object V2FExtractionsAndTransforms {
     jsonAndFilePaths.map {
       case (path, msg) =>
         val withSnakeCase = MsgTransformations.keysToSnakeCase(msg)
+        // rename fields
         val withRenamedFields =
           MsgTransformations.renameFields(v2fConstant.fieldsToRename)(withSnakeCase)
+        // need to remove fields
+        val withRemovedFields =
+          MsgTransformations.removeFields(v2fConstant.fieldsToRemove)(withRenamedFields)
+        // convert fields from string to double
         val withDoubles = MsgTransformations.parseDoubles(
-          Set(v2fConstant.fieldsToConvertToJsonDouble)
-        )(withRenamedFields)
+          v2fConstant.fieldsToConvertToJsonDouble
+        )(withRemovedFields)
+        // convert fields from string to long
         val withLongs = MsgTransformations.parseLongs(
-          Set(v2fConstant.fieldsToConvertToJsonLong)
+          v2fConstant.fieldsToConvertToJsonLong
         )(withDoubles)
+        // convert fields from string to boolean
         val withBooleans = MsgTransformations.parseBooleans(
-          Set(v2fConstant.fieldsToConvertToJsonBoolean)
+          v2fConstant.fieldsToConvertToJsonBoolean
         )(withLongs)
-        val withBooleans = MsgTransformations.parseBooleans(
-          Set(v2fConstant.fieldsToConvertToJsonBoolean)
-        )(withLongs)
+        // convert to arrays, then convert fields to double
+        MsgTransformations.parseDoubleArrays(
+          v2fConstant.fieldsToConvertToJsonBoolean,
+          ","
+        )(withBooleans)
     }
-    // rename given fields from old to new names
-    val transformedRenamedFieldsJSON = V2FUtils.renameFields(
-      v2fConstant.tableName,
-      v2fConstant.fieldsToRename
-    )(jsonAndFilePaths)
 
-    // remove the given fields from the json object
-    val transformedRemovedVariantFieldsJsonAndFilePaths =
-      V2FUtils.removeFields(
-        v2fConstant.tableName,
-        v2fConstant.fieldsToRemove
-      )(transformedRenamedFieldsJSON)
+    // remove the given fields from the
 
     // then convert given fields to json arrays
     val transformedArraysJsonAndFilePaths =

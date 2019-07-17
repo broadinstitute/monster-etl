@@ -48,7 +48,7 @@ object ExtractionPipeline {
     )
 
     val frequencyAnalysisTransformedJsonAndFilePaths = V2FExtractionsAndTransforms
-      .transform(frequencyAnalysisJsonAndFilePaths, FrequencyAnalysis)
+      .transform(FrequencyAnalysis)(frequencyAnalysisJsonAndFilePaths)
 
     // MetaAnalysisAncestrySpecific
     val metaAnalysisAncestrySpecificJsonAndFilePaths =
@@ -61,9 +61,8 @@ object ExtractionPipeline {
 
     val metaAnalysisAncestrySpecificTransformedJsonAndFilePaths =
       V2FExtractionsAndTransforms.transform(
-        metaAnalysisAncestrySpecificJsonAndFilePaths,
         MetaAnalysisAncestrySpecific
-      )
+      )(metaAnalysisAncestrySpecificJsonAndFilePaths)
 
     // MetaAnalysisTransEthnic
     val metaAnalysisTransEthnicJsonAndFilePaths =
@@ -75,7 +74,7 @@ object ExtractionPipeline {
       )
 
     val metaAnalysisTransEthnicTransformedJsonAndFilePaths = V2FExtractionsAndTransforms
-      .transform(metaAnalysisTransEthnicJsonAndFilePaths, MetaAnalysisTransEthnic)
+      .transform(MetaAnalysisTransEthnic)(metaAnalysisTransEthnicJsonAndFilePaths)
 
     // VariantEffectRegulatoryFeatureConsequences
     val variantEffectRegulatoryFeatureConsequencesJsonAndFilePaths =
@@ -88,9 +87,8 @@ object ExtractionPipeline {
 
     val variantEffectRegulatoryFeatureConsequencesTransformedJsonAndFilePaths =
       V2FExtractionsAndTransforms.transform(
-        variantEffectRegulatoryFeatureConsequencesJsonAndFilePaths,
         VariantEffectRegulatoryFeatureConsequences
-      )
+      )(variantEffectRegulatoryFeatureConsequencesJsonAndFilePaths)
 
     // VariantEffectTranscriptConsequences
     val variantEffectTranscriptConsequencesJsonAndFilePaths =
@@ -103,9 +101,8 @@ object ExtractionPipeline {
 
     val variantEffectTranscriptConsequencesTransformedJsonAndFilePaths =
       V2FExtractionsAndTransforms.transform(
-        variantEffectTranscriptConsequencesJsonAndFilePaths,
         VariantEffectTranscriptConsequences
-      )
+      )(variantEffectTranscriptConsequencesJsonAndFilePaths)
 
     // variant JSONs
     val frequencyAnalysisVariantJsonAndFilePaths =

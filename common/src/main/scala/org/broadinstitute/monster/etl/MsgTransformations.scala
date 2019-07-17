@@ -44,6 +44,23 @@ object MsgTransformations {
   }
 
   /**
+    * Remove the key-value pairs of a message for a given field.
+    *
+    * Keys not included in the removal are left in the message as-is.
+    *
+    * If a "remove" key given in fields is not present in the message,
+    * the transformation continues (as opposed to throwing an exception).
+    */
+  def removeFields(fields: Set[String])(msg: Msg): Msg = {
+    val toRet = upack.copy(msg)
+    val underlying = toRet.obj
+    fields.foreach { field =>
+      underlying.remove(Str(field))
+    }
+    toRet
+  }
+
+  /**
     * Aggregate the values of a list of fields into a single array field
     * with a string key.
     *

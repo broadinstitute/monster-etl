@@ -60,6 +60,56 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
   }
 
+  // removeFields
+  it should "remove fields in object messages" in {
+    val input = Obj(
+      Str("foo") -> Str("bar"),
+      Str("foobar") -> Int32(123),
+      Str("baz") -> Arr(Str("qux"), Float64(1.23))
+    )
+
+    val removed =
+      MsgTransformations.removeFields(List("foo"))(input)
+
+    removed shouldBe Obj(
+      Str("foobar") -> Int32(123),
+      Str("baz") -> Arr(Str("qux"), Float64(1.23))
+    )
+  }
+
+  it should "continue if a field-to-remove doesn't exist" in {
+    val input = Obj(
+      Str("foo") -> Str("bar"),
+      Str("foobar") -> Int32(123),
+      Str("baz") -> Arr(Str("qux"), Float64(1.23))
+    )
+
+    val removed =
+      MsgTransformations.removeFields(List("foo", "derp"))(input)
+
+    removed shouldBe Obj(
+      Str("foobar") -> Int32(123),
+      Str("baz") -> Arr(Str("qux"), Float64(1.23))
+    )
+  }
+
+  it should "continue if none of the fields-to-remove exist" in {
+    val input = Obj(
+      Str("foo") -> Str("bar"),
+      Str("foobar") -> Int32(123),
+      Str("baz") -> Arr(Str("qux"), Float64(1.23))
+    )
+
+    val removed =
+      MsgTransformations.removeFields(List("dip", "derp"))(input)
+
+    removed shouldBe Obj(
+      Str("foo") -> Str("bar"),
+      Str("foobar") -> Int32(123),
+      Str("baz") -> Arr(Str("qux"), Float64(1.23))
+    )
+  }
+
   // collectFields
   it should "collect object fields into an array" in {
     val input = Obj(
