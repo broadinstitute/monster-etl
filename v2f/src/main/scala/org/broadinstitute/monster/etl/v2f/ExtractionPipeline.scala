@@ -8,6 +8,7 @@ import com.spotify.scio.{BuildInfo => _, io => _}
 import io.circe.JsonObject
 import org.broadinstitute.monster.etl._
 import com.spotify.scio.extra.json._
+import upack.Msg
 
 /**
   * ETL workflow for converting and transforming TSVs from V2F.
@@ -15,6 +16,7 @@ import com.spotify.scio.extra.json._
 object ExtractionPipeline {
 
   implicit val jsonCoder: Coder[JsonObject] = Coder.kryo[JsonObject]
+  implicit val msgCoder: Coder[Msg] = Coder.beam(new UpackMsgCoder)
 
   @AppName("V2F Extraction Pipeline")
   @AppVersion(BuildInfo.version)
@@ -33,12 +35,12 @@ object ExtractionPipeline {
   )
 
   /**
-    * Convert V2F TSVs to JSON and performing transformations for ingest into the Data Repository.
+    * Convert V2F TSVs to Msg and performing transformations for ingest into the Data Repository.
     */
   def main(rawArgs: Array[String]): Unit = {
     val (pipelineContext, parsedArgs) = ContextAndArgs.typed[Args](rawArgs)
 
-    // extract and convert TSVs to JSON, transform JSON and then save JSON
+    // extract and convert TSVs to Msg, transform Msg and then save Msg
     // FrequencyAnalysis
     val frequencyAnalysisJsonAndFilePaths = V2FExtractionsAndTransforms.extractAndConvert(
       FrequencyAnalysis,
@@ -104,7 +106,7 @@ object ExtractionPipeline {
         VariantEffectTranscriptConsequences
       )(variantEffectTranscriptConsequencesJsonAndFilePaths)
 
-    // variant JSONs
+    // variant Msgs
     val frequencyAnalysisVariantJsonAndFilePaths =
       V2FExtractionsAndTransforms.extractAndTransformVariants(
         FrequencyAnalysis,
@@ -124,7 +126,7 @@ object ExtractionPipeline {
       )
 
     val variantMergedJson =
-      V2FExtractionsAndTransforms.mergeVariantJsons(
+      V2FExtractionsAndTransforms.mergeVariantMsgs(
         List(
           frequencyAnalysisVariantJsonAndFilePaths,
           metaAnalysisAncestrySpecificVariantJsonAndFilePaths,
@@ -132,7 +134,7 @@ object ExtractionPipeline {
         )
       )
 
-    // save the extracted and transformed JSONs
+    // save the extracted and transformed Msgs
     writeToDisk(
       frequencyAnalysisTransformedJsonAndFilePaths,
       filePath = FrequencyAnalysis.filePath,
@@ -173,20 +175,20 @@ object ExtractionPipeline {
   }
 
   /**
-    *  Write all the converted and transformed JSON Objects to disk.
+    *  Write all the converted and transformed Msg Objects to disk.
     *
-    * @param jsonAndFilePaths the collection of JSON Objects and associated file paths that will be saved as a JSON file
+    * @param msgAndFilePaths the collection of Msg Objects and associated file paths that will be saved as a Msg file
     * @param filePath File pattern matching TSVs to process within the V2F analysis directory
-    * @param outputDir the root outputs directory where the JSON file(s) will be saved
+    * @param outputDir the root outputs directory where the Msg file(s) will be saved
     */
   def writeToDisk(
-    jsonAndFilePaths: SCollection[(String, JsonObject)],
+    msgAndFilePaths: SCollection[(String, Msg)],
     filePath: String,
     outputDir: String
   ): Unit = {
-    jsonAndFilePaths.map {
-      case (_, jsonObj) =>
-        jsonObj
+    msgAndFilePaths.map {
+      case (_, msgObj) =>
+        msgObj
     }.saveAsJsonFile(
       s"$outputDir/$filePath"
     )

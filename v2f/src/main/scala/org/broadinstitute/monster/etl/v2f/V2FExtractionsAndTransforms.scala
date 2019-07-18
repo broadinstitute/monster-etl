@@ -5,7 +5,7 @@ import com.spotify.scio.coders.Coder
 import com.spotify.scio.values.SCollection
 import io.circe.JsonObject
 import org.broadinstitute.monster.etl.{MsgTransformations, UpackMsgCoder}
-import upack.Msg
+import upack.{Msg, Str}
 
 object V2FExtractionsAndTransforms {
 
@@ -48,19 +48,19 @@ object V2FExtractionsAndTransforms {
     v2fConstant: V2FConstants,
     msgAndFilePaths: SCollection[(String, Msg)]
   ): SCollection[(String, Msg)] = {
-    // extract the variant fields from the input JSON
-    val variantEffectJsonAndFilePaths =
-      V2FUtils.extractVariantFields(
-        v2fConstant.tableName,
-        v2fConstant.variantFieldsToExtract
-      )(msgAndFilePaths)
-
-    // convert position from string to long
-    V2FUtils.convertJsonFieldsValueType(
-      v2fConstant.tableName,
-      v2fConstant.fieldsToConvertToMsgLong,
-      V2FUtils.jsonStringToJsonLong
-    )(variantEffectJsonAndFilePaths)
+    msgAndFilePaths.map {
+      case (path, msg) =>
+        // extract variant fields
+        val withExtractedFields =
+          MsgTransformations.extractFields(v2fConstant.variantFieldsToExtract)(msg)
+        // convert to longs
+        val withLongs =
+          MsgTransformations.parseLongs(v2fConstant.fieldsToConvertToMsgLong)(
+            withExtractedFields
+          )
+        // return final
+        (path, withLongs)
+    }
   }
 
   /**
@@ -92,55 +92,44 @@ object V2FExtractionsAndTransforms {
         val withBooleans = MsgTransformations.parseBooleans(
           v2fConstant.fieldsToConvertToMsgBoolean
         )(withLongs)
-        // convert to arrays, then convert fields to double
-        MsgTransformations.parseDoubleArrays(
-          v2fConstant.fieldsToConvertToMsgArray._2,
-          v2fConstant.fieldsToConvertToMsgArray._1
-        )(withBooleans)
+        // convert to double arrays
+        val withStringArrays =
+          v2fConstant.fieldsToConvertToStringArray.foldLeft(withBooleans) {
+            case (currentMsg, (delimeter, fields)) =>
+              MsgTransformations.parseStringArrays(
+                fields,
+                delimeter
+              )(currentMsg)
+          }
+        // convert to double arrays
+        val withDoubleArrays =
+          v2fConstant.fieldsToConvertToDoubleArray.foldLeft(withStringArrays) {
+            case (currentMsg, (delimeter, fields)) =>
+              MsgTransformations.parseDoubleArrays(
+                fields,
+                delimeter
+              )(currentMsg)
+          }
+        // return final Msg
+        (path, withDoubleArrays)
     }
-
-    // then convert given fields to json arrays
-    val transformedArraysJsonAndFilePaths =
-      v2fConstant.fieldsToConvertToMsgArray.foldLeft(
-        transformedBooleansJsonAndFilePaths
-      ) {
-        case (currentTransformedJsonAndFilePaths, currentfieldsToConvertToJsonArray) =>
-          V2FUtils.convertJsonFieldsValueType(
-            v2fConstant.tableName,
-            currentfieldsToConvertToJsonArray._2,
-            V2FUtils.jsonStringToJsonArray(
-              delimeter = currentfieldsToConvertToJsonArray._1
-            )
-          )(currentTransformedJsonAndFilePaths)
-      }
-
-    // then convert given fields of the array from json strings to json double
-    V2FUtils.convertJsonFieldsValueType(
-      v2fConstant.tableName,
-      v2fConstant.fieldsToConvertFromMsgArrayStringToDouble,
-      V2FUtils.convertJsonArrayStringToDouble
-    )(transformedArraysJsonAndFilePaths)
   }
 
   /**
-    *  Merge the variant JSON Objects and then write the merged JSON to disk.
+    *  Merge the variant Msg Objects and then write the merged Msg to disk.
     *
-    * @param variantJsonAndFilePaths a list of the collections of JSON Objects and associated file paths that will be merged and then saved as a JSON file
+    * @param variantMsgAndFilePaths a list of the collections of Msg Objects and associated file paths that will be merged and then saved as a Msg file
     */
-  def mergeVariantJsons(
-    variantJsonAndFilePaths: List[SCollection[(String, JsonObject)]]
-  ): SCollection[JsonObject] = {
+  def mergeVariantMsgs(
+    variantMsgAndFilePaths: List[SCollection[(String, Msg)]]
+  ): SCollection[Msg] = {
     SCollection
-      .unionAll(variantJsonAndFilePaths.map { collection =>
+      .unionAll(variantMsgAndFilePaths.map { collection =>
         collection.map {
-          case (_, jsonObj) =>
-            jsonObj
+          case (_, msgObj) =>
+            msgObj
         }
       })
-      .distinctBy(
-        _.apply("id")
-          .flatMap(_.asString)
-          .getOrElse(throw new RuntimeException("Got variant without an ID!"))
-      )
+      .distinctBy(_.obj.apply(Str("id")))
   }
 }

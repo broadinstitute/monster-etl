@@ -18,31 +18,31 @@ sealed trait V2FConstants {
   /**
     * The names of Msg fields that should be converted from Strings to Doubles.
     */
-  def fieldsToConvertToMsgDouble: Set[String]
+  def fieldsToConvertToMsgDouble: Set[String] = Set.empty
 
   /**
     * The names of Msg fields that should be converted from Strings to Longs.
     * Converting to Long instead due to Msg schema Long columns not accepting doubles
     */
-  def fieldsToConvertToMsgLong: Set[String]
+  def fieldsToConvertToMsgLong: Set[String] = Set.empty
 
   /**
     * The names of Msg fields that should be converted from Strings to a Booleans.
     */
-  def fieldsToConvertToMsgBoolean: Set[String]
+  def fieldsToConvertToMsgBoolean: Set[String] = Set.empty
 
   /**
     * The names of Msg fields that should be converted from from Strings to Arrays.
     * The keys of the map are delimiter and the values of map are names of Msg fields for the give delimiter(key).
     * e.g: "24,81,5,8,60" to ["24", "81", "5", "8", "60"]
     */
-  def fieldsToConvertToMsgArray: Map[String, Set[String]]
+  def fieldsToConvertToStringArray: Map[String, Set[String]] = Map.empty
 
   /**
     * The names of Msg Arrays that should be converted from arrays Strings to arrays Doubles.
     * e.g: "24,81,5,8,60" to [24, 81, 5, 8, 60]
     */
-  def fieldsToConvertFromMsgArrayStringToDouble: Set[String]
+  def fieldsToConvertToDoubleArray: Map[String, Set[String]] = Map.empty
 
   /**
     * The names of Msg fields that should be renamed.
@@ -53,12 +53,12 @@ sealed trait V2FConstants {
   /**
     * The names of Msg fields that should be removed.
     */
-  def fieldsToRemove: Set[String]
+  def fieldsToRemove: Set[String] = Set.empty
 
   /**
     * The names of Msg fields that should be extracted to there own Msg.
     */
-  def variantFieldsToExtract: Set[String]
+  def variantFieldsToExtract: Set[String] = Set.empty
 }
 
 case object FrequencyAnalysis extends V2FConstants {
@@ -74,12 +74,6 @@ case object FrequencyAnalysis extends V2FConstants {
   override def fieldsToConvertToMsgLong: Set[String] = Set(
     "position"
   )
-
-  override def fieldsToConvertToMsgBoolean: Set[String] = Set.empty
-
-  override def fieldsToConvertToMsgArray: Map[String, Set[String]] = Map.empty
-
-  override def fieldsToConvertFromMsgArrayStringToDouble: Set[String] = Set.empty
 
   override def fieldsToRename: Map[String, String] = Map("var_id" -> "variant_id")
 
@@ -105,12 +99,6 @@ case object MetaAnalysisAncestrySpecific extends V2FConstants {
     "n",
     "position"
   )
-
-  override def fieldsToConvertToMsgBoolean: Set[String] = Set.empty
-
-  override def fieldsToConvertToMsgArray: Map[String, Set[String]] = Map.empty
-
-  override def fieldsToConvertFromMsgArrayStringToDouble: Set[String] = Set.empty
 
   override def fieldsToRename: Map[String, String] = Map("var_id" -> "variant_id")
 
@@ -140,10 +128,6 @@ case object MetaAnalysisTransEthnic extends V2FConstants {
 
   override def fieldsToConvertToMsgBoolean: Set[String] = Set("top")
 
-  override def fieldsToConvertToMsgArray: Map[String, Set[String]] = Map.empty
-
-  override def fieldsToConvertFromMsgArrayStringToDouble: Set[String] = Set.empty
-
   override def fieldsToRename: Map[String, String] = Map("var_id" -> "variant_id")
 
   override def fieldsToRemove: Set[String] =
@@ -158,25 +142,15 @@ case object VariantEffectRegulatoryFeatureConsequences extends V2FConstants {
 
   override def filePath: String = "variant-effect/regulatory-feature-consequences"
 
-  override def fieldsToConvertToMsgDouble: Set[String] = Set.empty
-
-  override def fieldsToConvertToMsgLong: Set[String] = Set.empty
-
   override def fieldsToConvertToMsgBoolean: Set[String] = Set(
     "pick"
   )
 
-  override def fieldsToConvertToMsgArray: Map[String, Set[String]] = Map(
+  override def fieldsToConvertToStringArray: Map[String, Set[String]] = Map(
     "," -> Set("consequence_terms")
   )
 
-  override def fieldsToConvertFromMsgArrayStringToDouble: Set[String] = Set.empty
-
   override def fieldsToRename: Map[String, String] = Map("id" -> "variant_id")
-
-  override def fieldsToRemove: Set[String] = Set.empty
-
-  override def variantFieldsToExtract: Set[String] = Set.empty
 }
 
 case object VariantEffectTranscriptConsequences extends V2FConstants {
@@ -259,7 +233,7 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
     "pick"
   )
 
-  override def fieldsToConvertToMsgArray: Map[String, Set[String]] = Map(
+  override def fieldsToConvertToStringArray: Map[String, Set[String]] = Map(
     "," -> Set(
       "consequence_terms",
       "fathmm_pred",
@@ -286,15 +260,19 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
     )
   )
 
-  override def fieldsToConvertFromMsgArrayStringToDouble: Set[String] = Set(
+  override def fieldsToConvertToDoubleArray: Map[String, Set[String]] = Map(
+    "," -> Set(
     "mutationtaster_score",
-    "siphy_29_way_pi",
     "vest_3_score",
     "polyphen_2_hdiv_score",
     "polyphen_2_hvar_score",
     "sift_score",
     "fathmm_score",
     "provean_score"
+    ),
+    ":" -> Set(
+      "siphy_29_way_pi"
+    )
   )
 
   override def fieldsToRename: Map[String, String] = Map(
@@ -303,8 +281,4 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
     "gerp++_rs_rankscore" -> "gerp_plus_plus_rs_rankscore",
     "id" -> "variant_id"
   )
-
-  override def fieldsToRemove: Set[String] = Set.empty
-
-  override def variantFieldsToExtract: Set[String] = Set.empty
 }
