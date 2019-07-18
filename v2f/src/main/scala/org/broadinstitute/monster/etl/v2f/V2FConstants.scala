@@ -48,7 +48,7 @@ sealed trait V2FConstants {
     * The names of Msg fields that should be renamed.
     * e.g: "kobe": "Bryant" to "Kobe": "Bryant"
     */
-  def fieldsToRename: Map[String, String]
+  def fieldsToRename: Map[String, String] = Map.empty
 
   /**
     * The names of Msg fields that should be removed.

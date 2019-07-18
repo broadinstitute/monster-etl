@@ -125,7 +125,7 @@ object ExtractionPipeline {
         metaAnalysisAncestrySpecificJsonAndFilePaths
       )
 
-    val variantMergedJson =
+    val variantMergedMsg =
       V2FExtractionsAndTransforms.mergeVariantMsgs(
         List(
           frequencyAnalysisVariantJsonAndFilePaths,
@@ -137,35 +137,42 @@ object ExtractionPipeline {
     // save the extracted and transformed Msgs
     writeToDisk(
       frequencyAnalysisTransformedJsonAndFilePaths,
+      FrequencyAnalysis.tableName,
       filePath = FrequencyAnalysis.filePath,
       parsedArgs.outputDir
     )
 
     writeToDisk(
       variantEffectTranscriptConsequencesTransformedJsonAndFilePaths,
+      VariantEffectTranscriptConsequences.tableName,
       filePath = VariantEffectTranscriptConsequences.filePath,
       parsedArgs.outputDir
     )
 
     writeToDisk(
       metaAnalysisAncestrySpecificTransformedJsonAndFilePaths,
+      MetaAnalysisAncestrySpecific.tableName,
       filePath = MetaAnalysisAncestrySpecific.filePath,
       parsedArgs.outputDir
     )
 
     writeToDisk(
       metaAnalysisTransEthnicTransformedJsonAndFilePaths,
+      MetaAnalysisTransEthnic.tableName,
       filePath = MetaAnalysisTransEthnic.filePath,
       parsedArgs.outputDir
     )
 
     writeToDisk(
       variantEffectRegulatoryFeatureConsequencesTransformedJsonAndFilePaths,
+      VariantEffectRegulatoryFeatureConsequences.tableName,
       filePath = VariantEffectRegulatoryFeatureConsequences.filePath,
       parsedArgs.outputDir
     )
 
-    variantMergedJson.saveAsJsonFile(
+    MsgIO.writeJsonLists(
+      variantMergedMsg,
+      "Variants",
       s"${parsedArgs.outputDir}/variants"
     )
 
@@ -177,21 +184,20 @@ object ExtractionPipeline {
   /**
     *  Write all the converted and transformed Msg Objects to disk.
     *
-    * @param msgAndFilePaths the collection of Msg Objects and associated file paths that will be saved as a Msg file
+    * @param msgAndFilePaths the collection of Msg Objects and associated file paths that will be saved as a JSON file
     * @param filePath File pattern matching TSVs to process within the V2F analysis directory
-    * @param outputDir the root outputs directory where the Msg file(s) will be saved
+    * @param outputDir the root outputs directory where the JSON file(s) will be saved
     */
   def writeToDisk(
     msgAndFilePaths: SCollection[(String, Msg)],
+    description: String,
     filePath: String,
     outputDir: String
   ): Unit = {
-    msgAndFilePaths.map {
-      case (_, msgObj) =>
-        msgObj
-    }.saveAsJsonFile(
-      s"$outputDir/$filePath"
-    )
+    MsgIO.writeJsonLists(
+      msgAndFilePaths.map { case (_, msgObj) => msgObj},
+      description,
+      s"$outputDir/$filePath")
     ()
   }
 }
