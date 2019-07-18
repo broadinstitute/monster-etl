@@ -69,7 +69,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
 
     val removed =
-      MsgTransformations.removeFields(List("foo"))(input)
+      MsgTransformations.removeFields(Set("foo"))(input)
 
     removed shouldBe Obj(
       Str("foobar") -> Int32(123),
@@ -85,7 +85,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
 
     val removed =
-      MsgTransformations.removeFields(List("foo", "derp"))(input)
+      MsgTransformations.removeFields(Set("foo", "derp"))(input)
 
     removed shouldBe Obj(
       Str("foobar") -> Int32(123),
@@ -101,13 +101,41 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
 
     val removed =
-      MsgTransformations.removeFields(List("dip", "derp"))(input)
+      MsgTransformations.removeFields(Set("dip", "derp"))(input)
 
     removed shouldBe Obj(
       Str("foo") -> Str("bar"),
       Str("foobar") -> Int32(123),
       Str("baz") -> Arr(Str("qux"), Float64(1.23))
     )
+  }
+
+  // extractFields
+  it should "keep fields in object messages" in {
+    val input = Obj(
+      Str("foo") -> Str("bar"),
+      Str("foobar") -> Int32(123),
+      Str("baz") -> Arr(Str("qux"), Float64(1.23))
+    )
+
+    val extracted =
+      MsgTransformations.extractFields(Set("foo"))(input)
+
+    extracted shouldBe Obj(
+      Str("foo") -> Str("bar")
+    )
+  }
+
+  it should "throw an exception if none of the fields-to-extract are present" in {
+    val input = Obj(
+      Str("foo") -> Str("bar"),
+      Str("foobar") -> Int32(123),
+      Str("baz") -> Arr(Str("qux"), Float64(1.23))
+    )
+
+    an[Exception] shouldBe thrownBy {
+      MsgTransformations.extractFields(Set("dip", "derp"))(input)
+    }
   }
 
   // collectFields
@@ -121,7 +149,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
 
     val collected =
-      MsgTransformations.collectFields(List("a", "b", "c"), "e")(input)
+      MsgTransformations.collectFields(Set("a", "b", "c"), "e")(input)
 
     collected shouldBe Obj(
       Str("e") -> Arr(Int32(100), Int32(101), Int32(102)),
@@ -140,7 +168,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
 
     val collected =
-      MsgTransformations.collectFields(List("b", "a", "d", "c"), "e")(input)
+      MsgTransformations.collectFields(Set("b", "a", "d", "c"), "e")(input)
 
     collected shouldBe Obj(
       Str("e") -> Arr(Int32(101), Int32(100), Int32(103), Int32(102)),
@@ -158,7 +186,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
 
     val collected =
-      MsgTransformations.collectFields(List("a", "b", "g", "h"), "i")(input)
+      MsgTransformations.collectFields(Set("a", "b", "g", "h"), "i")(input)
 
     collected shouldBe Obj(
       Str("i") -> Arr(Int32(100), Int32(101)),
@@ -178,7 +206,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
 
     val collected =
-      MsgTransformations.collectFields(List("e", "f", "g", "h"), "i")(input)
+      MsgTransformations.collectFields(Set("e", "f", "g", "h"), "i")(input)
 
     collected shouldBe Obj(
       Str("a") -> Int32(100),
@@ -202,7 +230,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
 
     val concatenated =
       MsgTransformations.concatFields(
-        List("first", "second", "third"),
+        Set("first", "second", "third"),
         "concatenated",
         ";"
       )(input)
@@ -225,7 +253,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
 
     val concatenated =
       MsgTransformations.concatFields(
-        List("second", "third", "first"),
+        Set("second", "third", "first"),
         "concatenated",
         ";"
       )(input)
@@ -245,7 +273,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
 
     an[Exception] shouldBe thrownBy {
-      MsgTransformations.concatFields(List("foo", "oops"), "combined", ":")(input)
+      MsgTransformations.concatFields(Set("foo", "oops"), "combined", ":")(input)
     }
   }
 

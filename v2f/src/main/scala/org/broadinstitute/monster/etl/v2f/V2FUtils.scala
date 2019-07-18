@@ -11,7 +11,7 @@ import com.spotify.scio.values.SCollection
 import io.circe.{Json, JsonObject}
 import org.apache.beam.sdk.io.FileIO
 import org.apache.beam.sdk.io.FileIO.ReadableFile
-import org.broadinstitute.monster.etl.UpackMsgCoder
+import org.broadinstitute.monster.etl.{MsgTransformations, UpackMsgCoder}
 import upack._
 
 import scala.util.Try
@@ -39,34 +39,6 @@ object V2FUtils {
     context.wrap {
       context.pipeline.apply(FileIO.`match`().filepattern(tsvPath))
     }.applyTransform[ReadableFile](FileIO.readMatches())
-
-  /**
-    * Given the ReadableFile that contains TSVs convert each TSV to json and get is filepath.
-    *
-    * @param tableName the name of the TSV table that was converted to JSON
-    */
-  def tsvToJson(
-    tableName: String
-  ): SCollection[ReadableFile] => SCollection[(String, JsonObject)] =
-    _.transform(s"Convert $tableName TSVs to JSON") { collection =>
-      collection.flatMap { file =>
-        Channels
-          .newInputStream(file.open())
-          .autoClosed
-          .apply { path =>
-            implicit val format: CSVFormat = new TSVFormat {}
-            val reader = CSVReader.open(new InputStreamReader(path))
-            reader.allWithHeaders().map { map =>
-              val jsonObj = JsonObject.fromMap(map.collect {
-                case (key, value) if value != "" =>
-                  (camelCaseToSnakeCase(key), value.trim)
-              }.mapValues(Json.fromString))
-              val filePath = file.getMetadata.resourceId.getCurrentDirectory.toString
-              (filePath, jsonObj)
-            }
-          }
-      }
-    }
 
   /**
     * Given the SCollection of ReadableFiles that contains TSVs convert each TSV to a Msg and get its filepath.
@@ -99,27 +71,6 @@ object V2FUtils {
           }
       }
     }
-
-  /**
-    * Converts a string in camel case format to a string in snake case format using regex, replaces - with _'s, and puts underscores before and after every number.
-    *
-    * @param string the string being converted
-    */
-  def camelCaseToSnakeCase(string: String): String = {
-    string
-      .replace(
-        "-",
-        "_"
-      )
-      .replaceAll(
-        "([A-Z]+)([A-Z][a-z])",
-        "$1_$2"
-      )
-      .replaceAll("([a-z\\d])([A-Z])", "$1_$2")
-      .replaceAll("([a-z])([\\d])", "$1_$2")
-      .replaceAll("([\\d])([a-z])", "$1_$2")
-      .toLowerCase
-  }
 
   // the pattern of where the ancestryID is located in the tsv path
   // e.g: gs://path/to/metaanalysis/ancestry-specific/phenotype/ancestry=ancestryID/file
@@ -236,17 +187,6 @@ object V2FUtils {
   }
 
   /**
-    * Converts a JSON String to a JSON Boolean.
-    *
-    * @param fieldName the field name of the json value being converted
-    * @param json the json value being converted
-    */
-  def jsonStringToJsonBoolean(fieldName: String, json: Json): Json = {
-    val jsonStr = jsonStringToString(fieldName, json)
-    Json.fromBoolean(jsonStr == "1" || jsonStr == "true")
-  }
-
-  /**
     * Converts a JSON String to a JSON Array of Strings by splitting the JSON String with a delimiter.
     *
     * @param delimeter the string (regex matching) that splits the json value/string into a json array
@@ -277,88 +217,22 @@ object V2FUtils {
     }
 
   /**
-    * Renames JSON fields in a collection of JSON Objects.
+    * Extracts variant Msg fields from a collection of Msg Objects and outputs a new Msg Object with those fields.
     *
-    * @param tableName the name of the TSV table that was converted to JSON
-    * @param fieldsToRename the map of Json Fields to be renamed (old, new)
-    */
-  def renameFields(
-    tableName: String,
-    fieldsToRename: Map[String, String]
-  ): SCollection[(String, JsonObject)] => SCollection[(String, JsonObject)] = {
-    _.transform(s"Renaming fields in $tableName JSONs") { collection =>
-      collection.map {
-        case (filePath, jsonObj) =>
-          fieldsToRename.foldLeft((filePath, jsonObj)) {
-            case ((currentFilePath, currentJsonObj), (oldFieldName, newFieldName)) =>
-              val renamedJsonObj = currentJsonObj
-                .apply(oldFieldName)
-                .fold(currentJsonObj) { jsonValue =>
-                  currentJsonObj.add(newFieldName, jsonValue).remove(oldFieldName)
-                }
-              (currentFilePath, renamedJsonObj)
-          }
-      }
-    }
-  }
-
-  /**
-    * Extracts variant JSON fields from a collection of JSON Objects and outputs a new JSON Object with those fields.
-    *
-    * @param tableName the name of the TSV table that was converted to JSON
-    * @param variantFieldNames the lists of Json Fields names to be extracted
+    * @param tableName the name of the TSV table that was converted to Msg
+    * @param variantFieldNames the lists of Msg Fields names to be extracted
     */
   def extractVariantFields(
     tableName: String,
     variantFieldNames: Set[String]
-  ): SCollection[(String, JsonObject)] => SCollection[(String, JsonObject)] = {
+  ): SCollection[(String, Msg)] => SCollection[(String, Msg)] = {
     _.transform(s"Extracting variant fields from $tableName") { collection =>
       collection.map {
-        case (filePath, jsonObj) =>
-          filePath -> JsonObject.fromMap(
-            variantFieldNames
-              .foldLeft(Map.empty[String, String]) {
-                case (currentMap, currentVariantFieldName) =>
-                  val currentVariantFieldValue = jsonObj
-                    .apply(currentVariantFieldName)
-                    .fold(
-                      throw new Exception(
-                        s"extractVariantFields: error when getting variant $currentVariantFieldName from $tableName's JSON"
-                      )
-                    ) { jsonValue =>
-                      jsonStringToString(currentVariantFieldName, jsonValue)
-                    }
-                  val updatedMap =
-                    currentMap.updated(currentVariantFieldName, currentVariantFieldValue)
-                  val variantId = updatedMap.get("id").fold(currentVariantFieldValue) {
-                    currentVariantId =>
-                      s"$currentVariantId:$currentVariantFieldValue"
-                  }
-                  updatedMap.updated("id", variantId)
-              }
-              .mapValues(Json.fromString)
-          )
-      }
-    }
-  }
-
-  /**
-    * Removes JSON fields from a collection of JSON Objects.
-    *
-    * @param tableName the name of the TSV table that was converted to JSON
-    * @param fieldNamesToRemove the lists of Json Fields to be removed
-    */
-  def removeFields(
-    tableName: String,
-    fieldNamesToRemove: List[String]
-  ): SCollection[(String, JsonObject)] => SCollection[(String, JsonObject)] = {
-    _.transform(s"Removing fields from $tableName") { collection =>
-      collection.map {
-        case (filePath, jsonObj) =>
-          filePath -> fieldNamesToRemove.foldLeft(jsonObj) {
-            case (currentJsonObj, currentVariantFieldName) =>
-              currentJsonObj.remove(currentVariantFieldName)
-          }
+        case (filePath, msgObj) =>
+          // extract fields
+          val withExtractedFields =
+            MsgTransformations.extractFields(variantFieldNames)(msgObj)
+          (filePath, withExtractedFields)
       }
     }
   }

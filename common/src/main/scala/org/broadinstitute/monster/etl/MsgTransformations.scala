@@ -61,17 +61,44 @@ object MsgTransformations {
   }
 
   /**
-    * Aggregate the values of a list of fields into a single array field
+    * Extract the key-value pairs of a message for a given field.
+    *
+    * Keys not included in the fields input are left out.
+    *
+    * If none of the fields to extract are present in the message,
+    * throw an exception.
+    */
+  def extractFields(fields: Set[String])(msg: Msg): Msg = {
+    val toRet = Obj()
+    val underlying = toRet.obj
+    fields.foreach { field =>
+      if (msg.obj.keySet.contains(Str(field))) {
+        msg.obj.get(Str(field)).foreach { value =>
+          underlying.put(Str(field), value)
+        }
+      }
+    }
+    if (toRet.obj.isEmpty) {
+      throw new Exception(
+        s"Failed to extract fields, none of the fields to extract are present"
+      )
+    } else {
+      toRet
+    }
+  }
+
+  /**
+    * Aggregate the values of a Set of fields into a single array field
     * with a string key.
     *
     * Values in the collected array will appear in the same order as their
     * corresponding field names in the input to this method. Keys not included
-    * in the collection list are left in the message as-is.
+    * in the collection Set are left in the message as-is.
     *
     * If a field-to-collect is missing from the message, the transformation
     * continues (as opposed to throwing an exception).
     */
-  def collectFields(fields: List[String], collectedName: String)(msg: Msg): Msg = {
+  def collectFields(fields: Set[String], collectedName: String)(msg: Msg): Msg = {
     val toRet = upack.copy(msg)
     val underlying = toRet.obj
     val buf = Arr()
@@ -86,18 +113,18 @@ object MsgTransformations {
   }
 
   /**
-    * Aggregate the values of a list of fields into a single string field,
+    * Aggregate the values of a Set of fields into a single string field,
     * separated by a delimiter, with a string key.
     *
     * Aggregated values must be strings, and will appear in the same order
     * as their corresponding field names in the input to this method. Keys
-    * not included in the concatenation list are left in the message as-is.
+    * not included in the concatenation Set are left in the message as-is.
     *
     * If a field-to-concat is missing from the message, the transformation
     * will throw an exception.
     */
   def concatFields(
-    fields: List[String],
+    fields: Set[String],
     concatName: String,
     sep: String
   )(msg: Msg): Msg = {

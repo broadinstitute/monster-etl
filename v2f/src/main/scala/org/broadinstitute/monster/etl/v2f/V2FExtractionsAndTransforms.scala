@@ -39,26 +39,26 @@ object V2FExtractionsAndTransforms {
   }
 
   /**
-    * Extracts variant JSON fields from a collection of JSON Objects and transforms selected field(s) from String to Long.
+    * Extracts variant Msg fields from a collection of Msg Objects and transforms selected field(s) from String to Long.
     *
     * @param v2fConstant the type of tsv(s) that will be extracted and converted to Json
-    * @param jsonAndFilePaths tthe collection of JSON Objects and associated file paths that will be extracted and then transformed
+    * @param msgAndFilePaths tthe collection of Msg Objects and associated file paths that will be extracted and then transformed
     */
   def extractAndTransformVariants(
     v2fConstant: V2FConstants,
-    jsonAndFilePaths: SCollection[(String, JsonObject)]
-  ): SCollection[(String, JsonObject)] = {
+    msgAndFilePaths: SCollection[(String, Msg)]
+  ): SCollection[(String, Msg)] = {
     // extract the variant fields from the input JSON
     val variantEffectJsonAndFilePaths =
       V2FUtils.extractVariantFields(
         v2fConstant.tableName,
         v2fConstant.variantFieldsToExtract
-      )(jsonAndFilePaths)
+      )(msgAndFilePaths)
 
     // convert position from string to long
     V2FUtils.convertJsonFieldsValueType(
       v2fConstant.tableName,
-      v2fConstant.fieldsToConvertToJsonLong,
+      v2fConstant.fieldsToConvertToMsgLong,
       V2FUtils.jsonStringToJsonLong
     )(variantEffectJsonAndFilePaths)
   }
@@ -70,8 +70,8 @@ object V2FExtractionsAndTransforms {
     */
   def transform(
     v2fConstant: V2FConstants
-  ): SCollection[(String, Msg)] => SCollection[(String, Msg)] = { jsonAndFilePaths =>
-    jsonAndFilePaths.map {
+  ): SCollection[(String, Msg)] => SCollection[(String, Msg)] = { msgAndFilePaths =>
+    msgAndFilePaths.map {
       case (path, msg) =>
         val withSnakeCase = MsgTransformations.keysToSnakeCase(msg)
         // rename fields
@@ -82,28 +82,26 @@ object V2FExtractionsAndTransforms {
           MsgTransformations.removeFields(v2fConstant.fieldsToRemove)(withRenamedFields)
         // convert fields from string to double
         val withDoubles = MsgTransformations.parseDoubles(
-          v2fConstant.fieldsToConvertToJsonDouble
+          v2fConstant.fieldsToConvertToMsgDouble
         )(withRemovedFields)
         // convert fields from string to long
         val withLongs = MsgTransformations.parseLongs(
-          v2fConstant.fieldsToConvertToJsonLong
+          v2fConstant.fieldsToConvertToMsgLong
         )(withDoubles)
         // convert fields from string to boolean
         val withBooleans = MsgTransformations.parseBooleans(
-          v2fConstant.fieldsToConvertToJsonBoolean
+          v2fConstant.fieldsToConvertToMsgBoolean
         )(withLongs)
         // convert to arrays, then convert fields to double
         MsgTransformations.parseDoubleArrays(
-          v2fConstant.fieldsToConvertToJsonBoolean,
-          ","
+          v2fConstant.fieldsToConvertToMsgArray._2,
+          v2fConstant.fieldsToConvertToMsgArray._1
         )(withBooleans)
     }
 
-    // remove the given fields from the
-
     // then convert given fields to json arrays
     val transformedArraysJsonAndFilePaths =
-      v2fConstant.fieldsToConvertToJsonArray.foldLeft(
+      v2fConstant.fieldsToConvertToMsgArray.foldLeft(
         transformedBooleansJsonAndFilePaths
       ) {
         case (currentTransformedJsonAndFilePaths, currentfieldsToConvertToJsonArray) =>
@@ -119,7 +117,7 @@ object V2FExtractionsAndTransforms {
     // then convert given fields of the array from json strings to json double
     V2FUtils.convertJsonFieldsValueType(
       v2fConstant.tableName,
-      v2fConstant.fieldsToConvertFromJsonArrayStringToDouble,
+      v2fConstant.fieldsToConvertFromMsgArrayStringToDouble,
       V2FUtils.convertJsonArrayStringToDouble
     )(transformedArraysJsonAndFilePaths)
   }
