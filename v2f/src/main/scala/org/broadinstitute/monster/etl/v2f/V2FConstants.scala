@@ -262,13 +262,13 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
 
   override def fieldsToConvertToDoubleArray: Map[String, Set[String]] = Map(
     "," -> Set(
-    "mutationtaster_score",
-    "vest_3_score",
-    "polyphen_2_hdiv_score",
-    "polyphen_2_hvar_score",
-    "sift_score",
-    "fathmm_score",
-    "provean_score"
+      "mutationtaster_score",
+      "vest_3_score",
+      "polyphen_2_hdiv_score",
+      "polyphen_2_hvar_score",
+      "sift_score",
+      "fathmm_score",
+      "provean_score"
     ),
     ":" -> Set(
       "siphy_29_way_pi"

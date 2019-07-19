@@ -8,9 +8,10 @@ import com.github.tototoshi.csv.{CSVFormat, CSVReader, TSVFormat}
 import com.spotify.scio.ScioContext
 import com.spotify.scio.coders.Coder
 import com.spotify.scio.values.SCollection
-import io.circe.{Json, JsonObject}
+import io.circe.JsonObject
 import org.apache.beam.sdk.io.FileIO
 import org.apache.beam.sdk.io.FileIO.ReadableFile
+import org.apache.beam.sdk.io.fs.EmptyMatchTreatment
 import org.broadinstitute.monster.etl.UpackMsgCoder
 import upack._
 
@@ -36,7 +37,12 @@ object V2FUtils {
     context: ScioContext
   ): SCollection[FileIO.ReadableFile] =
     context.wrap {
-      context.pipeline.apply(FileIO.`match`().filepattern(tsvPath))
+      context.pipeline.apply(
+        FileIO
+          .`match`()
+          .filepattern(tsvPath)
+          .withEmptyMatchTreatment(EmptyMatchTreatment.ALLOW_IF_WILDCARD)
+      )
     }.applyTransform[ReadableFile](FileIO.readMatches())
 
   /**
@@ -76,18 +82,20 @@ object V2FUtils {
   val ancestryIDPattern: Regex = "\\/ancestry=([^\\/]+)\\/".r
 
   /**
-    * Adds the ancestry ID from the ReadableFile paths as a field with a key, value of "ancestry" -> ancestryID to the JSON Objects.
+    * Adds the ancestry ID from the ReadableFile paths as a field with a key, value of "ancestry" -> ancestryID to the Msg Objects.
     *
-    * @param tableName the name of the tsv table that was converted to json
+    * @param tableName the name of the tsv table that was converted to Msg
     */
   def addAncestryID(
     tableName: String
-  ): SCollection[(String, JsonObject)] => SCollection[(String, JsonObject)] = {
-    _.transform(s"Adding the ancestry ID from $tableName's tsv path to its json") {
+  ): SCollection[(String, Msg)] => SCollection[(String, Msg)] = {
+    _.transform(s"Adding the ancestry ID from $tableName's tsv path to its Msg object") {
       collection =>
         collection.map {
-          case (filePath, jsonObj) =>
-            val ancestryID = Json.fromString(
+          case (filePath, msgObj) =>
+            val toRet = upack.copy(msgObj)
+            val underlying = toRet.obj
+            val ancestryID = Str(
               ancestryIDPattern
                 .findFirstMatchIn(filePath)
                 .getOrElse(
@@ -97,8 +105,8 @@ object V2FUtils {
                 )
                 .group(1)
             )
-            val jsonObjWithAddedField = jsonObj.add("ancestry", ancestryID)
-            (filePath, jsonObjWithAddedField)
+            underlying.update(Str("ancestry"), ancestryID)
+            (filePath, toRet)
         }
     }
   }

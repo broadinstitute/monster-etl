@@ -41,18 +41,18 @@ object ExtractionPipeline {
 
     // extract and convert TSVs to Msg, transform Msg and then save Msg
     // FrequencyAnalysis
-    val frequencyAnalysisJsonAndFilePaths = V2FExtractionsAndTransforms.extractAndConvert(
+    val frequencyAnalysisMsgAndFilePaths = V2FExtractionsAndTransforms.extractAndConvert(
       FrequencyAnalysis,
       pipelineContext,
       inputDir = parsedArgs.inputDir,
       relativeFilePath = "*/*.csv"
     )
 
-    val frequencyAnalysisTransformedJsonAndFilePaths = V2FExtractionsAndTransforms
-      .transform(FrequencyAnalysis)(frequencyAnalysisJsonAndFilePaths)
+    val frequencyAnalysisTransformedMsgAndFilePaths = V2FExtractionsAndTransforms
+      .transform(FrequencyAnalysis)(frequencyAnalysisMsgAndFilePaths)
 
     // MetaAnalysisAncestrySpecific
-    val metaAnalysisAncestrySpecificJsonAndFilePaths =
+    val metaAnalysisAncestrySpecificMsgAndFilePaths =
       V2FExtractionsAndTransforms.extractAndConvert(
         MetaAnalysisAncestrySpecific,
         pipelineContext,
@@ -60,13 +60,18 @@ object ExtractionPipeline {
         relativeFilePath = "*/*/*.csv"
       )
 
-    val metaAnalysisAncestrySpecificTransformedJsonAndFilePaths =
+    val metaAnalysisAncestrySpecificTransformedMsgAndFilePaths =
       V2FExtractionsAndTransforms.transform(
         MetaAnalysisAncestrySpecific
-      )(metaAnalysisAncestrySpecificJsonAndFilePaths)
+      )(metaAnalysisAncestrySpecificMsgAndFilePaths)
+
+    val metaAnalysisAncestrySpecificTransformedMsgAndFilePathsAndAncestryID =
+      V2FUtils.addAncestryID(MetaAnalysisAncestrySpecific.tableName)(
+        metaAnalysisAncestrySpecificTransformedMsgAndFilePaths
+      )
 
     // MetaAnalysisTransEthnic
-    val metaAnalysisTransEthnicJsonAndFilePaths =
+    val metaAnalysisTransEthnicMsgAndFilePaths =
       V2FExtractionsAndTransforms.extractAndConvert(
         MetaAnalysisTransEthnic,
         pipelineContext,
@@ -74,11 +79,11 @@ object ExtractionPipeline {
         relativeFilePath = "*/*.csv"
       )
 
-    val metaAnalysisTransEthnicTransformedJsonAndFilePaths = V2FExtractionsAndTransforms
-      .transform(MetaAnalysisTransEthnic)(metaAnalysisTransEthnicJsonAndFilePaths)
+    val metaAnalysisTransEthnicTransformedMsgAndFilePaths = V2FExtractionsAndTransforms
+      .transform(MetaAnalysisTransEthnic)(metaAnalysisTransEthnicMsgAndFilePaths)
 
     // VariantEffectRegulatoryFeatureConsequences
-    val variantEffectRegulatoryFeatureConsequencesJsonAndFilePaths =
+    val variantEffectRegulatoryFeatureConsequencesMsgAndFilePaths =
       V2FExtractionsAndTransforms.extractAndConvert(
         VariantEffectRegulatoryFeatureConsequences,
         pipelineContext,
@@ -86,13 +91,13 @@ object ExtractionPipeline {
         relativeFilePath = "*.csv"
       )
 
-    val variantEffectRegulatoryFeatureConsequencesTransformedJsonAndFilePaths =
+    val variantEffectRegulatoryFeatureConsequencesTransformedMsgAndFilePaths =
       V2FExtractionsAndTransforms.transform(
         VariantEffectRegulatoryFeatureConsequences
-      )(variantEffectRegulatoryFeatureConsequencesJsonAndFilePaths)
+      )(variantEffectRegulatoryFeatureConsequencesMsgAndFilePaths)
 
     // VariantEffectTranscriptConsequences
-    val variantEffectTranscriptConsequencesJsonAndFilePaths =
+    val variantEffectTranscriptConsequencesMsgAndFilePaths =
       V2FExtractionsAndTransforms.extractAndConvert(
         VariantEffectTranscriptConsequences,
         pipelineContext,
@@ -100,70 +105,70 @@ object ExtractionPipeline {
         relativeFilePath = "*.csv"
       )
 
-    val variantEffectTranscriptConsequencesTransformedJsonAndFilePaths =
+    val variantEffectTranscriptConsequencesTransformedMsgAndFilePaths =
       V2FExtractionsAndTransforms.transform(
         VariantEffectTranscriptConsequences
-      )(variantEffectTranscriptConsequencesJsonAndFilePaths)
+      )(variantEffectTranscriptConsequencesMsgAndFilePaths)
 
     // variant Msgs
-    val frequencyAnalysisVariantJsonAndFilePaths =
+    val frequencyAnalysisVariantMsgAndFilePaths =
       V2FExtractionsAndTransforms.extractAndTransformVariants(
         FrequencyAnalysis,
-        frequencyAnalysisJsonAndFilePaths
+        frequencyAnalysisMsgAndFilePaths
       )
 
-    val metaAnalysisTransEthnicVariantJsonAndFilePaths =
+    val metaAnalysisTransEthnicVariantMsgAndFilePaths =
       V2FExtractionsAndTransforms.extractAndTransformVariants(
         MetaAnalysisTransEthnic,
-        metaAnalysisTransEthnicJsonAndFilePaths
+        metaAnalysisTransEthnicMsgAndFilePaths
       )
 
-    val metaAnalysisAncestrySpecificVariantJsonAndFilePaths =
+    val metaAnalysisAncestrySpecificVariantMsgAndFilePaths =
       V2FExtractionsAndTransforms.extractAndTransformVariants(
         MetaAnalysisAncestrySpecific,
-        metaAnalysisAncestrySpecificJsonAndFilePaths
+        metaAnalysisAncestrySpecificMsgAndFilePaths
       )
 
     val variantMergedMsg =
       V2FExtractionsAndTransforms.mergeVariantMsgs(
         List(
-          frequencyAnalysisVariantJsonAndFilePaths,
-          metaAnalysisAncestrySpecificVariantJsonAndFilePaths,
-          metaAnalysisTransEthnicVariantJsonAndFilePaths
+          frequencyAnalysisVariantMsgAndFilePaths,
+          metaAnalysisAncestrySpecificVariantMsgAndFilePaths,
+          metaAnalysisTransEthnicVariantMsgAndFilePaths
         )
       )
 
     // save the extracted and transformed Msgs
     writeToDisk(
-      frequencyAnalysisTransformedJsonAndFilePaths,
+      frequencyAnalysisTransformedMsgAndFilePaths,
       FrequencyAnalysis.tableName,
       filePath = FrequencyAnalysis.filePath,
       parsedArgs.outputDir
     )
 
     writeToDisk(
-      variantEffectTranscriptConsequencesTransformedJsonAndFilePaths,
+      variantEffectTranscriptConsequencesTransformedMsgAndFilePaths,
       VariantEffectTranscriptConsequences.tableName,
       filePath = VariantEffectTranscriptConsequences.filePath,
       parsedArgs.outputDir
     )
 
     writeToDisk(
-      metaAnalysisAncestrySpecificTransformedJsonAndFilePaths,
+      metaAnalysisAncestrySpecificTransformedMsgAndFilePathsAndAncestryID,
       MetaAnalysisAncestrySpecific.tableName,
       filePath = MetaAnalysisAncestrySpecific.filePath,
       parsedArgs.outputDir
     )
 
     writeToDisk(
-      metaAnalysisTransEthnicTransformedJsonAndFilePaths,
+      metaAnalysisTransEthnicTransformedMsgAndFilePaths,
       MetaAnalysisTransEthnic.tableName,
       filePath = MetaAnalysisTransEthnic.filePath,
       parsedArgs.outputDir
     )
 
     writeToDisk(
-      variantEffectRegulatoryFeatureConsequencesTransformedJsonAndFilePaths,
+      variantEffectRegulatoryFeatureConsequencesTransformedMsgAndFilePaths,
       VariantEffectRegulatoryFeatureConsequences.tableName,
       filePath = VariantEffectRegulatoryFeatureConsequences.filePath,
       parsedArgs.outputDir
@@ -194,9 +199,10 @@ object ExtractionPipeline {
     outputDir: String
   ): Unit = {
     MsgIO.writeJsonLists(
-      msgAndFilePaths.map { case (_, msgObj) => msgObj},
+      msgAndFilePaths.map { case (_, msgObj) => msgObj },
       description,
-      s"$outputDir/$filePath")
+      s"$outputDir/$filePath"
+    )
     ()
   }
 }
