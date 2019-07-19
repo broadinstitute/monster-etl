@@ -78,6 +78,52 @@ class V2FUtilsSpec extends PipelineSpec with Matchers {
     )
   }
 
+  // getReadableFiles
+  it should "get TSV files as ReadableFiles given a pattern match" in {
+    val fileNames = List(
+      "tsvTestFileDiffCols.txt",
+      "tsvTestFileDiffOrder.txt",
+      "tsvTestFileMissingValues.txt",
+      "tsvTestFileOriginal.txt"
+    )
+    val (_, readableFiles) = runWithLocalOutput { sc =>
+      {
+        V2FUtils
+          .getReadableFiles(
+            "src/test/scala/org/broadinstitute/monster/etl/v2f/*.txt",
+            sc
+          )
+          .map(_.getMetadata.resourceId.getFilename)
+      }
+    }
+    readableFiles should contain allElementsOf fileNames
+  }
+
+  it should "return an empty SCollection if nothing matches the pattern" in {
+    val (_, readableFiles) = runWithLocalOutput { sc =>
+      {
+        V2FUtils.getReadableFiles(
+          "src/test/scala/org/broadinstitute/monster/etl/v2f/*.foo",
+          sc
+        )
+      }
+    }
+    readableFiles shouldBe empty
+  }
+
+  it should "throw an exception if nothing matches a specific file's pattern" in {
+    an[Exception] shouldBe thrownBy {
+      runWithLocalOutput { sc =>
+        {
+          V2FUtils.getReadableFiles(
+            "src/test/scala/org/broadinstitute/monster/etl/v2f/thisfiledoesnotexist.txt",
+            sc
+          )
+        }
+      }
+    }
+  }
+
   // tsvToMsg
   it should "convert each row of the TSV in an input stream to a Msg" in {
 
@@ -133,46 +179,6 @@ class V2FUtilsSpec extends PipelineSpec with Matchers {
     out should contain allElementsOf tsvMsgOriginal
     out should contain allElementsOf tsvMsgDiffOrder
     out should contain allElementsOf tsvMsgDiffCols
-  }
-
-  // getReadableFiles
-
-  it should "get TSV files as ReadableFiles given a pattern match" in {
-    val (_, readableFiles) = runWithLocalOutput { sc =>
-      {
-        V2FUtils.getReadableFiles(
-          "src/test/scala/org/broadinstitute/monster/etl/v2f/*.txt",
-          sc
-        )
-      }
-    }
-    readableFiles
-    // I don't know how to check the contents without converting it to Msg aka replicating a test from above
-  }
-
-  it should "return an empty SCollection if nothing matches the pattern" in {
-    val (_, readableFiles) = runWithLocalOutput { sc =>
-      {
-        V2FUtils.getReadableFiles(
-          "src/test/scala/org/broadinstitute/monster/etl/v2f/*.foo",
-          sc
-        )
-      }
-    }
-    readableFiles shouldBe empty
-  }
-
-  it should "throw an exception if nothing matches a specific file's pattern" in {
-    an[Exception] shouldBe thrownBy {
-      runWithLocalOutput { sc =>
-        {
-          V2FUtils.getReadableFiles(
-            "src/test/scala/org/broadinstitute/monster/etl/v2f/thisfiledoesnotexist.txt",
-            sc
-          )
-        }
-      }
-    }
   }
 
   // addAncestryID

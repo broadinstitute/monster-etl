@@ -9,7 +9,7 @@ import com.spotify.scio.ScioContext
 import com.spotify.scio.coders.Coder
 import com.spotify.scio.values.SCollection
 import io.circe.JsonObject
-import org.apache.beam.sdk.io.FileIO
+import org.apache.beam.sdk.io.{FileIO, ReadableFileCoder}
 import org.apache.beam.sdk.io.FileIO.ReadableFile
 import org.apache.beam.sdk.io.fs.EmptyMatchTreatment
 import org.broadinstitute.monster.etl.UpackMsgCoder
@@ -24,7 +24,7 @@ object V2FUtils {
 
   implicit val jsonCoder: Coder[JsonObject] = Coder.kryo[JsonObject]
   implicit val msgCoder: Coder[Msg] = Coder.beam(new UpackMsgCoder)
-  implicit val readableFileCoder: Coder[ReadableFile] = Coder.kryo[ReadableFile]
+  implicit val readableFileCoder: Coder[ReadableFile] = Coder.beam(new ReadableFileCoder)
 
   /**
     * Given a pattern matching TSVs, get the TSVs as ReadableFiles.
