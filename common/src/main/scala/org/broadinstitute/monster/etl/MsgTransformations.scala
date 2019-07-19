@@ -29,6 +29,9 @@ object MsgTransformations {
     *
     * If an "old" key given in the rewrite map is not present in the message,
     * the transformation continues (as opposed to throwing an exception).
+    *
+    * @param fields the map of old field names to new field names in the Msg object
+    * @param msg the Msg object to transform
     */
   def renameFields(fields: Map[String, String])(msg: Msg): Msg = {
     val toRet = upack.copy(msg)
@@ -50,6 +53,9 @@ object MsgTransformations {
     *
     * If a "remove" key given in fields is not present in the message,
     * the transformation continues (as opposed to throwing an exception).
+    *
+    * @param fields the set of field names to remove from the Msg object
+    * @param msg the Msg object to transform
     */
   def removeFields(fields: Set[String])(msg: Msg): Msg = {
     val toRet = upack.copy(msg)
@@ -67,20 +73,21 @@ object MsgTransformations {
     *
     * If none of the fields to extract are present in the message,
     * throw an exception.
+    *
+    * @param fields the set of field names to extract from the Msg object
+    * @param msg the Msg object to transform
     */
   def extractFields(fields: Set[String])(msg: Msg): Msg = {
     val toRet = Obj()
     val underlying = toRet.obj
     fields.foreach { field =>
-      if (msg.obj.keySet.contains(Str(field))) {
-        msg.obj.get(Str(field)).foreach { value =>
-          underlying.put(Str(field), value)
-        }
+      msg.obj.get(Str(field)).foreach { value =>
+        underlying.put(Str(field), value)
       }
     }
     if (toRet.obj.isEmpty) {
       throw new Exception(
-        s"Failed to extract fields, none of the fields to extract are present"
+        s"Failed to extract fields, none of the fields to extract are present: $toRet"
       )
     } else {
       toRet
@@ -97,8 +104,12 @@ object MsgTransformations {
     *
     * If a field-to-collect is missing from the message, the transformation
     * continues (as opposed to throwing an exception).
+    *
+    * @param fields the list of field names to aggregate
+    * @param collectedName the field name to aggregate fields into
+    * @param msg the Msg object to transform
     */
-  def collectFields(fields: Set[String], collectedName: String)(msg: Msg): Msg = {
+  def collectFields(fields: List[String], collectedName: String)(msg: Msg): Msg = {
     val toRet = upack.copy(msg)
     val underlying = toRet.obj
     val buf = Arr()
@@ -122,9 +133,14 @@ object MsgTransformations {
     *
     * If a field-to-concat is missing from the message, the transformation
     * will throw an exception.
+    *
+    * @param fields the list of field names to aggregate
+    * @param concatName the field name to aggregate fields into
+    * @param sep delimiter by which to separate the aggregated strings
+    * @param msg the Msg object to transform
     */
   def concatFields(
-    fields: Set[String],
+    fields: List[String],
     concatName: String,
     sep: String
   )(msg: Msg): Msg = {
@@ -149,6 +165,8 @@ object MsgTransformations {
     * Our version of snake-case inserts underscores between
     * groups of numbers and groups of letters, in addition to
     * between upper- and lower-case letters.
+    *
+    * @param msg the Msg object to transform
     */
   def keysToSnakeCase(msg: Msg): Msg = {
     val toRet = Obj()
@@ -175,6 +193,10 @@ object MsgTransformations {
     *
     * If a field in the mapping set is not present in the message, the
     * transformation will continue (as opposed to throwing an exception).
+    *
+    * @param fields the set of field names with values to be mapped
+    * @param msg the Msg object to transform
+    * @param f the function to apply
     */
   private def mapFieldValues(fields: Set[String], msg: Msg)(f: String => Msg): Msg = {
     val toRet = upack.copy(msg)
@@ -201,6 +223,9 @@ object MsgTransformations {
     *
     * String values which should be considered "nan" are left to the caller
     * to define.
+    *
+    * @param strVal the string to parse
+    * @param nanValues a set defining what qualifies as nan
     */
   private def parseLong(strVal: String, nanValues: Set[String]): Msg = {
     if (nanValues.contains(strVal)) {
@@ -221,6 +246,9 @@ object MsgTransformations {
     *
     * String values which should be considered "nan" are left to the caller
     * to define.
+    *
+    * @param strVal the string to parse
+    * @param nanValues a set defining what qualifies as a nan
     */
   private def parseDouble(strVal: String, nanValues: Set[String]): Msg = {
     if (nanValues.contains(strVal)) {
@@ -235,6 +263,9 @@ object MsgTransformations {
     *
     * String values which should be considered "true" are left to the caller
     * to define.
+    *
+    * @param strVal the string to parse
+    * @param trueValues a set defining what qualifies as true
     */
   private def parseBoolean(strVal: String, trueValues: Set[String]): Msg =
     Bool(trueValues.contains(strVal))
@@ -244,6 +275,10 @@ object MsgTransformations {
     *
     * After splitting, pieces of the former string field are mapped via a caller-provided
     * function, to allow for injecting nested parsing logic.
+    *
+    * @param strVal the string to parse
+    * @param delimiter the delimiter to split the string into an array on
+    * @param subParse a function defining how to map the newly formed array
     */
   private def parseArray(
     strVal: String,
@@ -260,6 +295,10 @@ object MsgTransformations {
     * By default, any string value which can't be parsed to a number will cause
     * this transformation to fail. Callers can provide a set of string
     * values known to represent "nan" as an escape hatch.
+    *
+    * @param fields the set of field names to parse
+    * @param nanValues a set defining what qualifies as nan
+    * @param msg the Msg object to transform
     */
   def parseLongs(
     fields: Set[String],
@@ -272,6 +311,10 @@ object MsgTransformations {
     * By default, any string value which can't be parsed to a number will cause
     * this transformation to fail. Callers can provide a set of string
     * values known to represent "nan" as an escape hatch.
+    *
+    * @param fields the set of field names to parse
+    * @param nanValues a set defining what qualifies as nan
+    * @param msg the Msg object to transform
     */
   def parseDoubles(
     fields: Set[String],
@@ -283,6 +326,10 @@ object MsgTransformations {
     *
     * By default, only the string "true" is considered true. Callers can
     * provide an alternate set of string values which should map to a true value.
+    *
+    * @param fields the set of field names to parse
+    * @param trueValues a set defining what qualifies as true
+    * @param msg the Msg object to transform
     */
   def parseBooleans(
     fields: Set[String],
@@ -293,6 +340,10 @@ object MsgTransformations {
     * Convert the values of a set of fields in a message to string arrays.
     *
     * The delimiter used to split the string values must be the same across the given fields.
+    *
+    * @param fields the set of fields to transform to string arrays
+    * @param delimiter the delimiter used to split the string values
+    * @param msg the Msg object to transform
     */
   def parseStringArrays(fields: Set[String], delimiter: String)(msg: Msg): Msg =
     mapFieldValues(fields, msg)(parseArray(_, delimiter, Str))
@@ -303,6 +354,11 @@ object MsgTransformations {
     * The delimiter used to split the string values must be the same across the given fields.
     * Callers can provide a set of white-listed strings which will be converted to "nan"
     * instead of tripping an exception.
+    *
+    * @param fields the set of fields to transform to string arrays
+    * @param delimiter the delimiter used to split the string values
+    * @param nanValues a set defining what qualifies as nan
+    * @param msg the Msg object to transform
     */
   def parseLongArrays(
     fields: Set[String],
@@ -317,6 +373,11 @@ object MsgTransformations {
     * The delimiter used to split the string values must be the same across the given fields.
     * Callers can provide a set of white-listed strings which will be converted to "nan"
     * instead of tripping an exception.
+    *
+    * @param fields the set of fields to transform to string arrays
+    * @param delimiter the delimiter used to split the string values
+    * @param nanValues a set defining what qualifies as nan
+    * @param msg the Msg object to transform
     */
   def parseDoubleArrays(
     fields: Set[String],

@@ -60,6 +60,15 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
   }
 
+  it should "continue if there is no data to rename" in {
+    val input = Obj()
+
+    val renamed =
+      MsgTransformations.renameFields(Map("abc" -> "xyz", "lol" -> "haha"))(input)
+
+    renamed shouldBe Obj()
+  }
+
   // removeFields
   it should "remove fields in object messages" in {
     val input = Obj(
@@ -69,10 +78,9 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
 
     val removed =
-      MsgTransformations.removeFields(Set("foo"))(input)
+      MsgTransformations.removeFields(Set("foo", "foobar"))(input)
 
     removed shouldBe Obj(
-      Str("foobar") -> Int32(123),
       Str("baz") -> Arr(Str("qux"), Float64(1.23))
     )
   }
@@ -110,6 +118,14 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
   }
 
+  it should "continue if there is no data to remove" in {
+    val input = Obj()
+
+    val removed =
+      MsgTransformations.removeFields(Set("dip", "derp"))(input)
+
+    removed shouldBe Obj()
+  }
   // extractFields
   it should "keep fields in object messages" in {
     val input = Obj(
@@ -119,10 +135,11 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
 
     val extracted =
-      MsgTransformations.extractFields(Set("foo"))(input)
+      MsgTransformations.extractFields(Set("foo", "foobar"))(input)
 
     extracted shouldBe Obj(
-      Str("foo") -> Str("bar")
+      Str("foo") -> Str("bar"),
+      Str("foobar") -> Int32(123)
     )
   }
 
@@ -132,6 +149,14 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
       Str("foobar") -> Int32(123),
       Str("baz") -> Arr(Str("qux"), Float64(1.23))
     )
+
+    an[Exception] shouldBe thrownBy {
+      MsgTransformations.extractFields(Set("dip", "derp"))(input)
+    }
+  }
+
+  it should "throw an exception if no data is present" in {
+    val input = Obj()
 
     an[Exception] shouldBe thrownBy {
       MsgTransformations.extractFields(Set("dip", "derp"))(input)
@@ -149,7 +174,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
 
     val collected =
-      MsgTransformations.collectFields(Set("a", "b", "c"), "e")(input)
+      MsgTransformations.collectFields(List("a", "b", "c"), "e")(input)
 
     collected shouldBe Obj(
       Str("e") -> Arr(Int32(100), Int32(101), Int32(102)),
@@ -168,7 +193,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
 
     val collected =
-      MsgTransformations.collectFields(Set("b", "a", "d", "c"), "e")(input)
+      MsgTransformations.collectFields(List("b", "a", "d", "c"), "e")(input)
 
     collected shouldBe Obj(
       Str("e") -> Arr(Int32(101), Int32(100), Int32(103), Int32(102)),
@@ -186,7 +211,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
 
     val collected =
-      MsgTransformations.collectFields(Set("a", "b", "g", "h"), "i")(input)
+      MsgTransformations.collectFields(List("a", "b", "g", "h"), "i")(input)
 
     collected shouldBe Obj(
       Str("i") -> Arr(Int32(100), Int32(101)),
@@ -206,7 +231,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
 
     val collected =
-      MsgTransformations.collectFields(Set("e", "f", "g", "h"), "i")(input)
+      MsgTransformations.collectFields(List("e", "f", "g", "h"), "i")(input)
 
     collected shouldBe Obj(
       Str("a") -> Int32(100),
@@ -216,6 +241,15 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
       Str("z") -> Int32(200),
       Str("i") -> Arr()
     )
+  }
+
+  it should "continue if there is no data to collect" in {
+    val input = Obj()
+
+    val collected =
+      MsgTransformations.collectFields(List("e", "f", "g", "h"), "i")(input)
+
+    collected shouldBe Obj(Str("i") -> Arr())
   }
 
   // concatFields
@@ -230,7 +264,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
 
     val concatenated =
       MsgTransformations.concatFields(
-        Set("first", "second", "third"),
+        List("first", "second", "third"),
         "concatenated",
         ";"
       )(input)
@@ -253,7 +287,7 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
 
     val concatenated =
       MsgTransformations.concatFields(
-        Set("second", "third", "first"),
+        List("second", "third", "first"),
         "concatenated",
         ";"
       )(input)
@@ -273,7 +307,15 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
 
     an[Exception] shouldBe thrownBy {
-      MsgTransformations.concatFields(Set("foo", "oops"), "combined", ":")(input)
+      MsgTransformations.concatFields(List("foo", "oops"), "combined", ":")(input)
+    }
+  }
+
+  it should "fail if there is no data to concatenate" in {
+    val input = Obj()
+
+    an[Exception] shouldBe thrownBy {
+      MsgTransformations.concatFields(List("foo", "oops"), "combined", ":")(input)
     }
   }
 

@@ -8,7 +8,6 @@ import com.github.tototoshi.csv.{CSVFormat, CSVReader, TSVFormat}
 import com.spotify.scio.ScioContext
 import com.spotify.scio.coders.Coder
 import com.spotify.scio.values.SCollection
-import io.circe.JsonObject
 import org.apache.beam.sdk.io.{FileIO, ReadableFileCoder}
 import org.apache.beam.sdk.io.FileIO.ReadableFile
 import org.apache.beam.sdk.io.fs.EmptyMatchTreatment
@@ -22,7 +21,6 @@ import scala.util.matching.Regex
   */
 object V2FUtils {
 
-  implicit val jsonCoder: Coder[JsonObject] = Coder.kryo[JsonObject]
   implicit val msgCoder: Coder[Msg] = Coder.beam(new UpackMsgCoder)
   implicit val readableFileCoder: Coder[ReadableFile] = Coder.beam(new ReadableFileCoder)
 
@@ -95,17 +93,15 @@ object V2FUtils {
           case (filePath, msgObj) =>
             val toRet = upack.copy(msgObj)
             val underlying = toRet.obj
-            val ancestryID = Str(
-              ancestryIDPattern
-                .findFirstMatchIn(filePath)
-                .getOrElse(
-                  throw new Exception(
-                    s"addAncestryID: error when finding ancestry ID from $tableName tsv path, ($filePath), using $ancestryIDPattern as a pattern"
-                  )
+            val ancestryID = ancestryIDPattern
+              .findFirstMatchIn(filePath)
+              .getOrElse(
+                throw new Exception(
+                  s"addAncestryID: error when finding ancestry ID from $tableName tsv path, ($filePath), using $ancestryIDPattern as a pattern"
                 )
-                .group(1)
-            )
-            underlying.update(Str("ancestry"), ancestryID)
+              )
+              .group(1)
+            underlying.update(Str("ancestry"), Str(ancestryID))
             (filePath, toRet)
         }
     }

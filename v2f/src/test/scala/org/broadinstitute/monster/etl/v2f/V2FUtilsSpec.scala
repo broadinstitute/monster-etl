@@ -99,6 +99,29 @@ class V2FUtilsSpec extends PipelineSpec with Matchers {
     readableFiles should contain allElementsOf fileNames
   }
 
+  it should "get TSV files as ReadableFiles given a subdirectory pattern match" in {
+    val fileNames = List(
+      "tsvTestFileDiffCols.txt",
+      "tsvTestFileDiffOrder.txt",
+      "tsvTestFileMissingValues.txt",
+      "tsvTestFileOriginal.txt"
+    )
+    val (_, readableFiles) = runWithLocalOutput { sc =>
+      {
+        V2FUtils
+        // double glob without a slash works to cut through multiple directories
+        // so */* would look for a file with a / in its name, which is not what we want
+        // therefore, we use **.txt
+          .getReadableFiles(
+            "src/test/scala/org/broadinstitute/monster/etl/**.txt",
+            sc
+          )
+          .map(_.getMetadata.resourceId.getFilename)
+      }
+    }
+    readableFiles should contain allElementsOf fileNames
+  }
+
   it should "return an empty SCollection if nothing matches the pattern" in {
     val (_, readableFiles) = runWithLocalOutput { sc =>
       {

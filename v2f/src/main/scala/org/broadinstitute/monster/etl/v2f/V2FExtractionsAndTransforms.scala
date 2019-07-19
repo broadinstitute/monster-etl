@@ -3,13 +3,11 @@ package org.broadinstitute.monster.etl.v2f
 import com.spotify.scio.ScioContext
 import com.spotify.scio.coders.Coder
 import com.spotify.scio.values.SCollection
-import io.circe.JsonObject
 import org.broadinstitute.monster.etl.{MsgTransformations, UpackMsgCoder}
 import upack.{Msg, Str}
 
 object V2FExtractionsAndTransforms {
 
-  implicit val jsonCoder: Coder[JsonObject] = Coder.kryo[JsonObject]
   implicit val msgCoder: Coder[Msg] = Coder.beam(new UpackMsgCoder)
 
   /**
