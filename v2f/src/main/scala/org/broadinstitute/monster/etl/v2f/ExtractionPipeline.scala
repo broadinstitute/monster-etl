@@ -1,20 +1,18 @@
 package org.broadinstitute.monster.etl.v2f
 
 import caseapp.{AppName, AppVersion, HelpMessage, ProgName}
-import com.spotify.scio.ContextAndArgs
+import com.spotify.scio.{ContextAndArgs, BuildInfo => _, io => _}
 import com.spotify.scio.coders.Coder
 import com.spotify.scio.values.SCollection
-import com.spotify.scio.{BuildInfo => _, io => _}
-import io.circe.JsonObject
 import org.broadinstitute.monster.etl._
-import com.spotify.scio.extra.json._
+import upack.Msg
 
 /**
   * ETL workflow for converting and transforming TSVs from V2F.
   */
 object ExtractionPipeline {
 
-  implicit val jsonCoder: Coder[JsonObject] = Coder.kryo[JsonObject]
+  implicit val msgCoder: Coder[Msg] = Coder.beam(new UpackMsgCoder)
 
   @AppName("V2F Extraction Pipeline")
   @AppVersion(BuildInfo.version)
@@ -33,52 +31,56 @@ object ExtractionPipeline {
   )
 
   /**
-    * Convert V2F TSVs to JSON and performing transformations for ingest into the Data Repository.
+    * Convert V2F TSVs to Msg and performing transformations for ingest into the Data Repository.
     */
   def main(rawArgs: Array[String]): Unit = {
     val (pipelineContext, parsedArgs) = ContextAndArgs.typed[Args](rawArgs)
 
-    // extract and convert TSVs to JSON, transform JSON and then save JSON
+    // extract and convert TSVs to Msg, transform Msg and then save Msg
     // FrequencyAnalysis
-    val frequencyAnalysisJsonAndFilePaths = V2FExtractionsAndTransforms.extractAndConvert(
+    val faExtractedAndConverted = V2FExtractionsAndTransforms.extractAndConvert(
       FrequencyAnalysis,
       pipelineContext,
       inputDir = parsedArgs.inputDir,
-      relativeFilePath = "*/*.csv"
+      relativeFilePath = "**.csv"
     )
 
-    val frequencyAnalysisTransformedJsonAndFilePaths = V2FExtractionsAndTransforms
-      .transform(frequencyAnalysisJsonAndFilePaths, FrequencyAnalysis)
+    val faTransformed = V2FExtractionsAndTransforms
+      .transform(FrequencyAnalysis)(faExtractedAndConverted)
 
     // MetaAnalysisAncestrySpecific
-    val metaAnalysisAncestrySpecificJsonAndFilePaths =
+    val maasExtractedAndConverted =
       V2FExtractionsAndTransforms.extractAndConvert(
         MetaAnalysisAncestrySpecific,
         pipelineContext,
         inputDir = parsedArgs.inputDir,
-        relativeFilePath = "*/*/*.csv"
+        relativeFilePath = "***.csv"
       )
 
-    val metaAnalysisAncestrySpecificTransformedJsonAndFilePaths =
+    val maasTransformed =
       V2FExtractionsAndTransforms.transform(
-        metaAnalysisAncestrySpecificJsonAndFilePaths,
         MetaAnalysisAncestrySpecific
+      )(maasExtractedAndConverted)
+
+    val maasTransformedAndAncestryID =
+      V2FUtils.addAncestryID(MetaAnalysisAncestrySpecific.tableName)(
+        maasTransformed
       )
 
     // MetaAnalysisTransEthnic
-    val metaAnalysisTransEthnicJsonAndFilePaths =
+    val mateExtractedAndConverted =
       V2FExtractionsAndTransforms.extractAndConvert(
         MetaAnalysisTransEthnic,
         pipelineContext,
         inputDir = parsedArgs.inputDir,
-        relativeFilePath = "*/*.csv"
+        relativeFilePath = "**.csv"
       )
 
-    val metaAnalysisTransEthnicTransformedJsonAndFilePaths = V2FExtractionsAndTransforms
-      .transform(metaAnalysisTransEthnicJsonAndFilePaths, MetaAnalysisTransEthnic)
+    val mateTransformed = V2FExtractionsAndTransforms
+      .transform(MetaAnalysisTransEthnic)(mateExtractedAndConverted)
 
     // VariantEffectRegulatoryFeatureConsequences
-    val variantEffectRegulatoryFeatureConsequencesJsonAndFilePaths =
+    val verfcExtractedAndConverted =
       V2FExtractionsAndTransforms.extractAndConvert(
         VariantEffectRegulatoryFeatureConsequences,
         pipelineContext,
@@ -86,14 +88,13 @@ object ExtractionPipeline {
         relativeFilePath = "*.csv"
       )
 
-    val variantEffectRegulatoryFeatureConsequencesTransformedJsonAndFilePaths =
+    val verfcTransformed =
       V2FExtractionsAndTransforms.transform(
-        variantEffectRegulatoryFeatureConsequencesJsonAndFilePaths,
         VariantEffectRegulatoryFeatureConsequences
-      )
+      )(verfcExtractedAndConverted)
 
     // VariantEffectTranscriptConsequences
-    val variantEffectTranscriptConsequencesJsonAndFilePaths =
+    val vetcExtractedAndConverted =
       V2FExtractionsAndTransforms.extractAndConvert(
         VariantEffectTranscriptConsequences,
         pipelineContext,
@@ -101,72 +102,78 @@ object ExtractionPipeline {
         relativeFilePath = "*.csv"
       )
 
-    val variantEffectTranscriptConsequencesTransformedJsonAndFilePaths =
+    val vetcTransformed =
       V2FExtractionsAndTransforms.transform(
-        variantEffectTranscriptConsequencesJsonAndFilePaths,
         VariantEffectTranscriptConsequences
-      )
+      )(vetcExtractedAndConverted)
 
-    // variant JSONs
-    val frequencyAnalysisVariantJsonAndFilePaths =
+    // variant Msgs
+    val faVariants =
       V2FExtractionsAndTransforms.extractAndTransformVariants(
         FrequencyAnalysis,
-        frequencyAnalysisJsonAndFilePaths
+        faExtractedAndConverted
       )
 
-    val metaAnalysisTransEthnicVariantJsonAndFilePaths =
+    val mateVariants =
       V2FExtractionsAndTransforms.extractAndTransformVariants(
         MetaAnalysisTransEthnic,
-        metaAnalysisTransEthnicJsonAndFilePaths
+        mateExtractedAndConverted
       )
 
-    val metaAnalysisAncestrySpecificVariantJsonAndFilePaths =
+    val maasVariants =
       V2FExtractionsAndTransforms.extractAndTransformVariants(
         MetaAnalysisAncestrySpecific,
-        metaAnalysisAncestrySpecificJsonAndFilePaths
+        maasExtractedAndConverted
       )
 
-    val variantMergedJson =
-      V2FExtractionsAndTransforms.mergeVariantJsons(
+    val variantMergedMsg =
+      V2FExtractionsAndTransforms.mergeVariantMsgs(
         List(
-          frequencyAnalysisVariantJsonAndFilePaths,
-          metaAnalysisAncestrySpecificVariantJsonAndFilePaths,
-          metaAnalysisTransEthnicVariantJsonAndFilePaths
+          faVariants,
+          maasVariants,
+          mateVariants
         )
       )
 
-    // save the extracted and transformed JSONs
+    // save the extracted and transformed Msgs
     writeToDisk(
-      frequencyAnalysisTransformedJsonAndFilePaths,
+      faTransformed,
+      FrequencyAnalysis.tableName,
       filePath = FrequencyAnalysis.filePath,
       parsedArgs.outputDir
     )
 
     writeToDisk(
-      variantEffectTranscriptConsequencesTransformedJsonAndFilePaths,
+      vetcTransformed,
+      VariantEffectTranscriptConsequences.tableName,
       filePath = VariantEffectTranscriptConsequences.filePath,
       parsedArgs.outputDir
     )
 
     writeToDisk(
-      metaAnalysisAncestrySpecificTransformedJsonAndFilePaths,
+      maasTransformedAndAncestryID,
+      MetaAnalysisAncestrySpecific.tableName,
       filePath = MetaAnalysisAncestrySpecific.filePath,
       parsedArgs.outputDir
     )
 
     writeToDisk(
-      metaAnalysisTransEthnicTransformedJsonAndFilePaths,
+      mateTransformed,
+      MetaAnalysisTransEthnic.tableName,
       filePath = MetaAnalysisTransEthnic.filePath,
       parsedArgs.outputDir
     )
 
     writeToDisk(
-      variantEffectRegulatoryFeatureConsequencesTransformedJsonAndFilePaths,
+      verfcTransformed,
+      VariantEffectRegulatoryFeatureConsequences.tableName,
       filePath = VariantEffectRegulatoryFeatureConsequences.filePath,
       parsedArgs.outputDir
     )
 
-    variantMergedJson.saveAsJsonFile(
+    MsgIO.writeJsonLists(
+      variantMergedMsg,
+      "Variants",
       s"${parsedArgs.outputDir}/variants"
     )
 
@@ -176,21 +183,21 @@ object ExtractionPipeline {
   }
 
   /**
-    *  Write all the converted and transformed JSON Objects to disk.
+    *  Write all the converted and transformed Msg Objects to disk.
     *
-    * @param jsonAndFilePaths the collection of JSON Objects and associated file paths that will be saved as a JSON file
+    * @param msgAndFilePaths the collection of Msg Objects and associated file paths that will be saved as a JSON file
     * @param filePath File pattern matching TSVs to process within the V2F analysis directory
     * @param outputDir the root outputs directory where the JSON file(s) will be saved
     */
   def writeToDisk(
-    jsonAndFilePaths: SCollection[(String, JsonObject)],
+    msgAndFilePaths: SCollection[(String, Msg)],
+    description: String,
     filePath: String,
     outputDir: String
   ): Unit = {
-    jsonAndFilePaths.map {
-      case (_, jsonObj) =>
-        jsonObj
-    }.saveAsJsonFile(
+    MsgIO.writeJsonLists(
+      msgAndFilePaths.map { case (_, msgObj) => msgObj },
+      description,
       s"$outputDir/$filePath"
     )
     ()

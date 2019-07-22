@@ -60,6 +60,109 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
   }
 
+  it should "continue if there is no data to rename" in {
+    val input = Obj()
+
+    val renamed =
+      MsgTransformations.renameFields(Map("abc" -> "xyz", "lol" -> "haha"))(input)
+
+    renamed shouldBe Obj()
+  }
+
+  // removeFields
+  it should "remove fields in object messages" in {
+    val input = Obj(
+      Str("foo") -> Str("bar"),
+      Str("foobar") -> Int32(123),
+      Str("baz") -> Arr(Str("qux"), Float64(1.23))
+    )
+
+    val removed =
+      MsgTransformations.removeFields(Set("foo", "foobar"))(input)
+
+    removed shouldBe Obj(
+      Str("baz") -> Arr(Str("qux"), Float64(1.23))
+    )
+  }
+
+  it should "continue if a field-to-remove doesn't exist" in {
+    val input = Obj(
+      Str("foo") -> Str("bar"),
+      Str("foobar") -> Int32(123),
+      Str("baz") -> Arr(Str("qux"), Float64(1.23))
+    )
+
+    val removed =
+      MsgTransformations.removeFields(Set("foo", "derp"))(input)
+
+    removed shouldBe Obj(
+      Str("foobar") -> Int32(123),
+      Str("baz") -> Arr(Str("qux"), Float64(1.23))
+    )
+  }
+
+  it should "continue if none of the fields-to-remove exist" in {
+    val input = Obj(
+      Str("foo") -> Str("bar"),
+      Str("foobar") -> Int32(123),
+      Str("baz") -> Arr(Str("qux"), Float64(1.23))
+    )
+
+    val removed =
+      MsgTransformations.removeFields(Set("dip", "derp"))(input)
+
+    removed shouldBe Obj(
+      Str("foo") -> Str("bar"),
+      Str("foobar") -> Int32(123),
+      Str("baz") -> Arr(Str("qux"), Float64(1.23))
+    )
+  }
+
+  it should "continue if there is no data to remove" in {
+    val input = Obj()
+
+    val removed =
+      MsgTransformations.removeFields(Set("dip", "derp"))(input)
+
+    removed shouldBe Obj()
+  }
+  // extractFields
+  it should "keep fields in object messages" in {
+    val input = Obj(
+      Str("foo") -> Str("bar"),
+      Str("foobar") -> Int32(123),
+      Str("baz") -> Arr(Str("qux"), Float64(1.23))
+    )
+
+    val extracted =
+      MsgTransformations.extractFields(Set("foo", "foobar"))(input)
+
+    extracted shouldBe Obj(
+      Str("foo") -> Str("bar"),
+      Str("foobar") -> Int32(123)
+    )
+  }
+
+  it should "throw an exception if none of the fields-to-extract are present" in {
+    val input = Obj(
+      Str("foo") -> Str("bar"),
+      Str("foobar") -> Int32(123),
+      Str("baz") -> Arr(Str("qux"), Float64(1.23))
+    )
+
+    an[Exception] shouldBe thrownBy {
+      MsgTransformations.extractFields(Set("dip", "derp"))(input)
+    }
+  }
+
+  it should "throw an exception if no data is present" in {
+    val input = Obj()
+
+    an[Exception] shouldBe thrownBy {
+      MsgTransformations.extractFields(Set("dip", "derp"))(input)
+    }
+  }
+
   // collectFields
   it should "collect object fields into an array" in {
     val input = Obj(
@@ -140,6 +243,15 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
     )
   }
 
+  it should "continue if there is no data to collect" in {
+    val input = Obj()
+
+    val collected =
+      MsgTransformations.collectFields(List("e", "f", "g", "h"), "i")(input)
+
+    collected shouldBe Obj(Str("i") -> Arr())
+  }
+
   // concatFields
   it should "concatenate string fields into a single value" in {
     val input = Obj(
@@ -193,6 +305,14 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
       Str("foobar") -> Int32(123),
       Str("baz") -> Arr(Str("qux"), Float64(1.23))
     )
+
+    an[Exception] shouldBe thrownBy {
+      MsgTransformations.concatFields(List("foo", "oops"), "combined", ":")(input)
+    }
+  }
+
+  it should "fail if there is no data to concatenate" in {
+    val input = Obj()
 
     an[Exception] shouldBe thrownBy {
       MsgTransformations.concatFields(List("foo", "oops"), "combined", ":")(input)

@@ -78,6 +78,75 @@ class V2FUtilsSpec extends PipelineSpec with Matchers {
     )
   }
 
+  // getReadableFiles
+  it should "get TSV files as ReadableFiles given a pattern match" in {
+    val fileNames = List(
+      "tsvTestFileDiffCols.txt",
+      "tsvTestFileDiffOrder.txt",
+      "tsvTestFileMissingValues.txt",
+      "tsvTestFileOriginal.txt"
+    )
+    val (_, readableFiles) = runWithLocalOutput { sc =>
+      {
+        V2FUtils
+          .getReadableFiles(
+            "src/test/scala/org/broadinstitute/monster/etl/v2f/*.txt",
+            sc
+          )
+          .map(_.getMetadata.resourceId.getFilename)
+      }
+    }
+    readableFiles should contain allElementsOf fileNames
+  }
+
+  it should "get TSV files as ReadableFiles given a subdirectory pattern match" in {
+    val fileNames = List(
+      "tsvTestFileDiffCols.txt",
+      "tsvTestFileDiffOrder.txt",
+      "tsvTestFileMissingValues.txt",
+      "tsvTestFileOriginal.txt"
+    )
+    val (_, readableFiles) = runWithLocalOutput { sc =>
+      {
+        V2FUtils
+        // double glob without a slash works to cut through multiple directories
+        // so */* would look for a file with a / in its name, which is not what we want
+        // therefore, we use **.txt
+          .getReadableFiles(
+            "src/test/scala/org/broadinstitute/monster/etl/**.txt",
+            sc
+          )
+          .map(_.getMetadata.resourceId.getFilename)
+      }
+    }
+    readableFiles should contain allElementsOf fileNames
+  }
+
+  it should "return an empty SCollection if nothing matches the pattern" in {
+    val (_, readableFiles) = runWithLocalOutput { sc =>
+      {
+        V2FUtils.getReadableFiles(
+          "src/test/scala/org/broadinstitute/monster/etl/v2f/*.foo",
+          sc
+        )
+      }
+    }
+    readableFiles shouldBe empty
+  }
+
+  it should "throw an exception if nothing matches a specific file's pattern" in {
+    an[Exception] shouldBe thrownBy {
+      runWithLocalOutput { sc =>
+        {
+          V2FUtils.getReadableFiles(
+            "src/test/scala/org/broadinstitute/monster/etl/v2f/thisfiledoesnotexist.txt",
+            sc
+          )
+        }
+      }
+    }
+  }
+
   // tsvToMsg
   it should "convert each row of the TSV in an input stream to a Msg" in {
 
@@ -133,5 +202,41 @@ class V2FUtilsSpec extends PipelineSpec with Matchers {
     out should contain allElementsOf tsvMsgOriginal
     out should contain allElementsOf tsvMsgDiffOrder
     out should contain allElementsOf tsvMsgDiffCols
+  }
+
+  // addAncestryID
+  it should "add the ancestry ID from the ReadableFile paths as a field with a key -> value of 'ancestry' -> ID" in {
+    val testData = Map(
+      "gs://path/to/metaanalysis/ancestry-specific/phenotype/ancestry=ancestryID/file" -> Obj(
+        Str("field1") -> Str("val1")
+      )
+    )
+
+    val expectedOutputObj: (String, Msg) = (
+      "gs://path/to/metaanalysis/ancestry-specific/phenotype/ancestry=ancestryID/file",
+      Obj(
+        Str("field1") -> Str("val1"),
+        Str("ancestry") -> Str("ancestryID")
+      )
+    )
+
+    runWithContext { sc =>
+      val withAncestryID = V2FUtils.addAncestryID("tablename")(sc.parallelize(testData))
+      withAncestryID should haveSize(1)
+      withAncestryID should containSingleValue(expectedOutputObj)
+    }
+  }
+
+  it should "throw an exception if it cannot find the ID in the path" in {
+    val testData = Map(
+      "gs://path/to/metaanalysis/ancestry-specific/phenotype/wrongfield=ancestryID/file" -> Obj(
+        Str("field1") -> Str("val1")
+      )
+    )
+    an[Exception] shouldBe thrownBy {
+      runWithContext { sc =>
+        V2FUtils.addAncestryID("tablename")(sc.parallelize(testData))
+      }
+    }
   }
 }
