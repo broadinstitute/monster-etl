@@ -18,12 +18,17 @@ pipeline {
         }
         stage('Compile') {
             steps {
-                sh 'sbt Compile/compile Test/compile'
+                sh 'sbt Compile/compile Test/compile IntegrationTest/compile'
             }
         }
         stage('Test') {
             steps {
                 sh 'sbt test'
+            }
+        }
+        stage('Integration test') {
+            steps {
+                sh 'sbt IntegrationTest/test'
             }
         }
     }

@@ -48,9 +48,9 @@ object V2FExtractionsAndTransforms {
   def extractAndTransformVariants(
     v2fConstant: V2FConstants,
     msgAndFilePaths: SCollection[(String, Msg)]
-  ): SCollection[(String, Msg)] = {
+  ): SCollection[Msg] = {
     msgAndFilePaths.map {
-      case (path, msg) =>
+      case (_, msg) =>
         // rename fields
         val withRenamedFields =
           MsgTransformations.renameFields(v2fConstant.variantFieldsToRename)(msg)
@@ -65,7 +65,7 @@ object V2FExtractionsAndTransforms {
             withExtractedFields
           )
         // return final
-        (path, withLongs)
+        withLongs
     }
   }
 
@@ -76,9 +76,9 @@ object V2FExtractionsAndTransforms {
     */
   def transform(
     v2fConstant: V2FConstants
-  ): SCollection[(String, Msg)] => SCollection[(String, Msg)] = { msgAndFilePaths =>
+  ): SCollection[(String, Msg)] => SCollection[Msg] = { msgAndFilePaths =>
     msgAndFilePaths.map {
-      case (path, msg) =>
+      case (_, msg) =>
         // rename fields
         val withRenamedFields =
           MsgTransformations.renameFields(v2fConstant.fieldsToRename)(msg)
@@ -117,7 +117,7 @@ object V2FExtractionsAndTransforms {
               )(currentMsg)
           }
         // return final Msg
-        (path, withDoubleArrays)
+        withDoubleArrays
     }
   }
 
@@ -127,15 +127,10 @@ object V2FExtractionsAndTransforms {
     * @param variantMsgAndFilePaths a list of the collections of Msg Objects and associated file paths that will be merged and then saved as a Msg file
     */
   def mergeVariantMsgs(
-    variantMsgAndFilePaths: List[SCollection[(String, Msg)]]
+    variantMsgAndFilePaths: List[SCollection[Msg]]
   ): SCollection[Msg] = {
     SCollection
-      .unionAll(variantMsgAndFilePaths.map { collection =>
-        collection.map {
-          case (_, msgObj) =>
-            msgObj
-        }
-      })
+      .unionAll(variantMsgAndFilePaths)
       .distinctBy(_.obj.apply(Str("id")).str)
   }
 }

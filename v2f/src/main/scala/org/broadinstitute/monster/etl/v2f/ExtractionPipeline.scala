@@ -71,15 +71,14 @@ object ExtractionPipeline {
         inputDir = inputDir
       )
 
+    val maasWithAncestryID = V2FUtils.addAncestryID(
+      MetaAnalysisAncestrySpecific.tableName
+    )(maasExtractedAndConverted)
+
     val maasTransformed =
       V2FExtractionsAndTransforms.transform(
         MetaAnalysisAncestrySpecific
-      )(maasExtractedAndConverted)
-
-    val maasTransformedAndAncestryID =
-      V2FUtils.addAncestryID(MetaAnalysisAncestrySpecific.tableName)(
-        maasTransformed
-      )
+      )(maasWithAncestryID)
 
     // MetaAnalysisTransEthnic
     val mateExtractedAndConverted =
@@ -162,7 +161,7 @@ object ExtractionPipeline {
     )
 
     writeToDisk(
-      maasTransformedAndAncestryID,
+      maasTransformed,
       MetaAnalysisAncestrySpecific.tableName,
       filePath = MetaAnalysisAncestrySpecific.filePath,
       outputDir
@@ -199,13 +198,13 @@ object ExtractionPipeline {
     * @param outputDir the root outputs directory where the JSON file(s) will be saved
     */
   def writeToDisk(
-    msgAndFilePaths: SCollection[(String, Msg)],
+    msgAndFilePaths: SCollection[Msg],
     description: String,
     filePath: String,
     outputDir: String
   ): Unit = {
     MsgIO.writeJsonLists(
-      msgAndFilePaths.map { case (_, msgObj) => msgObj },
+      msgAndFilePaths,
       description,
       s"$outputDir/$filePath"
     )
