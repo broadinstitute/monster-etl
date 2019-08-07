@@ -81,7 +81,7 @@ case object FrequencyAnalysis extends V2FConstants {
     Set("chromosome", "position", "reference", "alt")
 
   override def variantFieldsToExtract: Set[String] =
-    Set("chromosome", "position", "reference", "alt")
+    Set("id", "chromosome", "position", "reference", "alt")
 }
 
 case object MetaAnalysisAncestrySpecific extends V2FConstants {
@@ -106,7 +106,7 @@ case object MetaAnalysisAncestrySpecific extends V2FConstants {
     Set("chromosome", "position", "reference", "alt")
 
   override def variantFieldsToExtract: Set[String] =
-    Set("chromosome", "position", "reference", "alt")
+    Set("id", "chromosome", "position", "reference", "alt")
 }
 
 case object MetaAnalysisTransEthnic extends V2FConstants {
@@ -134,7 +134,7 @@ case object MetaAnalysisTransEthnic extends V2FConstants {
     Set("chromosome", "position", "reference", "alt")
 
   override def variantFieldsToExtract: Set[String] =
-    Set("chromosome", "position", "reference", "alt")
+    Set("id", "chromosome", "position", "reference", "alt")
 }
 
 case object VariantEffectRegulatoryFeatureConsequences extends V2FConstants {
@@ -237,26 +237,16 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
     "," -> Set(
       "consequence_terms",
       "fathmm_pred",
-      "fathmm_score",
       "flags",
       "lof_flags",
       "mutationtaster_aae",
       "mutationtaster_model",
       "mutationtaster_pred",
-      "mutationtaster_score",
       "provean_pred",
-      "provean_score",
       "sift_pred",
-      "sift_score",
       "transcript_id_vest_3",
       "transcript_var_vest_3",
-      "vest_3_score",
-      "polyphen_2_hdiv_score",
-      "polyphen_2_hvar_score",
       "interpro_domain"
-    ),
-    ":" -> Set(
-      "siphy_29_way_pi"
     )
   )
 

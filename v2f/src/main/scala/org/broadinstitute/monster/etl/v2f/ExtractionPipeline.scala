@@ -1,7 +1,7 @@
 package org.broadinstitute.monster.etl.v2f
 
 import caseapp.{AppName, AppVersion, HelpMessage, ProgName}
-import com.spotify.scio.{ContextAndArgs, BuildInfo => _, io => _}
+import com.spotify.scio.{ContextAndArgs, ScioContext, BuildInfo => _, io => _}
 import com.spotify.scio.coders.Coder
 import com.spotify.scio.values.SCollection
 import org.broadinstitute.monster.etl._
@@ -36,12 +36,31 @@ object ExtractionPipeline {
   def main(rawArgs: Array[String]): Unit = {
     val (pipelineContext, parsedArgs) = ContextAndArgs.typed[Args](rawArgs)
 
+    val inputDir = parsedArgs.inputDir
+    val outputDir = parsedArgs.outputDir
+
     // extract and convert TSVs to Msg, transform Msg and then save Msg
     // FrequencyAnalysis
+    convertAndWrite(pipelineContext, inputDir, outputDir).close()
+    () // return Unit type
+  }
+
+  /**
+    * Convert V2F TSVs to Msg and perform necessary transformations.
+    *
+    * @param pipelineContext the ScioContext in which to run this pipeline.
+    * @param inputDir the directory from which to read data.
+    * @param outputDir the directory in which to write data.
+    */
+  def convertAndWrite(
+    pipelineContext: ScioContext,
+    inputDir: String,
+    outputDir: String
+  ): ScioContext = {
     val faExtractedAndConverted = V2FExtractionsAndTransforms.extractAndConvert(
       FrequencyAnalysis,
       pipelineContext,
-      inputDir = parsedArgs.inputDir,
+      inputDir = inputDir,
       relativeFilePath = "**.csv"
     )
 
@@ -53,7 +72,7 @@ object ExtractionPipeline {
       V2FExtractionsAndTransforms.extractAndConvert(
         MetaAnalysisAncestrySpecific,
         pipelineContext,
-        inputDir = parsedArgs.inputDir,
+        inputDir = inputDir,
         relativeFilePath = "***.csv"
       )
 
@@ -72,7 +91,7 @@ object ExtractionPipeline {
       V2FExtractionsAndTransforms.extractAndConvert(
         MetaAnalysisTransEthnic,
         pipelineContext,
-        inputDir = parsedArgs.inputDir,
+        inputDir = inputDir,
         relativeFilePath = "**.csv"
       )
 
@@ -84,7 +103,7 @@ object ExtractionPipeline {
       V2FExtractionsAndTransforms.extractAndConvert(
         VariantEffectRegulatoryFeatureConsequences,
         pipelineContext,
-        inputDir = parsedArgs.inputDir,
+        inputDir = inputDir,
         relativeFilePath = "*.csv"
       )
 
@@ -98,7 +117,7 @@ object ExtractionPipeline {
       V2FExtractionsAndTransforms.extractAndConvert(
         VariantEffectTranscriptConsequences,
         pipelineContext,
-        inputDir = parsedArgs.inputDir,
+        inputDir = inputDir,
         relativeFilePath = "*.csv"
       )
 
@@ -140,46 +159,45 @@ object ExtractionPipeline {
       faTransformed,
       FrequencyAnalysis.tableName,
       filePath = FrequencyAnalysis.filePath,
-      parsedArgs.outputDir
+      outputDir
     )
 
     writeToDisk(
       vetcTransformed,
       VariantEffectTranscriptConsequences.tableName,
       filePath = VariantEffectTranscriptConsequences.filePath,
-      parsedArgs.outputDir
+      outputDir
     )
 
     writeToDisk(
       maasTransformedAndAncestryID,
       MetaAnalysisAncestrySpecific.tableName,
       filePath = MetaAnalysisAncestrySpecific.filePath,
-      parsedArgs.outputDir
+      outputDir
     )
 
     writeToDisk(
       mateTransformed,
       MetaAnalysisTransEthnic.tableName,
       filePath = MetaAnalysisTransEthnic.filePath,
-      parsedArgs.outputDir
+      outputDir
     )
 
     writeToDisk(
       verfcTransformed,
       VariantEffectRegulatoryFeatureConsequences.tableName,
       filePath = VariantEffectRegulatoryFeatureConsequences.filePath,
-      parsedArgs.outputDir
+      outputDir
     )
 
     MsgIO.writeJsonLists(
       variantMergedMsg,
       "Variants",
-      s"${parsedArgs.outputDir}/variants"
+      s"${outputDir}/variants"
     )
 
     // waitUntilDone() throws error on failure
-    pipelineContext.close() //.waitUntilDone()
-    ()
+    pipelineContext //.waitUntilDone()
   }
 
   /**

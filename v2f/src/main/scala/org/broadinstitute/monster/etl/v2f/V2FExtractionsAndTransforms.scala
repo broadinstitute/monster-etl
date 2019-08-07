@@ -31,9 +31,7 @@ object V2FExtractionsAndTransforms {
     )
 
     // then convert tsv to msg and get the filepath
-    V2FUtils.tsvToMsg(
-      v2fConstant.tableName
-    )(readableFiles)
+    V2FUtils.tsvToMsg(v2fConstant.tableName)(readableFiles)
   }
 
   /**
@@ -48,9 +46,16 @@ object V2FExtractionsAndTransforms {
   ): SCollection[(String, Msg)] = {
     msgAndFilePaths.map {
       case (path, msg) =>
+        // change to snake case
+        val withSnakeCase = MsgTransformations.keysToSnakeCase(msg)
+        // rename fields
+        val withRenamedFields =
+          MsgTransformations.renameFields(Map("var_id" -> "id"))(withSnakeCase)
         // extract variant fields
         val withExtractedFields =
-          MsgTransformations.extractFields(v2fConstant.variantFieldsToExtract)(msg)
+          MsgTransformations.extractFields(v2fConstant.variantFieldsToExtract)(
+            withRenamedFields
+          )
         // convert to longs
         val withLongs =
           MsgTransformations.parseLongs(v2fConstant.fieldsToConvertToMsgLong)(
@@ -105,7 +110,8 @@ object V2FExtractionsAndTransforms {
             case (currentMsg, (delimeter, fields)) =>
               MsgTransformations.parseDoubleArrays(
                 fields,
-                delimeter
+                delimeter,
+                Set(".")
               )(currentMsg)
           }
         // return final Msg
@@ -128,6 +134,6 @@ object V2FExtractionsAndTransforms {
             msgObj
         }
       })
-      .distinctBy(_.obj.apply(Str("id")))
+      .distinctBy(_.obj.apply(Str("id")).str)
   }
 }
