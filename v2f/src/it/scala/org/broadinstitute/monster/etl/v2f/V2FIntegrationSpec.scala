@@ -18,8 +18,7 @@ class V2FIntegrationSpec extends PipelineSpec with Matchers with BeforeAndAfterA
 
   // the directory structure and files are created by the first test, so all we need to do is delete them afterwards
   override def afterAll(): Unit = {
-    val file = File.apply(compareDirString)
-    file.delete()
+    File.apply(compareDirString).delete()
     ()
   }
 
@@ -40,7 +39,7 @@ class V2FIntegrationSpec extends PipelineSpec with Matchers with BeforeAndAfterA
   private def createSetFromFiles(directory: File, filePattern: String): Set[Json] = {
     directory
       .glob(filePattern)
-      .flatMap { _.lineIterator }
+      .flatMap (_.lineIterator)
       .map { line =>
         val maybeParsed = io.circe.parser.parse(line)
         maybeParsed.fold(
