@@ -111,10 +111,12 @@ lazy val encode = project
 
 lazy val v2f = project
   .in(file("v2f"))
+  .configs(IntegrationTest)
   .dependsOn(common)
   .enablePlugins(BuildInfoPlugin)
   .settings(commonSettings)
   .settings(
+    Defaults.itSettings,
     libraryDependencies ++= Seq(
       "com.spotify" %% "scio-extra" % scioVersion,
       "com.github.tototoshi" %% "scala-csv" % scalaCsvVersion,
@@ -122,9 +124,10 @@ lazy val v2f = project
       "org.apache.beam" % "beam-runners-direct-java" % beamVersion % Runtime,
       "org.apache.beam" % "beam-runners-google-cloud-dataflow-java" % beamVersion % Runtime,
     ),
+    // All tests.
     libraryDependencies ++= Seq(
       "com.spotify" %% "scio-test" % scioVersion
-    ).map(_ % Test),
+    ).map(_ % s"${Test.name},${IntegrationTest.name}"),
     buildInfoKeys := Seq(version),
     buildInfoPackage := "org.broadinstitute.monster.etl"
   )

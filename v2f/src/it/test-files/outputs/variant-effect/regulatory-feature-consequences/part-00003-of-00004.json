@@ -1,0 +1,10 @@
+{"biotype":"enhancer","regulatory_feature_id":"ENSR00000000890","impact":"MODIFIER","variant_allele":"A","variant_id":"1:8230578:G:A","pick":false,"consequence_terms":["regulatory_region_variant"]}
+{"biotype":"enhancer","regulatory_feature_id":"ENSR00000100279","impact":"MODIFIER","variant_allele":"C","variant_id":"18:7369572:A:C","pick":false,"consequence_terms":["regulatory_region_variant"]}
+{"biotype":"enhancer","regulatory_feature_id":"ENSR00000002027","impact":"MODIFIER","variant_allele":"G","variant_id":"1:16505320:A:G","pick":false,"consequence_terms":["regulatory_region_variant"]}
+{"biotype":"open_chromatin_region","regulatory_feature_id":"ENSR00000005216","impact":"MODIFIER","variant_allele":"AC","variant_id":"1:40901415:ACTGTACCC:AC","pick":false,"consequence_terms":["regulatory_region_variant"]}
+{"biotype":"promoter_flanking_region","regulatory_feature_id":"ENSR00000005865","impact":"MODIFIER","variant_allele":"TTTGAACTTCG","variant_id":"1:46008538:T:TTTGAACTTCG","pick":false,"consequence_terms":["regulatory_region_variant"]}
+{"biotype":"enhancer","regulatory_feature_id":"ENSR00000024336","impact":"MODIFIER","variant_allele":"C","variant_id":"10:10873795:T:C","pick":false,"consequence_terms":["regulatory_region_variant"]}
+{"biotype":"enhancer","regulatory_feature_id":"ENSR00000026598","impact":"MODIFIER","variant_allele":"A","variant_id":"10:33418063:G:A","pick":false,"consequence_terms":["regulatory_region_variant"]}
+{"biotype":"promoter_flanking_region","regulatory_feature_id":"ENSR00000048248","impact":"MODIFIER","variant_allele":"ATGTG","variant_id":"12:6290436:ATG:ATGTG","pick":false,"consequence_terms":["regulatory_region_variant"]}
+{"biotype":"CTCF_binding_site","regulatory_feature_id":"ENSR00000360373","impact":"MODIFIER","variant_allele":"GTTCAGAAGGC","variant_id":"11:123234737:G:GTTCAGAAGGC","pick":false,"consequence_terms":["regulatory_region_variant"]}
+{"biotype":"promoter_flanking_region","regulatory_feature_id":"ENSR00000024215","impact":"MODIFIER","variant_allele":"CACACACACACACAG","variant_id":"10:8373967:C:CACACACACACACAG","pick":false,"consequence_terms":["regulatory_region_variant"]}

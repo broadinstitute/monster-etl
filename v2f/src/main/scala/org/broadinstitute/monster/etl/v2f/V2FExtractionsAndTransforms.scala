@@ -22,7 +22,7 @@ object V2FExtractionsAndTransforms {
     v2fConstant: V2FConstants,
     context: ScioContext,
     inputDir: String,
-    relativeFilePath: String
+    relativeFilePath: String = "**.csv"
   ): SCollection[(String, Msg)] = {
     // get the readable files for the given input path
     val readableFiles = V2FUtils.getReadableFiles(
@@ -31,9 +31,12 @@ object V2FExtractionsAndTransforms {
     )
 
     // then convert tsv to msg and get the filepath
-    V2FUtils.tsvToMsg(
-      v2fConstant.tableName
-    )(readableFiles)
+    V2FUtils.tsvToMsg(v2fConstant.tableName)(readableFiles).map {
+      case (path, msg) =>
+        // change to snake case
+        val withSnakeCase = MsgTransformations.keysToSnakeCase(msg)
+        (path, withSnakeCase)
+    }
   }
 
   /**
@@ -48,9 +51,14 @@ object V2FExtractionsAndTransforms {
   ): SCollection[(String, Msg)] = {
     msgAndFilePaths.map {
       case (path, msg) =>
+        // rename fields
+        val withRenamedFields =
+          MsgTransformations.renameFields(v2fConstant.variantFieldsToRename)(msg)
         // extract variant fields
         val withExtractedFields =
-          MsgTransformations.extractFields(v2fConstant.variantFieldsToExtract)(msg)
+          MsgTransformations.extractFields(v2fConstant.variantFieldsToExtract)(
+            withRenamedFields
+          )
         // convert to longs
         val withLongs =
           MsgTransformations.parseLongs(v2fConstant.fieldsToConvertToMsgLong)(
@@ -71,10 +79,9 @@ object V2FExtractionsAndTransforms {
   ): SCollection[(String, Msg)] => SCollection[(String, Msg)] = { msgAndFilePaths =>
     msgAndFilePaths.map {
       case (path, msg) =>
-        val withSnakeCase = MsgTransformations.keysToSnakeCase(msg)
         // rename fields
         val withRenamedFields =
-          MsgTransformations.renameFields(v2fConstant.fieldsToRename)(withSnakeCase)
+          MsgTransformations.renameFields(v2fConstant.fieldsToRename)(msg)
         // need to remove fields
         val withRemovedFields =
           MsgTransformations.removeFields(v2fConstant.fieldsToRemove)(withRenamedFields)
@@ -105,7 +112,8 @@ object V2FExtractionsAndTransforms {
             case (currentMsg, (delimeter, fields)) =>
               MsgTransformations.parseDoubleArrays(
                 fields,
-                delimeter
+                delimeter,
+                Set(".")
               )(currentMsg)
           }
         // return final Msg
@@ -128,6 +136,6 @@ object V2FExtractionsAndTransforms {
             msgObj
         }
       })
-      .distinctBy(_.obj.apply(Str("id")))
+      .distinctBy(_.obj.apply(Str("id")).str)
   }
 }

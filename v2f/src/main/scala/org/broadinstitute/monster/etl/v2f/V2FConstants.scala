@@ -56,9 +56,16 @@ sealed trait V2FConstants {
   def fieldsToRemove: Set[String] = Set.empty
 
   /**
-    * The names of Msg fields that should be extracted to there own Msg.
+    * The names of Msg fields that should be extracted to there own Msg. This isn't actually needed for every table,
+    * but the only ones that use this all have this same Set so it makes sense to write it only once.
     */
-  def variantFieldsToExtract: Set[String] = Set.empty
+  def variantFieldsToExtract: Set[String] =
+    Set("id", "chromosome", "position", "reference", "alt")
+
+  /**
+    * The names of Msg fields that should be renamed for variants. Same logic as the above constant.
+    */
+  def variantFieldsToRename: Map[String, String] = Map("var_id" -> "id")
 }
 
 case object FrequencyAnalysis extends V2FConstants {
@@ -78,9 +85,6 @@ case object FrequencyAnalysis extends V2FConstants {
   override def fieldsToRename: Map[String, String] = Map("var_id" -> "variant_id")
 
   override def fieldsToRemove: Set[String] =
-    Set("chromosome", "position", "reference", "alt")
-
-  override def variantFieldsToExtract: Set[String] =
     Set("chromosome", "position", "reference", "alt")
 }
 
@@ -103,9 +107,6 @@ case object MetaAnalysisAncestrySpecific extends V2FConstants {
   override def fieldsToRename: Map[String, String] = Map("var_id" -> "variant_id")
 
   override def fieldsToRemove: Set[String] =
-    Set("chromosome", "position", "reference", "alt")
-
-  override def variantFieldsToExtract: Set[String] =
     Set("chromosome", "position", "reference", "alt")
 }
 
@@ -131,9 +132,6 @@ case object MetaAnalysisTransEthnic extends V2FConstants {
   override def fieldsToRename: Map[String, String] = Map("var_id" -> "variant_id")
 
   override def fieldsToRemove: Set[String] =
-    Set("chromosome", "position", "reference", "alt")
-
-  override def variantFieldsToExtract: Set[String] =
     Set("chromosome", "position", "reference", "alt")
 }
 
@@ -237,26 +235,16 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
     "," -> Set(
       "consequence_terms",
       "fathmm_pred",
-      "fathmm_score",
       "flags",
       "lof_flags",
       "mutationtaster_aae",
       "mutationtaster_model",
       "mutationtaster_pred",
-      "mutationtaster_score",
       "provean_pred",
-      "provean_score",
       "sift_pred",
-      "sift_score",
       "transcript_id_vest_3",
       "transcript_var_vest_3",
-      "vest_3_score",
-      "polyphen_2_hdiv_score",
-      "polyphen_2_hvar_score",
       "interpro_domain"
-    ),
-    ":" -> Set(
-      "siphy_29_way_pi"
     )
   )
 

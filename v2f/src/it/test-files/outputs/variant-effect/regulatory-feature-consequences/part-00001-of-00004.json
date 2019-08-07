@@ -1,0 +1,10 @@
+{"biotype":"enhancer","regulatory_feature_id":"ENSR00000000896","impact":"MODIFIER","variant_allele":"T","variant_id":"1:8258505:C:T","pick":false,"consequence_terms":["regulatory_region_variant"]}
+{"biotype":"enhancer","regulatory_feature_id":"ENSR00000105988","impact":"MODIFIER","variant_allele":"A","variant_id":"19:3080333:G:A","pick":false,"consequence_terms":["regulatory_region_variant"]}
+{"biotype":"promoter_flanking_region","regulatory_feature_id":"ENSR00000131824","impact":"MODIFIER","variant_allele":"CTT","variant_id":"2:232277616:C:CTT","pick":false,"consequence_terms":["regulatory_region_variant"]}
+{"biotype":"promoter_flanking_region","regulatory_feature_id":"ENSR00000392348","impact":"MODIFIER","variant_allele":"CCACA","variant_id":"21:46168899:C:CCACA","pick":false,"consequence_terms":["regulatory_region_variant"]}
+{"biotype":"enhancer","regulatory_feature_id":"ENSR00000121989","impact":"MODIFIER","variant_allele":"T","variant_id":"2:113550623:TCTTGGAAGTAAATAATTTGTTTTTGACTTTACAGC:T","pick":false,"consequence_terms":["regulatory_region_variant"]}
+{"biotype":"enhancer","regulatory_feature_id":"ENSR00000023822","impact":"MODIFIER","variant_allele":"T","variant_id":"10:5338713:C:T","pick":false,"consequence_terms":["regulatory_region_variant"]}
+{"biotype":"enhancer","regulatory_feature_id":"ENSR00000026002","impact":"MODIFIER","variant_allele":"T","variant_id":"10:29024108:C:T","pick":false,"consequence_terms":["regulatory_region_variant"]}
+{"biotype":"enhancer","regulatory_feature_id":"ENSR00000353723","impact":"MODIFIER","variant_allele":"A","variant_id":"10:48477977:G:A","pick":false,"consequence_terms":["regulatory_region_variant"]}
+{"biotype":"promoter_flanking_region","regulatory_feature_id":"ENSR00000062755","impact":"MODIFIER","variant_allele":"A","variant_id":"13:50181115:AAAAAGAAAAG:A","pick":false,"consequence_terms":["regulatory_region_variant"]}
+{"biotype":"open_chromatin_region","regulatory_feature_id":"ENSR00000040174","impact":"MODIFIER","variant_allele":"ATACTATAAT","variant_id":"11:60726939:A:ATACTATAAT","pick":false,"consequence_terms":["regulatory_region_variant"]}
