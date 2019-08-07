@@ -40,16 +40,14 @@ class V2FIntegrationSpec extends PipelineSpec with Matchers with BeforeAndAfterA
   private def createSetFromFiles(directory: File, filePattern: String): Set[Json] = {
     directory
       .glob(filePattern)
-      .foldLeft(Set.empty[String]) { (currentSet, currentFile) =>
-        currentSet ++ currentFile.lineIterator.toSet
-      }
+      .flatMap { _.lineIterator }
       .map { line =>
         val maybeParsed = io.circe.parser.parse(line)
         maybeParsed.fold(
           err => throw new Exception(s"Failed to parse input line as JSON: $line", err),
           identity
         )
-      }
+      }.toSet
   }
 
   /**

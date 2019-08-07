@@ -56,9 +56,16 @@ sealed trait V2FConstants {
   def fieldsToRemove: Set[String] = Set.empty
 
   /**
-    * The names of Msg fields that should be extracted to there own Msg.
+    * The names of Msg fields that should be extracted to there own Msg. This isn't actually needed for every table,
+    * but the only ones that use this all have this same Set so it makes sense to write it only once.
     */
-  def variantFieldsToExtract: Set[String] = Set.empty
+  def variantFieldsToExtract: Set[String] =
+    Set("id", "chromosome", "position", "reference", "alt")
+
+  /**
+    * The names of Msg fields that should be renamed for variants. Same logic as the above constant.
+    */
+  def variantFieldsToRename: Map[String, String] = Map("var_id" -> "id")
 }
 
 case object FrequencyAnalysis extends V2FConstants {
@@ -79,9 +86,6 @@ case object FrequencyAnalysis extends V2FConstants {
 
   override def fieldsToRemove: Set[String] =
     Set("chromosome", "position", "reference", "alt")
-
-  override def variantFieldsToExtract: Set[String] =
-    Set("id", "chromosome", "position", "reference", "alt")
 }
 
 case object MetaAnalysisAncestrySpecific extends V2FConstants {
@@ -104,9 +108,6 @@ case object MetaAnalysisAncestrySpecific extends V2FConstants {
 
   override def fieldsToRemove: Set[String] =
     Set("chromosome", "position", "reference", "alt")
-
-  override def variantFieldsToExtract: Set[String] =
-    Set("id", "chromosome", "position", "reference", "alt")
 }
 
 case object MetaAnalysisTransEthnic extends V2FConstants {
@@ -132,9 +133,6 @@ case object MetaAnalysisTransEthnic extends V2FConstants {
 
   override def fieldsToRemove: Set[String] =
     Set("chromosome", "position", "reference", "alt")
-
-  override def variantFieldsToExtract: Set[String] =
-    Set("id", "chromosome", "position", "reference", "alt")
 }
 
 case object VariantEffectRegulatoryFeatureConsequences extends V2FConstants {

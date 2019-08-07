@@ -36,12 +36,9 @@ object ExtractionPipeline {
   def main(rawArgs: Array[String]): Unit = {
     val (pipelineContext, parsedArgs) = ContextAndArgs.typed[Args](rawArgs)
 
-    val inputDir = parsedArgs.inputDir
-    val outputDir = parsedArgs.outputDir
-
     // extract and convert TSVs to Msg, transform Msg and then save Msg
     // FrequencyAnalysis
-    convertAndWrite(pipelineContext, inputDir, outputDir).close()
+    convertAndWrite(pipelineContext, parsedArgs.inputDir, parsedArgs.outputDir).close()
     () // return Unit type
   }
 
@@ -60,8 +57,7 @@ object ExtractionPipeline {
     val faExtractedAndConverted = V2FExtractionsAndTransforms.extractAndConvert(
       FrequencyAnalysis,
       pipelineContext,
-      inputDir = inputDir,
-      relativeFilePath = "**.csv"
+      inputDir = inputDir
     )
 
     val faTransformed = V2FExtractionsAndTransforms
@@ -72,8 +68,7 @@ object ExtractionPipeline {
       V2FExtractionsAndTransforms.extractAndConvert(
         MetaAnalysisAncestrySpecific,
         pipelineContext,
-        inputDir = inputDir,
-        relativeFilePath = "***.csv"
+        inputDir = inputDir
       )
 
     val maasTransformed =
@@ -91,8 +86,7 @@ object ExtractionPipeline {
       V2FExtractionsAndTransforms.extractAndConvert(
         MetaAnalysisTransEthnic,
         pipelineContext,
-        inputDir = inputDir,
-        relativeFilePath = "**.csv"
+        inputDir = inputDir
       )
 
     val mateTransformed = V2FExtractionsAndTransforms
@@ -103,8 +97,7 @@ object ExtractionPipeline {
       V2FExtractionsAndTransforms.extractAndConvert(
         VariantEffectRegulatoryFeatureConsequences,
         pipelineContext,
-        inputDir = inputDir,
-        relativeFilePath = "*.csv"
+        inputDir = inputDir
       )
 
     val verfcTransformed =
@@ -117,8 +110,7 @@ object ExtractionPipeline {
       V2FExtractionsAndTransforms.extractAndConvert(
         VariantEffectTranscriptConsequences,
         pipelineContext,
-        inputDir = inputDir,
-        relativeFilePath = "*.csv"
+        inputDir = inputDir
       )
 
     val vetcTransformed =
@@ -196,8 +188,7 @@ object ExtractionPipeline {
       s"${outputDir}/variants"
     )
 
-    // waitUntilDone() throws error on failure
-    pipelineContext //.waitUntilDone()
+    pipelineContext
   }
 
   /**
