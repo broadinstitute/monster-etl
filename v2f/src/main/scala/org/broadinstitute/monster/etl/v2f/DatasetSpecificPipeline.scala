@@ -24,11 +24,13 @@ object DatasetSpecificPipeline {
     * parsers + help text for these args (as well as Beams' underlying options)
     */
   case class Args(
-                   @HelpMessage("Directory containing analysis files for V2F")
-                   inputDir: String,
-                   @HelpMessage("Path of directory where the processed Dataset Specific JSON should be written")
-                   outputDir: String
-                 )
+    @HelpMessage("Directory containing analysis files for V2F")
+    inputDir: String,
+    @HelpMessage(
+      "Path of directory where the processed Dataset Specific JSON should be written"
+    )
+    outputDir: String
+  )
 
   /**
     * Convert Dataset Specific JSON to Msg and performing transformations for ingest into the Data Repository.
@@ -46,66 +48,50 @@ object DatasetSpecificPipeline {
     * Convert Dataset Specific JSON to Msg and perform necessary transformations.
     *
     * @param pipelineContext the ScioContext in which to run this pipeline.
-    * @param inputDir the directory from which to read data.
-    * @param outputDir the directory in which to write data.
+    * @param inputDir        the directory from which to read data.
+    * @param outputDir       the directory in which to write data.
     */
   def convertAndWrite(
-                       pipelineContext: ScioContext,
-                       inputDir: String,
-                       outputDir: String
-                     ): ScioContext = {
-    val faExtractedAndConverted = V2FExtractionsAndTransforms.extractAndConvert(
-      FrequencyAnalysis,
-      pipelineContext,
-      inputDir = inputDir
-    )
-
-    val faTransformed = V2FExtractionsAndTransforms
-      .transform(FrequencyAnalysis)(faExtractedAndConverted)
-
-    // save the extracted and transformed Msgs
-    writeToDisk(
-      faTransformed,
-      FrequencyAnalysis.tableName,
-      filePath = FrequencyAnalysis.filePath,
-      outputDir
-    )
+    pipelineContext: ScioContext,
+    inputDir: String,
+    outputDir: String
+  ): ScioContext = {
 
     val dsaMessages = MsgIO.readJsonLists(
       pipelineContext,
       "Read Dataset Specific files",
-      "**.json"
+      s"$inputDir/${DatasetSpecificAnalysis.filePath}/**"
     )
 
-    dsaTransformed = V2FExtractionsAndTransforms.transform(DatasetSpecificAnalysis)(dsaMessages)
+    val dsaTransformed = transform(DatasetSpecificAnalysis)(dsaMessages)
 
     MsgIO.writeJsonLists(
-      variantMergedMsg,
-      "Variants",
-      s"${outputDir}/variants"
+      dsaTransformed,
+      "Dataset Specific Analysis",
+      s"$outputDir/${DatasetSpecificAnalysis.filePath}"
     )
 
     pipelineContext
   }
 
   /**
-    *  Write all the converted and transformed Msg Objects to disk.
+    * Given conversion functions, for the field names specified, the fields of a provided JSON Object are converted based on the given functions.
     *
-    * @param msgAndFilePaths the collection of Msg Objects and associated file paths that will be saved as a JSON file
-    * @param filePath File pattern matching TSVs to process within the V2F analysis directory
-    * @param outputDir the root outputs directory where the JSON file(s) will be saved
+    * @param v2fConstant the type that will be transformed
     */
-  def writeToDisk(
-                   msgAndFilePaths: SCollection[Msg],
-                   description: String,
-                   filePath: String,
-                   outputDir: String
-                 ): Unit = {
-    MsgIO.writeJsonLists(
-      msgAndFilePaths,
-      description,
-      s"$outputDir/$filePath"
-    )
-    ()
+  def transform(v2fConstant: V2FConstants): SCollection[Msg] => SCollection[Msg] = {
+    msgs =>
+      msgs.map { msg =>
+        // snake case fields
+        val withSnakeCase = MsgTransformations.keysToSnakeCase(msg)
+        // rename fields
+        val withRenamedFields =
+          MsgTransformations.renameFields(v2fConstant.fieldsToRename)(withSnakeCase)
+        // need to remove fields
+        val withRemovedFields =
+          MsgTransformations.removeFields(v2fConstant.fieldsToRemove)(withRenamedFields)
+        // return final Msg
+        withRemovedFields
+      }
   }
 }

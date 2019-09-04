@@ -278,22 +278,12 @@ case object DatasetSpecificAnalysis extends V2FConstants {
 
   override def fieldsToConvertToMsgBoolean: Set[String] = Set("multi_allelic")
 
-  override def fieldsToRename: Map[String, String] = Map(
-    "varId" -> "variant_id",
-    "multiAllelic" -> "multi_allelic"
-  )
+  override def fieldsToRename: Map[String, String] = Map("var_id" -> "variant_id")
 
   override def fieldsToRemove: Set[String] = Set(
     "chromosome",
     "position",
     "reference",
-    "alt",
-    "pValue",
-    "beta",
-    "oddsRatio",
-    "eaf",
-    "maf",
-    "stdErr",
-    "zScore"
+    "alt"
   )
 }

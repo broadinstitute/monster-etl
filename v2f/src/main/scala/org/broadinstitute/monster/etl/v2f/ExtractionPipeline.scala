@@ -193,18 +193,18 @@ object ExtractionPipeline {
   /**
     *  Write all the converted and transformed Msg Objects to disk.
     *
-    * @param msgAndFilePaths the collection of Msg Objects and associated file paths that will be saved as a JSON file
+    * @param Messages the collection of Msg Objects and associated file paths that will be saved as a JSON file
     * @param filePath File pattern matching TSVs to process within the V2F analysis directory
     * @param outputDir the root outputs directory where the JSON file(s) will be saved
     */
   def writeToDisk(
-    msgAndFilePaths: SCollection[Msg],
+    Messages: SCollection[Msg],
     description: String,
     filePath: String,
     outputDir: String
   ): Unit = {
     MsgIO.writeJsonLists(
-      msgAndFilePaths,
+      Messages,
       description,
       s"$outputDir/$filePath"
     )
