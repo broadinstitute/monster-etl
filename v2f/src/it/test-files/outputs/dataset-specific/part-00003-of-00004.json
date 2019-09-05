@@ -1,0 +1,4 @@
+{"multi_allelic":false,"dataset":"GWAS_MAGIC_eu","phenotype":"2hrG","ancestry":"EU","p_value":0.4404,"beta":-0.0153,"odds_ratio":0.9848164503467863,"eaf":null,"maf":null,"std_err":0.0198,"z_score":null,"n":15225,"variant_id":"10:100004441:G:C"}
+{"multi_allelic":false,"dataset":"GWAS_MAGIC_eu","phenotype":"2hrG","ancestry":"EU","p_value":0.2868,"beta":0.0214,"odds_ratio":1.0216306221668419,"eaf":null,"maf":null,"std_err":0.0201,"z_score":null,"n":15121,"variant_id":"10:100023957:T:G"}
+{"multi_allelic":false,"dataset":"GWAS_MAGIC_eu","phenotype":"2hrG","ancestry":"EU","p_value":0.2675,"beta":0.0269,"odds_ratio":1.0272650711198807,"eaf":null,"maf":null,"std_err":0.0243,"z_score":null,"n":15252,"variant_id":"X:77768314:T:G"}
+{"multi_allelic":false,"dataset":"GWAS_MAGIC_eu","phenotype":"2hrG","ancestry":"EU","p_value":0.7517,"beta":0.023,"odds_ratio":1.0232665395472176,"eaf":null,"maf":null,"std_err":0.0726,"z_score":null,"n":15252,"variant_id":"X:80146188:T:A"}

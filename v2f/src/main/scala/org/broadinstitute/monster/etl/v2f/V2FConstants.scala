@@ -270,3 +270,18 @@ case object VariantEffectTranscriptConsequences extends V2FConstants {
     "id" -> "variant_id"
   )
 }
+
+case object DatasetSpecificAnalysis extends V2FConstants {
+  override def tableName = "Dataset Specific Analysis"
+
+  override def filePath: String = "dataset-specific"
+
+  override def fieldsToRename: Map[String, String] = Map("var_id" -> "variant_id")
+
+  override def fieldsToRemove: Set[String] = Set(
+    "chromosome",
+    "position",
+    "reference",
+    "alt"
+  )
+}

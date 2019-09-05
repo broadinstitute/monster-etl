@@ -13,7 +13,7 @@ class V2FIntegrationSpec extends PipelineSpec with Matchers with BeforeAndAfterA
 
   private val truthDir = "v2f" / "src" / "it" / "test-files" / "outputs"
   private val compareDir = "v2f" / "src" / "it" / "test-files" / "outputs-to-compare"
-  private val inputDirString = "v2f/src/it/test-files/inputs/"
+  private val inputDirString = "v2f/src/it/test-files/inputs"
   private val compareDirString = "v2f/src/it/test-files/outputs-to-compare"
 
   // the directory structure and files are created by the first test, so all we need to do is delete them afterwards
@@ -22,9 +22,15 @@ class V2FIntegrationSpec extends PipelineSpec with Matchers with BeforeAndAfterA
     ()
   }
 
-  it should "write test data without throwing an error" in {
+  it should "write test V2F data without throwing an error" in {
     runWithRealContext(PipelineOptionsFactory.create()) { sc =>
       ExtractionPipeline.convertAndWrite(sc, inputDirString, compareDirString)
+    }.waitUntilDone()
+  }
+
+  it should "write test Dataset Specific data without throwing an error" in {
+    runWithRealContext(PipelineOptionsFactory.create()) {sc =>
+      DatasetSpecificPipeline.convertAndWrite(sc, inputDirString, compareDirString)
     }.waitUntilDone()
   }
 
@@ -58,10 +64,7 @@ class V2FIntegrationSpec extends PipelineSpec with Matchers with BeforeAndAfterA
     */
   private def compareTruthAndCompSets(filePattern: String, description: String): Unit = {
     it should description in {
-      createSetFromFiles(compareDir, filePattern) shouldBe createSetFromFiles(
-        truthDir,
-        filePattern
-      )
+      createSetFromFiles(compareDir, filePattern) shouldBe createSetFromFiles(truthDir, filePattern)
     }
   }
 
@@ -80,7 +83,8 @@ class V2FIntegrationSpec extends PipelineSpec with Matchers with BeforeAndAfterA
       "variant-effect/transcript-consequences/*.json",
       "have written the correct transcript-consequences data"
     ),
-    ("variants/*.json", "have written the correct variants data")
+    ("variants/*.json", "have written the correct variants data"),
+    ("dataset-specific/**", "have written the correct dataset specific data")
   )
 
   filePatternsAndDescriptions.foreach {
