@@ -276,8 +276,6 @@ case object DatasetSpecificAnalysis extends V2FConstants {
 
   override def filePath: String = "dataset-specific"
 
-  override def fieldsToConvertToMsgBoolean: Set[String] = Set("multi_allelic")
-
   override def fieldsToRename: Map[String, String] = Map("var_id" -> "variant_id")
 
   override def fieldsToRemove: Set[String] = Set(

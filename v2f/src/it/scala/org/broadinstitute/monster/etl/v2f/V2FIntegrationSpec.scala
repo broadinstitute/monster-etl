@@ -64,10 +64,7 @@ class V2FIntegrationSpec extends PipelineSpec with Matchers with BeforeAndAfterA
     */
   private def compareTruthAndCompSets(filePattern: String, description: String): Unit = {
     it should description in {
-      createSetFromFiles(compareDir, filePattern) shouldBe createSetFromFiles(
-        truthDir,
-        filePattern
-      )
+      createSetFromFiles(compareDir, filePattern) shouldBe createSetFromFiles(truthDir, filePattern)
     }
   }
 
@@ -87,7 +84,7 @@ class V2FIntegrationSpec extends PipelineSpec with Matchers with BeforeAndAfterA
       "have written the correct transcript-consequences data"
     ),
     ("variants/*.json", "have written the correct variants data"),
-    ("dataset-specific/*/part-*", "have written the correct dataset specific data")
+    ("dataset-specific/**", "have written the correct dataset specific data")
   )
 
   filePatternsAndDescriptions.foreach {
