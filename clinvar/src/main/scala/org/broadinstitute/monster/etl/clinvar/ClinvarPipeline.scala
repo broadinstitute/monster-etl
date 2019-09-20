@@ -66,6 +66,22 @@ object ClinvarPipeline {
     ()
   }
 
+  def getVariant(message: Msg): Option[Msg] = {
+    message.obj
+      .remove(Str("SimpleAllele"))
+      .orElse(message.obj.remove(Str("Haplotype")))
+      .orElse(message.obj.remove(Str("Genotype")))
+  }
+
+  val idKey = Str("id")
+  val vcvRef = Str("variation_archive_id")
+  val rcvRef = Str("rcv_accession_ids")
+  val varRef = Str("variation_archive_variation_id")
+  val scvRef = Str("clinical_assertion_id")
+
+  val interpretedRecord = Str("InterpretedRecord")
+  val includedRecord = Str("IncludedRecord")
+
   def splitTables(fullVcvStream: SCollection[Msg]): (
     SCollection[Msg],
     SCollection[Msg],
@@ -87,8 +103,6 @@ object ClinvarPipeline {
       )
       .withName("Split Variation Archives")
       .map { (fullVcv, ctx) =>
-        val idKey = Str("id")
-
         // Init top-level VCV info.
         val vcvObj = fullVcv.obj
         val vcvId =
@@ -101,16 +115,16 @@ object ClinvarPipeline {
         // Whatever's left behind will be re-added to the trimmed VCV to
         // preserve all information.
         val record =
-          vcvObj.get(Str("InterpretedRecord")).orElse(vcvObj.get(Str("IncludedRecord")))
-        val isInterpreted = vcvObj.contains(Str("InterpretedRecord"))
+          vcvObj.get(interpretedRecord).orElse(vcvObj.get(includedRecord))
+        val isInterpreted = vcvObj.contains(interpretedRecord)
 
         record.foreach { originalRecord =>
-          val recordCopy = upack.copy(originalRecord).obj
+          val recordCopy = upack.copy(originalRecord)
 
           // Extract and push out any RCVs in the VCV, tracking the collected IDs.
           val rcvIds = new mutable.ArrayBuffer[Msg]()
           val rcvs = for {
-            wrapper <- recordCopy.remove(Str("RCVList"))
+            wrapper <- recordCopy.obj.remove(Str("RCVList"))
             arrayOrSingle <- wrapper.obj.get(Str("RCVAccession"))
           } yield {
             arrayOrSingle match {
@@ -128,7 +142,7 @@ object ClinvarPipeline {
             rcvIds.append(id)
 
             // Link back to VCV.
-            rcvObj.update(Str("variation_archive_id"), vcvId)
+            rcvObj.update(vcvRef, vcvId)
 
             // Push to side output.
             ctx.output(rcvOut, rcv)
@@ -136,17 +150,14 @@ object ClinvarPipeline {
 
           // Extract and push archive-level variation records.
           // Variations are still nested when pushed out here.
-          val variation = recordCopy
-            .remove(Str("SimpleAllele"))
-            .orElse(recordCopy.remove(Str("Haplotype")))
-            .orElse(recordCopy.remove(Str("Genotype")))
+          val variation = getVariant(recordCopy)
 
           val variationId = variation.flatMap(_.obj.get(Str("@VariationID")))
           variation.foreach { variant =>
             val vObj = variant.obj
             // Link the variant back to the VCV and associated RCVs.
-            vObj.update(Str("variation_archive_id"), vcvId)
-            vObj.update(Str("rcv_accession_ids"), Arr(rcvIds))
+            vObj.update(vcvRef, vcvId)
+            vObj.update(rcvRef, Arr(rcvIds))
 
             // Push to side output.
             ctx.output(variationOut, variant)
@@ -154,7 +165,7 @@ object ClinvarPipeline {
 
           // Extract and push out any SCVs and SCV-level variations.
           val scvs = for {
-            wrapper <- recordCopy.remove(Str("ClinicalAssertionList"))
+            wrapper <- recordCopy.obj.remove(Str("ClinicalAssertionList"))
             arrayOrSingle <- wrapper.obj.get(Str("ClinicalAssertion"))
           } yield {
             arrayOrSingle match {
@@ -167,18 +178,15 @@ object ClinvarPipeline {
             val scvId = scvObj(Str("@ID"))
 
             // Link the SCV back to the VCV, RCVs, and top-level variant.
-            scvObj.update(Str("variation_archive_id"), vcvId)
-            scvObj.update(Str("rcv_accession_ids"), Arr(rcvIds))
-            variationId.foreach(scvObj.update(Str("variation_archive_variation_id"), _))
+            scvObj.update(vcvRef, vcvId)
+            scvObj.update(rcvRef, Arr(rcvIds))
+            variationId.foreach(scvObj.update(varRef, _))
 
             // Extract out any SCV-level variation.
-            val variation = scvObj
-              .remove(Str("SimpleAllele"))
-              .orElse(scvObj.remove(Str("Haplotype")))
-              .orElse(scvObj.remove(Str("Genotype")))
+            val variation = getVariant(scv)
             variation.foreach { variant =>
               // Link the variation back to its SCV.
-              variant.obj.update(Str("clinical_assertion_id"), scvId)
+              variant.obj.update(scvRef, scvId)
               // Push to side output.
               ctx.output(scvVariationOut, variant)
             }
@@ -187,8 +195,8 @@ object ClinvarPipeline {
             ctx.output(scvOut, scv)
           }
 
-          val recordKey = if (isInterpreted) "InterpretedRecord" else "IncludedRecord"
-          trimmedOut.update(Str(recordKey), Obj(recordCopy))
+          val recordKey = if (isInterpreted) interpretedRecord else includedRecord
+          trimmedOut.update(recordKey, recordCopy)
         }
 
         Obj(trimmedOut): Msg
