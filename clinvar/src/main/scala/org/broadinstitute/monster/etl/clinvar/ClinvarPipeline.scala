@@ -34,7 +34,14 @@ object ClinvarPipeline {
         s"${parsedArgs.inputPrefix}/VariationArchive/*.json"
       )
 
-    val (vcvs, rcvs, variations, scvs, scvVariations) = splitTables(fullArchives)
+    val (rawVcvs, rawRcvs, rawVariations, rawScvs, rawScvVariations) =
+      splitArchives(fullArchives)
+
+    val vcvs = rawVcvs.map(saveContent)
+    val rcvs = rawRcvs.map(saveContent)
+    val variations = rawVariations.map(saveContent)
+    val scvs = rawScvs.map(saveContent)
+    val scvVariations = rawScvVariations.map(saveContent)
 
     MsgIO.writeJsonLists(
       vcvs,
@@ -47,6 +54,11 @@ object ClinvarPipeline {
       s"${parsedArgs.outputPrefix}/rcv_accession"
     )
     MsgIO.writeJsonLists(
+      variations,
+      "Variation Archive Variation",
+      s"${parsedArgs.outputPrefix}/variation_archive_variation"
+    )
+    MsgIO.writeJsonLists(
       scvs,
       "SCV Combined (Clinical Assertion + Submission + Submitter)",
       s"${parsedArgs.outputPrefix}/scv_tmp"
@@ -55,11 +67,6 @@ object ClinvarPipeline {
       scvVariations,
       "SCV Clinical Assertion Variation",
       s"${parsedArgs.outputPrefix}/clinical_assertion_variation"
-    )
-    MsgIO.writeJsonLists(
-      variations,
-      "Variation Archive Variation",
-      s"${parsedArgs.outputPrefix}/variation_archive_variation"
     )
 
     pipelineContext.close()
@@ -74,6 +81,16 @@ object ClinvarPipeline {
   val parentVarsRef = Str("parent_ids")
   val scvRef = Str("clinical_assertion_id")
 
+  val generatedKeys = Set[Msg](
+    idKey,
+    vcvRef,
+    rcvRef,
+    varRef,
+    parentVarRef,
+    parentVarsRef,
+    scvRef
+  )
+
   val interpretedRecord = Str("InterpretedRecord")
   val includedRecord = Str("IncludedRecord")
 
@@ -84,7 +101,7 @@ object ClinvarPipeline {
       .orElse(message.obj.remove(Str("Genotype")))
   }
 
-  def splitTables(fullVcvStream: SCollection[Msg]): (
+  def splitArchives(fullVcvStream: SCollection[Msg]): (
     SCollection[Msg],
     SCollection[Msg],
     SCollection[Msg],
@@ -116,11 +133,7 @@ object ClinvarPipeline {
         // Fields which are destined for other tables will be stripped away.
         // Whatever's left behind will be re-added to the trimmed VCV to
         // preserve all information.
-        val record =
-          vcvObj.get(interpretedRecord).orElse(vcvObj.get(includedRecord))
-        val isInterpreted = vcvObj.contains(interpretedRecord)
-
-        record.foreach { originalRecord =>
+        def processRecord(originalRecord: Msg): Msg = {
           val recordCopy = upack.copy(originalRecord)
 
           // Extract and push out any RCVs in the VCV, tracking the collected IDs.
@@ -174,6 +187,7 @@ object ClinvarPipeline {
 
               variantId
             }
+
           val variationId = unrollVariants(recordCopy, Nil).headOption
 
           // Extract and push out any SCVs and SCV-level variations.
@@ -208,8 +222,16 @@ object ClinvarPipeline {
             ctx.output(scvOut, scv)
           }
 
-          val recordKey = if (isInterpreted) interpretedRecord else includedRecord
-          trimmedOut.update(recordKey, recordCopy)
+          recordCopy
+        }
+
+        vcvObj.foreach {
+          case (k, v) =>
+            if (k == interpretedRecord || k == includedRecord) {
+              trimmedOut.update(k, processRecord(v))
+            } else {
+              trimmedOut.update(k, v)
+            }
         }
 
         Obj(trimmedOut): Msg
@@ -222,5 +244,23 @@ object ClinvarPipeline {
       sideCtx(scvOut),
       sideCtx(scvVariationOut)
     )
+  }
+
+  def saveContent(msg: Msg): Msg = {
+    val out = new mutable.LinkedHashMap[Msg, Msg]()
+    val content = new mutable.LinkedHashMap[Msg, Msg]()
+
+    msg.obj.foreach {
+      case (k, v) =>
+        out.update(k, v)
+        if (!generatedKeys.contains(k)) {
+          content.update(k, v)
+        }
+    }
+
+    val stringContent = upack.transform(Obj(content), new ujson.StringRenderer())
+    out.update(Str("content"), Str(stringContent.toString))
+
+    Obj(out): Msg
   }
 }
