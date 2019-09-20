@@ -66,21 +66,23 @@ object ClinvarPipeline {
     ()
   }
 
+  val idKey = Str("id")
+  val vcvRef = Str("variation_archive_id")
+  val rcvRef = Str("rcv_accession_ids")
+  val varRef = Str("variation_archive_variation_id")
+  val parentVarRef = Str("parent_id")
+  val parentVarsRef = Str("parent_ids")
+  val scvRef = Str("clinical_assertion_id")
+
+  val interpretedRecord = Str("InterpretedRecord")
+  val includedRecord = Str("IncludedRecord")
+
   def getVariant(message: Msg): Option[Msg] = {
     message.obj
       .remove(Str("SimpleAllele"))
       .orElse(message.obj.remove(Str("Haplotype")))
       .orElse(message.obj.remove(Str("Genotype")))
   }
-
-  val idKey = Str("id")
-  val vcvRef = Str("variation_archive_id")
-  val rcvRef = Str("rcv_accession_ids")
-  val varRef = Str("variation_archive_variation_id")
-  val scvRef = Str("clinical_assertion_id")
-
-  val interpretedRecord = Str("InterpretedRecord")
-  val includedRecord = Str("IncludedRecord")
 
   def splitTables(fullVcvStream: SCollection[Msg]): (
     SCollection[Msg],
@@ -150,18 +152,29 @@ object ClinvarPipeline {
 
           // Extract and push archive-level variation records.
           // Variations are still nested when pushed out here.
-          val variation = getVariant(recordCopy)
+          def unrollVariants(variantWrapper: Msg, parentIds: List[Msg]): Iterable[Msg] =
+            getVariant(variantWrapper).toIterable.flatMap {
+              case Arr(vs) => vs
+              case other   => Iterable(other)
+            }.map { variant =>
+              val variantId = variant.obj(Str("@VariationID"))
+              val immediateParentId = parentIds.headOption
 
-          val variationId = variation.flatMap(_.obj.get(Str("@VariationID")))
-          variation.foreach { variant =>
-            val vObj = variant.obj
-            // Link the variant back to the VCV and associated RCVs.
-            vObj.update(vcvRef, vcvId)
-            vObj.update(rcvRef, Arr(rcvIds))
+              // Link upwards.
+              variant.obj.update(vcvRef, vcvId)
+              variant.obj.update(rcvRef, Arr(rcvIds))
+              variant.obj.update(parentVarRef, Arr(parentIds.to[mutable.ArrayBuffer]))
+              immediateParentId.foreach(variant.obj.update(parentVarsRef, _))
 
-            // Push to side output.
-            ctx.output(variationOut, variant)
-          }
+              // Continue unrolling.
+              val _ = unrollVariants(variant, variantId :: parentIds)
+
+              // Output this fully-unrolled variant.
+              ctx.output(variationOut, variant)
+
+              variantId
+            }
+          val variationId = unrollVariants(recordCopy, Nil).headOption
 
           // Extract and push out any SCVs and SCV-level variations.
           val scvs = for {
