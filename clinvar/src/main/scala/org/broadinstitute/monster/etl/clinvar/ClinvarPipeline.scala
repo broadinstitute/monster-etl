@@ -1,6 +1,7 @@
 package org.broadinstitute.monster.etl.clinvar
 
 import caseapp.{AppName, AppVersion, HelpMessage, ProgName}
+import cats.data.NonEmptyList
 import com.spotify.scio.ContextAndArgs
 import com.spotify.scio.coders.Coder
 import com.spotify.scio.values.{SCollection, SideOutput}
@@ -37,11 +38,85 @@ object ClinvarPipeline {
     val (rawVcvs, rawRcvs, rawVariations, rawScvs, rawScvVariations) =
       splitArchives(fullArchives)
 
-    val vcvs = rawVcvs.map(saveContent)
-    val rcvs = rawRcvs.map(saveContent)
-    val variations = rawVariations.map(saveContent)
-    val scvs = rawScvs.map(saveContent)
-    val scvVariations = rawScvVariations.map(saveContent)
+    val vcvs = rawVcvs.map(
+      mapFields(
+        Map(
+          NonEmptyList.of("@Accession") -> "accession",
+          NonEmptyList.of("@Version") -> "version",
+          NonEmptyList.of("@DateCreated") -> "date_created",
+          NonEmptyList.of("@DateLastUpdated") -> "date_last_updated",
+          NonEmptyList.of("@NumberOfSubmissions") -> "num_submissions",
+          NonEmptyList.of("@NumberOfSubmitters") -> "num_submitters",
+          NonEmptyList.of("RecordStatus") -> "record_status",
+          NonEmptyList.of("InterpretedRecord", "ReviewStatus") -> "review_status",
+          NonEmptyList.of("Species") -> "species",
+          NonEmptyList.of("@ReleaseDate") -> "variation_archive_release_date"
+        )
+      )
+    )
+    val rcvs = rawRcvs.map(
+      mapFields(
+        Map(
+          NonEmptyList.of("@Accession") -> "accession",
+          NonEmptyList.of("@Version") -> "version",
+          NonEmptyList.of("@Title") -> "title",
+          NonEmptyList.of("@DateLastEvaluated") -> "date_last_evaluated",
+          NonEmptyList.of("@ReviewStatus") -> "review_status",
+          NonEmptyList.of("@Interpretation") -> "interpretation",
+          NonEmptyList.of("@SubmissionCount") -> "submission_count",
+          NonEmptyList.of("@independentObservations") -> "independent_observations"
+        )
+      )
+    )
+    val variations = rawVariations.map(
+      mapFields(
+        Map(
+          NonEmptyList.of("@VariationID") -> "id",
+          NonEmptyList.of("Name") -> "name",
+          NonEmptyList.of("VariantType") -> "variation_type",
+          NonEmptyList.of("@AlleleID") -> "allele_id",
+          NonEmptyList.of("ProteinChange") -> "protein_change",
+          NonEmptyList.of("@NumberOfChromosomes") -> "num_chromosomes",
+          NonEmptyList.of("@NumberOfCopies") -> "num_copies"
+        )
+      )
+    )
+    val scvs = rawScvs.map(
+      mapFields(
+        Map(
+          NonEmptyList.of("@ID") -> "id",
+          NonEmptyList.of("@DateCreated") -> "date_created",
+          NonEmptyList.of("@DateLastUpdated") -> "date_last_updated",
+          NonEmptyList.of("RecordStatus") -> "record_status",
+          NonEmptyList.of("ReviewStatus") -> "review_status",
+          NonEmptyList.of("@SubmissionDate") -> "submission_date",
+          NonEmptyList.of("ClinVarAccession", "@Accession") -> "accession",
+          NonEmptyList.of("ClinVarAccession", "@Version") -> "version",
+          NonEmptyList.of("ClinVarAccession", "@Type") -> "assertion_type",
+          NonEmptyList.of("ClinVarAccession", "@OrgID") -> "org_id",
+          NonEmptyList.of("ClinVarAccession", "@SubmitterName") -> "submitter_name",
+          NonEmptyList.of("ClinVarAccession", "@OrganizationCategory") -> "org_category",
+          NonEmptyList.of("ClinVarAccession", "@OrgAbbreviation") -> "org_abbrev",
+          NonEmptyList.of("ClinVarSubmissionID", "@title") -> "title",
+          NonEmptyList.of("ClinVarSubmissionID", "@localKey") -> "local_key",
+          NonEmptyList
+            .of("ClinVarSubmissionID", "@submittedAssembly") -> "submitted_assembly",
+          NonEmptyList.of("Interpretation", "Description") -> "interp_description",
+          NonEmptyList
+            .of("Interpretation", "@DateLastEvaluated") -> "interp_date_last_evaluated",
+          NonEmptyList.of("Interpretation", "Comment", "$") -> "interp_comment",
+          NonEmptyList.of("Interpretation", "Comment", "@Type") -> "interp_comment_type"
+        )
+      )
+    )
+    val scvVariations = rawScvVariations.map(
+      mapFields(
+        Map(
+          NonEmptyList.of("@ID") -> "id",
+          NonEmptyList.of("VariantType") -> "variation_type"
+        )
+      )
+    )
 
     MsgIO.writeJsonLists(
       vcvs,
@@ -246,19 +321,41 @@ object ClinvarPipeline {
     )
   }
 
-  def saveContent(msg: Msg): Msg = {
+  def drillDown(msg: Msg, fieldChain: List[String]): Option[Msg] =
+    fieldChain match {
+      case Nil => Some(msg)
+      case f :: fs =>
+        msg match {
+          case Arr(msgs) =>
+            Some(Arr(msgs.flatMap(drillDown(_, fs))))
+          case Obj(props) =>
+            props.get(Str(f)).flatMap(drillDown(_, fs))
+          case _ => None
+        }
+    }
+
+  def mapFields(mappings: Map[NonEmptyList[String], String])(msg: Msg): Msg = {
     val out = new mutable.LinkedHashMap[Msg, Msg]()
     val content = new mutable.LinkedHashMap[Msg, Msg]()
 
     msg.obj.foreach {
       case (k, v) =>
-        out.update(k, v)
-        if (!generatedKeys.contains(k)) {
+        // Track original fields in the 'content' block.
+        if (generatedKeys.contains(k)) {
+          out.update(k, v)
+        } else {
           content.update(k, v)
+        }
+
+        mappings.foreach {
+          case (chain, newName) =>
+            if (Str(chain.head) == k) {
+              drillDown(v, chain.tail).foreach(out.update(Str(newName), _))
+            }
         }
     }
 
-    val stringContent = upack.transform(Obj(content), new ujson.StringRenderer())
+    val stringContent = upack.transform(Obj(content), ujson.StringRenderer())
     out.update(Str("content"), Str(stringContent.toString))
 
     Obj(out): Msg
