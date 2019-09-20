@@ -118,6 +118,52 @@ object ClinvarPipeline {
       )
     )
 
+    val (clinicalAssertions, submitters, submissions) = {
+      val submitterOut = SideOutput[Msg]
+      val submissionOut = SideOutput[Msg]
+
+      val (main, side) = scvs.withSideOutputs(submitterOut, submissionOut).map {
+        (scv, ctx) =>
+          val scvObj = scv.obj
+          val newScv = new mutable.LinkedHashMap[Msg, Msg]()
+
+          val scvId = scvObj(idKey)
+          val orgId = scvObj(Str("org_id"))
+          val submitDate = scvObj(Str("submission_date"))
+          val submissionId = s"${orgId.str}.${submitDate.str}"
+
+          val submitter = new mutable.LinkedHashMap[Msg, Msg]()
+          val submission = new mutable.LinkedHashMap[Msg, Msg]()
+
+          // Set and link IDs
+          newScv.update(idKey, scvId)
+          submitter.update(idKey, orgId)
+          submission.update(idKey, Str(submissionId))
+          submitter.update(scvRef, scvId)
+          submission.update(scvRef, scvId)
+          submission.update(Str("submitter_id"), orgId)
+
+          // Fill in other properties
+          val submitterFields =
+            Set("submitter_name", "org_category", "org_abbrev").map(Str)
+          val droppedFields = Set("org_id", "submissionDate").map(Str)
+          (scvObj.keySet -- submitterFields -- droppedFields).foreach { k =>
+            scvObj.get(k).foreach(newScv.update(k, _))
+          }
+          submitterFields.foreach { k =>
+            scvObj.get(k).foreach(submitter.update(k, _))
+          }
+          submission.update(Str("submission_date"), submitDate)
+
+          // Push outputs.
+          ctx.output(submitterOut, Obj(submitter): Msg)
+          ctx.output(submissionOut, Obj(submission): Msg)
+          Obj(newScv): Msg
+      }
+
+      (main, side(submitterOut), side(submissionOut))
+    }
+
     MsgIO.writeJsonLists(
       vcvs,
       "VCV",
@@ -134,9 +180,19 @@ object ClinvarPipeline {
       s"${parsedArgs.outputPrefix}/variation_archive_variation"
     )
     MsgIO.writeJsonLists(
-      scvs,
-      "SCV Combined (Clinical Assertion + Submission + Submitter)",
-      s"${parsedArgs.outputPrefix}/scv_tmp"
+      clinicalAssertions,
+      "SCV Clinical Assertion",
+      s"${parsedArgs.outputPrefix}/clinical_assertion"
+    )
+    MsgIO.writeJsonLists(
+      submitters,
+      "SCV Submitters",
+      s"${parsedArgs.outputPrefix}/submitter"
+    )
+    MsgIO.writeJsonLists(
+      submissions,
+      "SCV Submissions",
+      s"${parsedArgs.outputPrefix}/submission"
     )
     MsgIO.writeJsonLists(
       scvVariations,
