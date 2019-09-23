@@ -2,10 +2,10 @@ package org.broadinstitute.monster.etl.encode
 
 import caseapp._
 import com.spotify.scio.coders.Coder
-import com.spotify.scio.{BuildInfo => _, io => _, _}
+import com.spotify.scio.{io => _, _}
 import com.spotify.scio.extra.json._
 import io.circe.JsonObject
-import org.broadinstitute.monster.etl._
+import org.broadinstitute.monster.EncodeBuildInfo
 import org.broadinstitute.monster.etl.encode.transforms._
 
 /**
@@ -19,7 +19,7 @@ object EncodeIngest {
   implicit val jsonCoder: Coder[JsonObject] = Coder.kryo[JsonObject]
 
   @AppName("ENCODE Ingest")
-  @AppVersion(BuildInfo.version)
+  @AppVersion(EncodeBuildInfo.version)
   @ProgName("org.broadinstitute.monster.etl.encode.EncodeIngest")
   /**
     * Command-line arguments for the ETL workflow.
