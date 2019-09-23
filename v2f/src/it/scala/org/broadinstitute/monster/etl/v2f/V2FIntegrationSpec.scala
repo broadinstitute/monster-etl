@@ -29,7 +29,7 @@ class V2FIntegrationSpec extends PipelineSpec with Matchers with BeforeAndAfterA
   }
 
   it should "write test Dataset Specific data without throwing an error" in {
-    runWithRealContext(PipelineOptionsFactory.create()) {sc =>
+    runWithRealContext(PipelineOptionsFactory.create()) { sc =>
       DatasetSpecificPipeline.convertAndWrite(sc, inputDirString, compareDirString)
     }.waitUntilDone()
   }
@@ -45,14 +45,15 @@ class V2FIntegrationSpec extends PipelineSpec with Matchers with BeforeAndAfterA
   private def createSetFromFiles(directory: File, filePattern: String): Set[Json] = {
     directory
       .glob(filePattern)
-      .flatMap (_.lineIterator)
+      .flatMap(_.lineIterator)
       .map { line =>
         val maybeParsed = io.circe.parser.parse(line)
         maybeParsed.fold(
           err => throw new Exception(s"Failed to parse input line as JSON: $line", err),
           identity
         )
-      }.toSet
+      }
+      .toSet
   }
 
   /**
@@ -64,7 +65,10 @@ class V2FIntegrationSpec extends PipelineSpec with Matchers with BeforeAndAfterA
     */
   private def compareTruthAndCompSets(filePattern: String, description: String): Unit = {
     it should description in {
-      createSetFromFiles(compareDir, filePattern) shouldBe createSetFromFiles(truthDir, filePattern)
+      createSetFromFiles(compareDir, filePattern) shouldBe createSetFromFiles(
+        truthDir,
+        filePattern
+      )
     }
   }
 
