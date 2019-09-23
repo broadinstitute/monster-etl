@@ -385,4 +385,15 @@ object MsgTransformations {
     nanValues: Set[String] = Set.empty
   )(msg: Msg): Msg =
     mapFieldValues(fields, msg)(parseArray(_, delimiter, parseDouble(_, nanValues)))
+
+  def ensureArrays(fields: Set[String])(msg: Msg): Msg = {
+    val copy = upack.copy(msg)
+    fields.foreach { field =>
+      copy.obj.get(Str(field)).foreach {
+        case Arr(_) => ()
+        case other  => copy.obj.update(Str(field), Arr(other))
+      }
+    }
+    copy
+  }
 }

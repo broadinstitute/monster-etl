@@ -8,7 +8,7 @@ import com.spotify.scio.ContextAndArgs
 import com.spotify.scio.coders.Coder
 import com.spotify.scio.values.{SCollection, SideOutput}
 import org.broadinstitute.monster.ClinvarBuildInfo
-import org.broadinstitute.monster.etl.{MsgIO, UpackMsgCoder}
+import org.broadinstitute.monster.etl.{MsgIO, MsgTransformations, UpackMsgCoder}
 import upack._
 
 import scala.collection.mutable
@@ -40,80 +40,111 @@ object ClinvarPipeline {
     val (rawVcvs, rawRcvs, rawVariations, rawScvs, rawScvVariations) =
       splitArchives(fullArchives)
 
-    val vcvs = rawVcvs.map(
-      mapFields(
-        Map(
-          NonEmptyList.of("@Accession") -> "accession",
-          NonEmptyList.of("@Version") -> "version",
-          NonEmptyList.of("@DateCreated") -> "date_created",
-          NonEmptyList.of("@DateLastUpdated") -> "date_last_updated",
-          NonEmptyList.of("@NumberOfSubmissions") -> "num_submissions",
-          NonEmptyList.of("@NumberOfSubmitters") -> "num_submitters",
-          NonEmptyList.of("RecordStatus") -> "record_status",
-          NonEmptyList.of("InterpretedRecord", "ReviewStatus") -> "review_status",
-          NonEmptyList.of("Species") -> "species",
-          NonEmptyList.of("@ReleaseDate") -> "variation_archive_release_date"
-        )
-      )
-    )
-    val rcvs = rawRcvs.map(
-      mapFields(
-        Map(
-          NonEmptyList.of("@Accession") -> "accession",
-          NonEmptyList.of("@Version") -> "version",
-          NonEmptyList.of("@Title") -> "title",
-          NonEmptyList.of("@DateLastEvaluated") -> "date_last_evaluated",
-          NonEmptyList.of("@ReviewStatus") -> "review_status",
-          NonEmptyList.of("@Interpretation") -> "interpretation",
-          NonEmptyList.of("@SubmissionCount") -> "submission_count",
-          NonEmptyList.of("@independentObservations") -> "independent_observations"
-        )
-      )
-    )
-    val variations = rawVariations.map(
-      mapFields(
-        Map(
-          NonEmptyList.of("@VariationID") -> "id",
-          NonEmptyList.of("Name") -> "name",
-          NonEmptyList.of("VariantType") -> "variation_type",
-          NonEmptyList.of("@AlleleID") -> "allele_id",
-          NonEmptyList.of("ProteinChange") -> "protein_change",
-          NonEmptyList.of("@NumberOfChromosomes") -> "num_chromosomes",
-          NonEmptyList.of("@NumberOfCopies") -> "num_copies"
-        )
-      )
-    )
-    val scvs = rawScvs.map(
-      mapFields(
-        Map(
-          NonEmptyList.of("@DateCreated") -> "date_created",
-          NonEmptyList.of("@DateLastUpdated") -> "date_last_updated",
-          NonEmptyList.of("RecordStatus") -> "record_status",
-          NonEmptyList.of("ReviewStatus") -> "review_status",
-          NonEmptyList.of("@SubmissionDate") -> "submission_date",
-          NonEmptyList.of("SubmissionNameList", "SubmissionName") -> "submission_names",
-          NonEmptyList.of("ClinVarAccession", "@Accession") -> "accession",
-          NonEmptyList.of("ClinVarAccession", "@Version") -> "version",
-          NonEmptyList.of("ClinVarAccession", "@Type") -> "assertion_type",
-          NonEmptyList.of("ClinVarAccession", "@OrgID") -> "org_id",
-          NonEmptyList.of("ClinVarAccession", "@SubmitterName") -> "submitter_name",
-          NonEmptyList.of("ClinVarAccession", "@OrganizationCategory") -> "org_category",
-          NonEmptyList.of("ClinVarAccession", "@OrgAbbreviation") -> "org_abbrev",
-          NonEmptyList.of("ClinVarSubmissionID", "@title") -> "title",
-          NonEmptyList.of("ClinVarSubmissionID", "@localKey") -> "local_key",
-          NonEmptyList
-            .of("ClinVarSubmissionID", "@submittedAssembly") -> "submitted_assembly",
-          NonEmptyList.of("Interpretation", "Description") -> "interp_description",
-          NonEmptyList
-            .of("Interpretation", "@DateLastEvaluated") -> "interp_date_last_evaluated",
-          NonEmptyList.of("Interpretation", "Comment", "$") -> "interp_comment",
-          NonEmptyList.of("Interpretation", "Comment", "@Type") -> "interp_comment_type"
-        )
-      )
-    )
-    val scvVariations = rawScvVariations.map(
-      mapFields(Map(NonEmptyList.of("VariantType") -> "variation_type"))
-    )
+    val vcvs = rawVcvs.transform("Cleanup VCVs") {
+      _.map { rawVcv =>
+        MsgTransformations.parseLongs(Set("version", "num_submissions", "num_submitters")) {
+          mapFields(
+            rawVcv,
+            Map(
+              NonEmptyList.of("@Accession") -> "accession",
+              NonEmptyList.of("@Version") -> "version",
+              NonEmptyList.of("@DateCreated") -> "date_created",
+              NonEmptyList.of("@DateLastUpdated") -> "date_last_updated",
+              NonEmptyList.of("@NumberOfSubmissions") -> "num_submissions",
+              NonEmptyList.of("@NumberOfSubmitters") -> "num_submitters",
+              NonEmptyList.of("RecordStatus") -> "record_status",
+              NonEmptyList.of("InterpretedRecord", "ReviewStatus") -> "review_status",
+              NonEmptyList.of("Species") -> "species",
+              NonEmptyList.of("@ReleaseDate") -> "variation_archive_release_date"
+            )
+          )
+        }
+      }
+    }
+
+    val rcvs = rawRcvs.transform("Cleanup RCVs") {
+      _.map { rawRcv =>
+        MsgTransformations.parseLongs(
+          Set("version", "submission_count", "independent_observations")
+        ) {
+          mapFields(
+            rawRcv,
+            Map(
+              NonEmptyList.of("@Accession") -> "accession",
+              NonEmptyList.of("@Version") -> "version",
+              NonEmptyList.of("@Title") -> "title",
+              NonEmptyList.of("@DateLastEvaluated") -> "date_last_evaluated",
+              NonEmptyList.of("@ReviewStatus") -> "review_status",
+              NonEmptyList.of("@Interpretation") -> "interpretation",
+              NonEmptyList.of("@SubmissionCount") -> "submission_count",
+              NonEmptyList.of("@independentObservations") -> "independent_observations"
+            )
+          )
+        }
+      }
+    }
+
+    val variations = rawVariations.transform("Cleanup VCV Variations") {
+      _.map { rawVariation =>
+        MsgTransformations.parseLongs(Set("allele_id", "num_chromosomes", "num_copies")) {
+          MsgTransformations.ensureArrays(Set("protein_change")) {
+            mapFields(
+              rawVariation,
+              Map(
+                NonEmptyList.of("@VariationID") -> "id",
+                NonEmptyList.of("Name") -> "name",
+                NonEmptyList.of("VariantType") -> "variation_type",
+                NonEmptyList.of("@AlleleID") -> "allele_id",
+                NonEmptyList.of("ProteinChange") -> "protein_change",
+                NonEmptyList.of("@NumberOfChromosomes") -> "num_chromosomes",
+                NonEmptyList.of("@NumberOfCopies") -> "num_copies"
+              )
+            )
+          }
+        }
+      }
+    }
+
+    val scvs = rawScvs.transform("Cleanup SCVs") {
+      _.map { rawScv =>
+        MsgTransformations.ensureArrays(Set("submission_names")) {
+          mapFields(
+            rawScv,
+            Map(
+              NonEmptyList.of("@DateCreated") -> "date_created",
+              NonEmptyList.of("@DateLastUpdated") -> "date_last_updated",
+              NonEmptyList.of("RecordStatus") -> "record_status",
+              NonEmptyList.of("ReviewStatus") -> "review_status",
+              NonEmptyList.of("@SubmissionDate") -> "submission_date",
+              NonEmptyList
+                .of("SubmissionNameList", "SubmissionName") -> "submission_names",
+              NonEmptyList.of("ClinVarAccession", "@Accession") -> "accession",
+              NonEmptyList.of("ClinVarAccession", "@Version") -> "version",
+              NonEmptyList.of("ClinVarAccession", "@Type") -> "assertion_type",
+              NonEmptyList.of("ClinVarAccession", "@OrgID") -> "org_id",
+              NonEmptyList.of("ClinVarAccession", "@SubmitterName") -> "submitter_name",
+              NonEmptyList
+                .of("ClinVarAccession", "@OrganizationCategory") -> "org_category",
+              NonEmptyList.of("ClinVarAccession", "@OrgAbbreviation") -> "org_abbrev",
+              NonEmptyList.of("ClinVarSubmissionID", "@title") -> "title",
+              NonEmptyList.of("ClinVarSubmissionID", "@localKey") -> "local_key",
+              NonEmptyList
+                .of("ClinVarSubmissionID", "@submittedAssembly") -> "submitted_assembly",
+              NonEmptyList.of("Interpretation", "Description") -> "interp_description",
+              NonEmptyList
+                .of("Interpretation", "@DateLastEvaluated") -> "interp_date_last_evaluated",
+              NonEmptyList.of("Interpretation", "Comment", "$") -> "interp_comment",
+              NonEmptyList
+                .of("Interpretation", "Comment", "@Type") -> "interp_comment_type"
+            )
+          )
+        }
+      }
+    }
+
+    val scvVariations = rawScvVariations.transform("Cleanup SCV Variations") {
+      _.map(mapFields(_, Map(NonEmptyList.of("VariantType") -> "variation_type")))
+    }
 
     val (clinicalAssertions, submitters, submissions) = splitScvs(scvs)
 
@@ -385,7 +416,7 @@ object ClinvarPipeline {
         }
     }
 
-  def mapFields(mappings: Map[NonEmptyList[String], String])(msg: Msg): Msg = {
+  def mapFields(msg: Msg, mappings: Map[NonEmptyList[String], String]): Msg = {
     val out = new mutable.LinkedHashMap[Msg, Msg]()
     val content = new mutable.LinkedHashMap[Msg, Msg]()
 
@@ -418,48 +449,49 @@ object ClinvarPipeline {
     val submitterOut = SideOutput[Msg]
     val submissionOut = SideOutput[Msg]
 
-    val (main, side) = scvs.withSideOutputs(submitterOut, submissionOut).map {
-      (scv, ctx) =>
-        val scvObj = scv.obj
-        val newScv = new mutable.LinkedHashMap[Msg, Msg]()
+    val (main, side) =
+      scvs.withSideOutputs(submitterOut, submissionOut).withName("Split SCVs").map {
+        (scv, ctx) =>
+          val scvObj = scv.obj
+          val newScv = new mutable.LinkedHashMap[Msg, Msg]()
 
-        val scvId = scvObj(Str("accession"))
-        val orgId = scvObj(Str("org_id"))
-        val submitDate = scvObj(Str("submission_date"))
-        val submissionId = Str(s"${orgId.str}.${submitDate.str}")
+          val scvId = scvObj(Str("accession"))
+          val orgId = scvObj(Str("org_id"))
+          val submitDate = scvObj(Str("submission_date"))
+          val submissionId = Str(s"${orgId.str}.${submitDate.str}")
 
-        val submitter = new mutable.LinkedHashMap[Msg, Msg]()
-        val submission = new mutable.LinkedHashMap[Msg, Msg]()
+          val submitter = new mutable.LinkedHashMap[Msg, Msg]()
+          val submission = new mutable.LinkedHashMap[Msg, Msg]()
 
-        // Set and link IDs
-        submitter.update(idKey, orgId)
-        submission.update(idKey, submissionId)
-        submission.update(submitterRef, orgId)
-        newScv.update(idKey, scvId)
-        newScv.update(submitterRef, orgId)
-        newScv.update(submissionRef, submissionId)
+          // Set and link IDs
+          submitter.update(idKey, orgId)
+          submission.update(idKey, submissionId)
+          submission.update(submitterRef, orgId)
+          newScv.update(idKey, scvId)
+          newScv.update(submitterRef, orgId)
+          newScv.update(submissionRef, submissionId)
 
-        // Fill in other properties
-        val submitterFields =
-          Set("submitter_name", "org_category", "org_abbrev").map(Str)
-        val submissionFields =
-          Set("submission_date", "submission_names").map(Str)
-        (scvObj.keySet -- submitterFields -- submissionFields - Str("org_id")).foreach {
-          k =>
-            scvObj.get(k).foreach(newScv.update(k, _))
-        }
-        submitterFields.foreach { k =>
-          scvObj.get(k).foreach(submitter.update(k, _))
-        }
-        submissionFields.foreach { k =>
-          scvObj.get(k).foreach(submission.update(k, _))
-        }
+          // Fill in other properties
+          val submitterFields =
+            Set("submitter_name", "org_category", "org_abbrev").map(Str)
+          val submissionFields =
+            Set("submission_date", "submission_names").map(Str)
+          (scvObj.keySet -- submitterFields -- submissionFields - Str("org_id")).foreach {
+            k =>
+              scvObj.get(k).foreach(newScv.update(k, _))
+          }
+          submitterFields.foreach { k =>
+            scvObj.get(k).foreach(submitter.update(k, _))
+          }
+          submissionFields.foreach { k =>
+            scvObj.get(k).foreach(submission.update(k, _))
+          }
 
-        // Push outputs.
-        ctx.output(submitterOut, Obj(submitter): Msg)
-        ctx.output(submissionOut, Obj(submission): Msg)
-        Obj(newScv): Msg
-    }
+          // Push outputs.
+          ctx.output(submitterOut, Obj(submitter): Msg)
+          ctx.output(submissionOut, Obj(submission): Msg)
+          Obj(newScv): Msg
+      }
 
     (
       main,
