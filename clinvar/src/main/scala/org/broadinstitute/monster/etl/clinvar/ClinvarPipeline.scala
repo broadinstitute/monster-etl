@@ -32,13 +32,13 @@ object ClinvarPipeline {
       )
 
     val (rawVcvs, rawRcvs, rawVariations, rawScvs, rawScvVariations) =
-      ClinVarSplitters.splitArchives(fullArchives)
+      ClinvarSplitters.splitArchives(fullArchives)
 
     val vcvs = rawVcvs.transform("Cleanup VCVs") {
       _.map { rawVcv =>
         MsgTransformations.parseLongs(
           Set("version", "num_submissions", "num_submitters")
-        )(ClinVarMappers.mapVcv(rawVcv))
+        )(ClinvarMappers.mapVcv(rawVcv))
       }
     }
 
@@ -46,7 +46,7 @@ object ClinvarPipeline {
       _.map { rawRcv =>
         MsgTransformations.parseLongs(
           Set("version", "submission_count", "independent_observations")
-        )(ClinVarMappers.mapRcv(rawRcv))
+        )(ClinvarMappers.mapRcv(rawRcv))
       }
     }
 
@@ -54,7 +54,7 @@ object ClinvarPipeline {
       _.map { rawVariation =>
         MsgTransformations.parseLongs(Set("allele_id", "num_chromosomes", "num_copies")) {
           MsgTransformations.ensureArrays(Set("protein_change"))(
-            ClinVarMappers.mapVariation(rawVariation)
+            ClinvarMappers.mapVariation(rawVariation)
           )
         }
       }
@@ -63,16 +63,16 @@ object ClinvarPipeline {
     val scvs = rawScvs.transform("Cleanup SCVs") {
       _.map { rawScv =>
         MsgTransformations.ensureArrays(Set("submission_names"))(
-          ClinVarMappers.mapScv(rawScv)
+          ClinvarMappers.mapScv(rawScv)
         )
       }
     }
 
     val scvVariations = rawScvVariations.transform("Cleanup SCV Variations") {
-      _.map(ClinVarMappers.mapScvVariation)
+      _.map(ClinvarMappers.mapScvVariation)
     }
 
-    val (clinicalAssertions, submitters, submissions) = ClinVarSplitters.splitScvs(scvs)
+    val (clinicalAssertions, submitters, submissions) = ClinvarSplitters.splitScvs(scvs)
 
     MsgIO.writeJsonLists(
       vcvs,

@@ -6,7 +6,7 @@ import upack.{Arr, Msg, Obj, Str}
 import scala.collection.mutable
 
 /** Container for functions used to map fields in ClinVar's data. */
-object ClinVarMappers {
+object ClinvarMappers {
 
   /**
     * 'Drill' into a message, following a chain of fields, until either
@@ -35,7 +35,7 @@ object ClinVarMappers {
     msg.obj.foreach {
       case (k, v) =>
         // Track original fields in the 'content' block.
-        if (ClinVarContants.GeneratedKeys.contains(k)) {
+        if (ClinvarContants.GeneratedKeys.contains(k)) {
           out.update(k, v)
         } else {
           content.update(k, v)
@@ -55,11 +55,13 @@ object ClinVarMappers {
     Obj(out): Msg
   }
 
+  val idName: String = ClinvarContants.IdKey.str
+
   /** Name-mapper for VCVs. */
   val mapVcv: Msg => Msg =
     mapFields(
       Map(
-        NonEmptyList.of("@Accession") -> "accession",
+        NonEmptyList.of("@Accession") -> idName,
         NonEmptyList.of("@Version") -> "version",
         NonEmptyList.of("@DateCreated") -> "date_created",
         NonEmptyList.of("@DateLastUpdated") -> "date_last_updated",
@@ -76,7 +78,7 @@ object ClinVarMappers {
   val mapRcv: Msg => Msg =
     mapFields(
       Map(
-        NonEmptyList.of("@Accession") -> "accession",
+        NonEmptyList.of("@Accession") -> idName,
         NonEmptyList.of("@Version") -> "version",
         NonEmptyList.of("@Title") -> "title",
         NonEmptyList.of("@DateLastEvaluated") -> "date_last_evaluated",
@@ -91,7 +93,7 @@ object ClinVarMappers {
   val mapVariation: Msg => Msg =
     mapFields(
       Map(
-        NonEmptyList.of("@VariationID") -> "id",
+        NonEmptyList.of("@VariationID") -> idName,
         NonEmptyList.of("Name") -> "name",
         NonEmptyList.of("VariantType") -> "variation_type",
         NonEmptyList.of("@AlleleID") -> "allele_id",
@@ -105,16 +107,14 @@ object ClinVarMappers {
   val mapScv: Msg => Msg =
     mapFields(
       Map(
+        NonEmptyList.of("Assertion") -> "assertion_type",
         NonEmptyList.of("@DateCreated") -> "date_created",
         NonEmptyList.of("@DateLastUpdated") -> "date_last_updated",
         NonEmptyList.of("RecordStatus") -> "record_status",
         NonEmptyList.of("ReviewStatus") -> "review_status",
         NonEmptyList.of("@SubmissionDate") -> "submission_date",
-        NonEmptyList
-          .of("SubmissionNameList", "SubmissionName") -> "submission_names",
-        NonEmptyList.of("ClinVarAccession", "@Accession") -> "accession",
+        NonEmptyList.of("ClinVarAccession", "@Accession") -> idName,
         NonEmptyList.of("ClinVarAccession", "@Version") -> "version",
-        NonEmptyList.of("ClinVarAccession", "@Type") -> "assertion_type",
         NonEmptyList.of("ClinVarAccession", "@OrgID") -> "org_id",
         NonEmptyList.of("ClinVarAccession", "@SubmitterName") -> "submitter_name",
         NonEmptyList
@@ -129,7 +129,9 @@ object ClinVarMappers {
           .of("Interpretation", "@DateLastEvaluated") -> "interp_date_last_evaluated",
         NonEmptyList.of("Interpretation", "Comment", "$") -> "interp_comment",
         NonEmptyList
-          .of("Interpretation", "Comment", "@Type") -> "interp_comment_type"
+          .of("Interpretation", "Comment", "@Type") -> "interp_comment_type",
+        NonEmptyList
+          .of("SubmissionNameList", "SubmissionName") -> "submission_names"
       )
     )
 
