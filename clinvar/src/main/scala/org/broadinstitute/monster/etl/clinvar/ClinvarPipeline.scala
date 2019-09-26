@@ -4,7 +4,7 @@ import caseapp.{AppName, AppVersion, HelpMessage, ProgName}
 import com.spotify.scio.ContextAndArgs
 import com.spotify.scio.coders.Coder
 import org.broadinstitute.monster.ClinvarBuildInfo
-import org.broadinstitute.monster.etl.{MsgIO, MsgTransformations, UpackMsgCoder}
+import org.broadinstitute.monster.etl.{MsgIO, UpackMsgCoder}
 import upack._
 
 object ClinvarPipeline {
@@ -24,6 +24,7 @@ object ClinvarPipeline {
   def main(rawArgs: Array[String]): Unit = {
     val (pipelineContext, parsedArgs) = ContextAndArgs.typed[Args](rawArgs)
 
+    // Read the nested archives from storage.
     val fullArchives = MsgIO
       .readJsonLists(
         pipelineContext,
@@ -31,82 +32,66 @@ object ClinvarPipeline {
         s"${parsedArgs.inputPrefix}/VariationArchive/*.json"
       )
 
+    // First split apart all of the entities that already exist in the archives.
     val (rawVcvs, rawRcvs, rawVariations, rawScvs, rawScvVariations) =
       ClinvarSplitters.splitArchives(fullArchives)
 
-    val vcvs = rawVcvs.transform("Cleanup VCVs") {
-      _.map { rawVcv =>
-        MsgTransformations.parseLongs(
-          Set("version", "num_submissions", "num_submitters")
-        )(ClinvarMappers.mapVcv(rawVcv))
-      }
-    }
-
-    val rcvs = rawRcvs.transform("Cleanup RCVs") {
-      _.map { rawRcv =>
-        MsgTransformations.parseLongs(
-          Set("version", "submission_count", "independent_observations")
-        )(ClinvarMappers.mapRcv(rawRcv))
-      }
-    }
-
-    val variations = rawVariations.transform("Cleanup VCV Variations") {
-      _.map { rawVariation =>
-        MsgTransformations.parseLongs(Set("allele_id", "num_chromosomes", "num_copies")) {
-          MsgTransformations.ensureArrays(Set("protein_change"))(
-            ClinvarMappers.mapVariation(rawVariation)
-          )
-        }
-      }
-    }
-
-    val scvs = rawScvs.transform("Cleanup SCVs") {
-      _.map { rawScv =>
-        MsgTransformations.ensureArrays(Set("submission_names"))(
-          ClinvarMappers.mapScv(rawScv)
-        )
-      }
-    }
-
-    val scvVariations = rawScvVariations.transform("Cleanup SCV Variations") {
+    // Map the fields and types of each entity stream.
+    val vcvs = rawVcvs.transform("Cleanup VCVs")(_.map(ClinvarMappers.mapVcv))
+    val rcvs = rawRcvs.transform("Cleanup RCVs")(_.map(ClinvarMappers.mapRcv))
+    val variations = rawVariations.transform("Cleanup VCV Variations")(
+      _.map(ClinvarMappers.mapVcvVariation)
+    )
+    val scvs = rawScvs.transform("Cleanup SCVs")(_.map(ClinvarMappers.mapScv))
+    val scvVariations = rawScvVariations.transform("Cleanup SCV Variations")(
       _.map(ClinvarMappers.mapScvVariation)
-    }
+    )
 
+    // Further split the VCV stream to create a releases table.
+    val (variationArchives, releases) = ClinvarSplitters.splitVcvs(vcvs)
+
+    // Further split the SCV stream to create new submitter and submission entities.
     val (clinicalAssertions, submitters, submissions) = ClinvarSplitters.splitScvs(scvs)
 
+    // Write everything back to storage.
     MsgIO.writeJsonLists(
-      vcvs,
-      "VCV",
+      variationArchives,
+      "VCVs",
       s"${parsedArgs.outputPrefix}/variation_archive"
     )
     MsgIO.writeJsonLists(
+      releases,
+      "VCV Releases",
+      s"${parsedArgs.outputPrefix}/variation_archive_release"
+    )
+    MsgIO.writeJsonLists(
       rcvs,
-      "RCV Accession",
+      "RCV Accessions",
       s"${parsedArgs.outputPrefix}/rcv_accession"
     )
     MsgIO.writeJsonLists(
       variations,
-      "Variation Archive Variation",
-      s"${parsedArgs.outputPrefix}/variation_archive_variation"
+      "Variations",
+      s"${parsedArgs.outputPrefix}/variation"
     )
     MsgIO.writeJsonLists(
       clinicalAssertions,
-      "SCV Clinical Assertion",
+      "SCVs",
       s"${parsedArgs.outputPrefix}/clinical_assertion"
     )
     MsgIO.writeJsonLists(
       submitters,
-      "SCV Submitters",
+      "Submitters",
       s"${parsedArgs.outputPrefix}/submitter"
     )
     MsgIO.writeJsonLists(
       submissions,
-      "SCV Submissions",
+      "Submissions",
       s"${parsedArgs.outputPrefix}/submission"
     )
     MsgIO.writeJsonLists(
       scvVariations,
-      "SCV Clinical Assertion Variation",
+      "SCV Variations",
       s"${parsedArgs.outputPrefix}/clinical_assertion_variation"
     )
 

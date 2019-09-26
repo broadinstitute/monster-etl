@@ -70,7 +70,7 @@ object ClinvarSplitters {
         scvOut,
         scvVariationOut
       )
-      .withName("Split Variation Archives")
+      .withName("Split VCVs")
       .flatMap { (fullVcv, ctx) =>
         val vcvObj = fullVcv.obj
 
@@ -101,33 +101,25 @@ object ClinvarSplitters {
             // Link the VCV to its variation.
             trimmedOut.update(VarRef, vcvVariationId)
 
-            // Extract and push out any RCVs in the VCV, tracking the collected IDs.
-            val rcvIds = {
-              val idBuffer = new mutable.ArrayBuffer[Msg]()
-              val rcvs = for {
-                wrapper <- recordCopy.obj.remove(Str("RCVList"))
-                arrayOrSingle <- wrapper.obj.get(Str("RCVAccession"))
-              } yield {
-                arrayOrSingle match {
-                  case Arr(msgs) => msgs
-                  case msg       => Iterable(msg)
-                }
+            // Extract and push out any RCVs in the VCV.
+            val rcvs = for {
+              wrapper <- recordCopy.obj.remove(Str("RCVList"))
+              arrayOrSingle <- wrapper.obj.get(Str("RCVAccession"))
+            } yield {
+              arrayOrSingle match {
+                case Arr(msgs) => msgs
+                case msg       => Iterable(msg)
               }
-              rcvs.getOrElse(Iterable.empty).foreach { rcv =>
-                val rcvObj = rcv.obj
+            }
+            rcvs.getOrElse(Iterable.empty).foreach { rcv =>
+              val rcvObj = rcv.obj
 
-                // Generate and track RCV ID.
-                idBuffer.append(rcvObj(Str("@Accession")))
+              // Link back to VCV and variation.
+              rcvObj.update(VcvRef, vcvId)
+              rcvObj.update(VarRef, vcvVariationId)
 
-                // Link back to VCV and variation.
-                rcvObj.update(VcvRef, vcvId)
-                rcvObj.update(VarRef, vcvVariationId)
-
-                // Push to side output.
-                ctx.output(rcvOut, rcv)
-              }
-
-              Arr(idBuffer)
+              // Push to side output.
+              ctx.output(rcvOut, rcv)
             }
 
             // Extract any SCVs in the record.
@@ -148,7 +140,6 @@ object ClinvarSplitters {
               // Link the SCV back to the VCV, top-level variant, and RCVs.
               scvObj.update(VcvRef, vcvId)
               scvObj.update(VarRef, vcvVariationId)
-              scvObj.update(RcvRef, rcvIds)
 
               // Extract out SCV-level variation.
               val scvVariation = getVariation(scv).getOrElse {
@@ -257,5 +248,34 @@ object ClinvarSplitters {
       side(submitterOut).distinctBy(_.obj(IdKey).str),
       side(submissionOut).distinctBy(_.obj(IdKey).str)
     )
+  }
+
+  /** TODO COMMENT */
+  def splitVcvs(vcvs: SCollection[Msg])(
+    implicit coder: Coder[Msg]
+  ): (SCollection[Msg], SCollection[Msg]) = {
+    val releases = SideOutput[Msg]
+
+    val (main, side) =
+      vcvs.withSideOutputs(releases).withName("Split VCVs and releases").map {
+        (vcv, ctx) =>
+          val vcvCopy = upack.copy(vcv)
+          val release = new mutable.LinkedHashMap[Msg, Msg]()
+
+          val vcvId = vcvCopy.obj(IdKey)
+          val vcvVersion = vcvCopy.obj(Str("version"))
+          val vcvRelease = vcvCopy.obj(Str("release_date"))
+
+          vcvCopy.obj.remove(Str("release_date"))
+
+          release.update(VcvRef, vcvId)
+          release.update(Str("version"), vcvVersion)
+          release.update(Str("release_date"), vcvRelease)
+
+          ctx.output(releases, Obj(release): Msg)
+          vcvCopy
+      }
+
+    (main, side(releases))
   }
 }

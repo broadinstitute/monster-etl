@@ -14,10 +14,10 @@ object ClinvarContants {
   val VcvRef: Msg = Str("variation_archive_id")
 
   /** Standard name used for columns pointing to the RCV table. */
-  val RcvRef: Msg = Str("rcv_accession_ids")
+  val RcvRef: Msg = Str("rcv_accession_id")
 
   /** Standard name used for columns pointing to the VCV Variation table. */
-  val VarRef: Msg = Str("variation_archive_variation_id")
+  val VarRef: Msg = Str("variation_id")
 
   /** Standard name used for columns pointing to the SCV table. */
   val ScvRef: Msg = Str("clinical_assertion_id")
