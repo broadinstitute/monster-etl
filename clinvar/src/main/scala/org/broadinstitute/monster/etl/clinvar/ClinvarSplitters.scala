@@ -13,8 +13,6 @@ object ClinvarSplitters {
 
   import ClinvarContants._
 
-  case class VariationTree(id: Msg, children: Seq[VariationTree])
-
   /** TODO COMMENT */
   def getVariation(message: Msg): Option[Msg] =
     VariationTypes.foldLeft(Option.empty[Msg]) { (acc, subtype) =>
