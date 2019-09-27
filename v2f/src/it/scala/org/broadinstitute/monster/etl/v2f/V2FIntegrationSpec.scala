@@ -11,10 +11,10 @@ class V2FIntegrationSpec extends PipelineSpec with Matchers with BeforeAndAfterA
 
   behavior of "V2F ETL Pipeline"
 
-  private val truthDir = "v2f" / "src" / "it" / "test-files" / "outputs"
-  private val compareDir = "v2f" / "src" / "it" / "test-files" / "outputs-to-compare"
-  private val inputDirString = "v2f/src/it/test-files/inputs"
-  private val compareDirString = "v2f/src/it/test-files/outputs-to-compare"
+  private val truthDir = "src" / "it" / "test-files" / "outputs"
+  private val compareDir = "src" / "it" / "test-files" / "outputs-to-compare"
+  private val inputDirString = "src/it/test-files/inputs"
+  private val compareDirString = "src/it/test-files/outputs-to-compare"
 
   // the directory structure and files are created by the first test, so all we need to do is delete them afterwards
   override def afterAll(): Unit = {
