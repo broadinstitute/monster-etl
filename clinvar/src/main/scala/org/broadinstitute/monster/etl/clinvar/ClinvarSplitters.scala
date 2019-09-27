@@ -30,7 +30,8 @@ object ClinvarSplitters {
 
   /** TODO COMMENT */
   def collectVariantIds(
-    variantMessage: Msg
+    variantMessage: Msg,
+    output: Option[Msg => Unit]
   )(getId: Msg => Msg): (Msg, List[Msg], List[Msg]) = {
     val immediateId = getId(variantMessage)
     val zero = (List.empty[Msg], List.empty[Msg])
@@ -40,13 +41,17 @@ object ClinvarSplitters {
           children.foldLeft(zero) {
             case ((childAcc, descandantsAcc), child) =>
               val (childId, grandChildIds, deepDescendants) =
-                collectVariantIds(child)(getId)
+                collectVariantIds(child, output)(getId)
               (childId :: childAcc, grandChildIds ::: deepDescendants ::: descandantsAcc)
           }
         case child =>
-          val (childId, grandChildIds, deepDescendants) = collectVariantIds(child)(getId)
+          val (childId, grandChildIds, deepDescendants) =
+            collectVariantIds(child, output)(getId)
           (List(childId), grandChildIds ::: deepDescendants)
       }
+    variantMessage.obj.update(ChildrenRef, Arr(childIds: _*))
+    variantMessage.obj.update(DescendantsRef, Arr(childIds ::: descendantIds: _*))
+    output.foreach(_.apply(variantMessage))
     (immediateId, childIds, descendantIds)
   }
 
@@ -80,18 +85,13 @@ object ClinvarSplitters {
           val topLevelVariation = getVariation(recordCopy).getOrElse {
             throw new RuntimeException(s"Encountered VCV without a variant: $fullVcv")
           }
-          val varObj = topLevelVariation.obj
 
           // Link the variant to its children.
-          val (vcvVariationId, vcvVariationChildren, vcvVariationDescendants) =
-            collectVariantIds(topLevelVariation)(_.obj(Str("@VariationID")))
-          varObj.update(ChildrenRef, Arr(vcvVariationChildren: _*))
-          varObj.update(
-            DescendantsRef,
-            Arr(vcvVariationChildren ::: vcvVariationDescendants: _*)
-          )
-
-          // Push out the variant.
+          val (vcvVariationId, _, _) =
+            collectVariantIds(topLevelVariation, None)(_.obj(Str("@VariationID")))
+          // Push out the top-level variant, but NOT its children.
+          // We expect to see a dedicated VCV for every child record at some point, so
+          // pushing children would just produce pointless I/O and require a dedup step.
           ctx.output(variationOut, topLevelVariation)
 
           if (vcvObj.contains(InterpretedRecord)) {
@@ -147,22 +147,21 @@ object ClinvarSplitters {
               }
               // SCV variations don't have a pre-set ID, so we have to manufacture one.
               val counter = new AtomicInteger(0)
-              val (_, scvVariationChildren, scvVariationDescendants) =
-                collectVariantIds(scvVariation) { scvVar =>
+              // Link SCV variations, pushing *each* variant.
+              // There's no meaningful way to dedup variants across SCVs, so we just
+              // capture all of them and live with the verbosity.
+              val _ =
+                collectVariantIds(scvVariation, Some { msg =>
+                  val _ = ctx.output(scvVariationOut, msg)
+                }) { scvVar =>
                   val id = Str(s"${scvId.str}.${counter.getAndIncrement()}")
                   scvVar.obj.update(IdKey, id)
+                  // Link the variant to its SCV while we're at it.
+                  scvVariation.obj.update(ScvRef, scvId)
                   id
                 }
-              // Link the variant to its children, subclass, and SCV.
-              scvVariation.obj.update(ScvRef, scvId)
-              scvVariation.obj.update(ChildrenRef, Arr(scvVariationChildren: _*))
-              scvVariation.obj.update(
-                DescendantsRef,
-                Arr(scvVariationChildren ::: scvVariationDescendants: _*)
-              )
 
-              // Push SCV and variation to side outputs.
-              ctx.output(scvVariationOut, scvVariation)
+              // Push out the SCV.
               ctx.output(scvOut, scv)
             }
 
