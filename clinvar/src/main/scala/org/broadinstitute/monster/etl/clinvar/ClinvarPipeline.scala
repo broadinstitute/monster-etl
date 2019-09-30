@@ -4,6 +4,7 @@ import caseapp.{AppName, AppVersion, HelpMessage, ProgName}
 import com.spotify.scio.ContextAndArgs
 import com.spotify.scio.coders.Coder
 import org.broadinstitute.monster.ClinvarBuildInfo
+import org.broadinstitute.monster.etl.clinvar.splitters._
 import org.broadinstitute.monster.etl.{MsgIO, UpackMsgCoder}
 import upack._
 
@@ -33,34 +34,35 @@ object ClinvarPipeline {
       )
 
     // First split apart all of the entities that already exist in the archives.
-    val (rawVcvs, rawRcvs, rawVariations, rawScvs, rawScvVariations) =
-      ClinvarSplitters.splitArchives(fullArchives)
+    val archiveBranches = ArchiveBranches.fromArchiveStream(fullArchives)
 
     // Map the fields and types of each entity stream.
-    val vcvs = rawVcvs.transform("Cleanup VCVs")(_.map(ClinvarMappers.mapVcv))
-    val rcvs = rawRcvs.transform("Cleanup RCVs")(_.map(ClinvarMappers.mapRcv))
-    val variations = rawVariations.transform("Cleanup VCV Variations")(
-      _.map(ClinvarMappers.mapVcvVariation)
+    val vcvs =
+      archiveBranches.vcvs.transform("Cleanup VCVs")(_.map(ClinvarMappers.mapVcv))
+    val rcvs =
+      archiveBranches.rcvs.transform("Cleanup RCVs")(_.map(ClinvarMappers.mapRcv))
+    val variations = archiveBranches.variations.transform("Cleanup VCV Variations")(
+      _.map(ClinvarMappers.mapVariation)
     )
-    val scvs = rawScvs.transform("Cleanup SCVs")(_.map(ClinvarMappers.mapScv))
-    val scvVariations = rawScvVariations.transform("Cleanup SCV Variations")(
+    val scvs =
+      archiveBranches.scvs.transform("Cleanup SCVs")(_.map(ClinvarMappers.mapScv))
+    val scvVariations = archiveBranches.scvVariations.transform("Cleanup SCV Variations")(
       _.map(ClinvarMappers.mapScvVariation)
     )
 
     // Further split the VCV stream to create a releases table.
-    val (variationArchives, releases) = ClinvarSplitters.splitVcvs(vcvs)
-
+    val vcvBranches = VcvBranches.fromVcvStream(vcvs)
     // Further split the SCV stream to create new submitter and submission entities.
-    val (clinicalAssertions, submitters, submissions) = ClinvarSplitters.splitScvs(scvs)
+    val scvBranches = ScvBranches.fromScvStream(scvs)
 
     // Write everything back to storage.
     MsgIO.writeJsonLists(
-      variationArchives,
+      vcvBranches.vcvs,
       "VCVs",
       s"${parsedArgs.outputPrefix}/variation_archive"
     )
     MsgIO.writeJsonLists(
-      releases,
+      vcvBranches.vcvReleases,
       "VCV Releases",
       s"${parsedArgs.outputPrefix}/variation_archive_release"
     )
@@ -75,17 +77,17 @@ object ClinvarPipeline {
       s"${parsedArgs.outputPrefix}/variation"
     )
     MsgIO.writeJsonLists(
-      clinicalAssertions,
+      scvBranches.scvs,
       "SCVs",
       s"${parsedArgs.outputPrefix}/clinical_assertion"
     )
     MsgIO.writeJsonLists(
-      submitters,
+      scvBranches.submitters,
       "Submitters",
       s"${parsedArgs.outputPrefix}/submitter"
     )
     MsgIO.writeJsonLists(
-      submissions,
+      scvBranches.submissions,
       "Submissions",
       s"${parsedArgs.outputPrefix}/submission"
     )

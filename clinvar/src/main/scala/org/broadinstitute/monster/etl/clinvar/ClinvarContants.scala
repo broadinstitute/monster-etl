@@ -28,6 +28,9 @@ object ClinvarContants {
   /** Standard name used for columns pointing to the Submission table. */
   val SubmissionRef: Msg = Str("submission_id")
 
+  /** Standard name used for columns pointing to the Gene table. */
+  val GeneRef: Msg = Str("gene_id")
+
   //// Fields generated when unrolling variants ////
 
   /** Standard name used in variant tables to point to the immediate children in the same table. */
@@ -38,6 +41,9 @@ object ClinvarContants {
 
   /** Standard name used in variant tables to mark the type of variant. */
   val SubclassKey: Msg = Str("subclass_type")
+
+  /** Standard name used to store unmodeled fields as stringified JSON. */
+  val UnmodeledContentKey: Msg = Str("content")
 
   /** All fields generated while splitting ClinVar data. */
   val GeneratedKeys: Set[Msg] = Set(
@@ -50,7 +56,8 @@ object ClinvarContants {
     SubmissionRef,
     ChildrenRef,
     DescendantsRef,
-    SubclassKey
+    SubclassKey,
+    UnmodeledContentKey
   )
 
   //// Pseudo-enums found in the XML ////
