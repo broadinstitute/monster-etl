@@ -185,6 +185,10 @@ object ClinvarMappers {
 
   /** Map the names and types of fields in a raw SCV into our desired schema. */
   def mapScv(scv: Msg): Msg = {
+
+    // TODO: interp_date_last_evaluated *sometimes* contains hour values, which breaks BQ.
+    //  We need to detect them and strip them out.
+
     def scvComment(commentType: Msg, commentText: Msg): Msg = {
       val commentObj = Obj(Str("type") -> commentType, Str("text") -> commentText)
       Str(upack.transform(commentObj, StringRenderer()).toString)
