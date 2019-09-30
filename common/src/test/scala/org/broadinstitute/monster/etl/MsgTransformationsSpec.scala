@@ -632,7 +632,8 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
       Str("a") -> Arr(Str("foo")),
       Str("b") -> Arr(Str("foo")),
       Str("c") -> Int64(1234L),
-      Str("d") -> Arr(Obj(Str("baz") -> Arr(Str("qux"))))
+      Str("d") -> Arr(Obj(Str("baz") -> Arr(Str("qux")))),
+      Str("e") -> Arr()
     )
   }
 }

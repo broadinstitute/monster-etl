@@ -2,7 +2,8 @@ package org.broadinstitute.monster.etl.clinvar
 
 import cats.data.NonEmptyList
 import org.broadinstitute.monster.etl.MsgTransformations
-import upack.{Msg, Obj, Str}
+import ujson.StringRenderer
+import upack.{Arr, Msg, Obj, Str}
 
 import scala.collection.mutable
 
@@ -46,7 +47,7 @@ object ClinvarMappers {
       Some(nonObj)
     case nonObj =>
       logger.warn(
-        s"Attempted to extract field(s) [${fieldChain}] from non-object: $nonObj"
+        s"Attempted to extract field(s) [$fieldChain] from non-object: $nonObj"
       )
       None
   }
@@ -83,7 +84,7 @@ object ClinvarMappers {
 
     // Stringify and store unmodeled fields, if there are any.
     if (content.nonEmpty) {
-      val stringContent = upack.transform(Obj(content), ujson.StringRenderer())
+      val stringContent = upack.transform(Obj(content), StringRenderer())
       out.update(ClinvarContants.UnmodeledContentKey, Str(stringContent.toString))
     }
 
@@ -177,18 +178,36 @@ object ClinvarMappers {
     NonEmptyList.of("Interpretation", "Description") -> Str("interp_description"),
     NonEmptyList
       .of("Interpretation", "@DateLastEvaluated") -> Str("interp_date_last_evaluated"),
-    NonEmptyList.of("Interpretation", "Comment", "$") -> Str("interp_comment"),
-    NonEmptyList
-      .of("Interpretation", "Comment", "@Type") -> Str("interp_comment_type"),
+    NonEmptyList.of("Interpretation", "Comment") -> Str("interp_comments"),
     NonEmptyList
       .of("SubmissionNameList", "SubmissionName") -> Str("submission_names")
   )
 
   /** Map the names and types of fields in a raw SCV into our desired schema. */
-  def mapScv(scv: Msg): Msg =
-    MsgTransformations.ensureArrays(Set("submission_names")) {
-      mapFields(scv, scvMappings)
+  def mapScv(scv: Msg): Msg = {
+    def scvComment(commentType: Msg, commentText: Msg): Msg = {
+      val commentObj = Obj(Str("type") -> commentType, Str("text") -> commentText)
+      Str(upack.transform(commentObj, StringRenderer()).toString)
     }
+
+    val mapped =
+      MsgTransformations.ensureArrays(Set("submission_names", "interp_comments")) {
+        mapFields(scv, scvMappings)
+      }
+    mapped.obj.remove(Str("interp_comments")).foreach { rawComments =>
+      // SCV comments always contain a text body, and sometimes are tagged with a type.
+      // If they have a type, they'll be extracted as objects.
+      // Otherwise they'll be extracted as scalar strings.
+      // We normalize them to always be stored as stringified JSON objects, with
+      // an 'unknown' type when needed.
+      val normalized = rawComments.arr.map {
+        case Obj(fields) => scvComment(fields(Str("@Type")), fields(Str("$")))
+        case other       => scvComment(Str("unknown"), other)
+      }
+      mapped.obj.update(Str("interp_comments"), Arr(normalized))
+    }
+    mapped
+  }
 
   val scvVariationMappings = Map(
     NonEmptyList.of("VariantType") -> Str("variation_type"),

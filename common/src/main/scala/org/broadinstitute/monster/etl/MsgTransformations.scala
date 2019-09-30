@@ -398,10 +398,11 @@ object MsgTransformations {
   def ensureArrays(fields: Set[String])(msg: Msg): Msg = {
     val copy = upack.copy(msg)
     fields.foreach { field =>
-      copy.obj.get(Str(field)).foreach {
-        case Arr(_) => ()
-        case other  => copy.obj.update(Str(field), Arr(other))
+      val arrayVal = copy.obj.getOrElse(Str(field), Arr()) match {
+        case arr: Arr => arr
+        case other    => Arr(other)
       }
+      copy.obj.update(Str(field), arrayVal)
     }
     copy
   }
