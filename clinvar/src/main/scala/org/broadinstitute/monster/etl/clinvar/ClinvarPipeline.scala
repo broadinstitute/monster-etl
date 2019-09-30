@@ -37,25 +37,44 @@ object ClinvarPipeline {
     val archiveBranches = ArchiveBranches.fromArchiveStream(fullArchives)
 
     // Map the fields and types of each entity stream.
+    val variations = archiveBranches.variations.transform("Cleanup Variations")(
+      _.map(ClinvarMappers.mapVariation)
+    )
+    val genes =
+      archiveBranches.genes.transform("Cleanup Genes")(_.map(ClinvarMappers.mapGene))
     val vcvs =
       archiveBranches.vcvs.transform("Cleanup VCVs")(_.map(ClinvarMappers.mapVcv))
     val rcvs =
       archiveBranches.rcvs.transform("Cleanup RCVs")(_.map(ClinvarMappers.mapRcv))
-    val variations = archiveBranches.variations.transform("Cleanup VCV Variations")(
-      _.map(ClinvarMappers.mapVariation)
-    )
     val scvs =
       archiveBranches.scvs.transform("Cleanup SCVs")(_.map(ClinvarMappers.mapScv))
     val scvVariations = archiveBranches.scvVariations.transform("Cleanup SCV Variations")(
       _.map(ClinvarMappers.mapScvVariation)
     )
 
+    // Further split the gene stream to distinguish base genes from associations.
+    val geneBranches = GeneBranches.fromGeneStream(genes)
     // Further split the VCV stream to create a releases table.
     val vcvBranches = VcvBranches.fromVcvStream(vcvs)
     // Further split the SCV stream to create new submitter and submission entities.
     val scvBranches = ScvBranches.fromScvStream(scvs)
 
     // Write everything back to storage.
+    MsgIO.writeJsonLists(
+      variations,
+      "Variations",
+      s"${parsedArgs.outputPrefix}/variation"
+    )
+    MsgIO.writeJsonLists(
+      geneBranches.genes,
+      "Genes",
+      s"${parsedArgs.outputPrefix}/gene"
+    )
+    MsgIO.writeJsonLists(
+      geneBranches.geneAssociations,
+      "Gene Associations",
+      s"${parsedArgs.outputPrefix}/gene_association"
+    )
     MsgIO.writeJsonLists(
       vcvBranches.vcvs,
       "VCVs",
@@ -70,11 +89,6 @@ object ClinvarPipeline {
       rcvs,
       "RCV Accessions",
       s"${parsedArgs.outputPrefix}/rcv_accession"
-    )
-    MsgIO.writeJsonLists(
-      variations,
-      "Variations",
-      s"${parsedArgs.outputPrefix}/variation"
     )
     MsgIO.writeJsonLists(
       scvBranches.scvs,

@@ -109,6 +109,17 @@ object ClinvarMappers {
       }
     }
 
+  val geneMappings = Map(
+    NonEmptyList.of("@Symbol") -> ClinvarContants.IdKey,
+    NonEmptyList.of("@HGNC_ID") -> Str("hgnc_id"),
+    NonEmptyList.of("@FullName") -> Str("full_name"),
+    NonEmptyList.of("@Source") -> Str("source"),
+    NonEmptyList.of("@RelationshipType") -> Str("relationship_type")
+  )
+
+  /** Map the names and types of fields in a raw gene into our desired schema. */
+  def mapGene(gene: Msg): Msg = mapFields(gene, geneMappings)
+
   val vcvMappings = Map(
     NonEmptyList.of("@Accession") -> ClinvarContants.IdKey,
     NonEmptyList.of("@Version") -> Str("version"),
@@ -186,6 +197,5 @@ object ClinvarMappers {
   )
 
   /** Map the names and types of fields in a raw SCV variation into our desired schema. */
-  def mapScvVariation(scvVar: Msg): Msg =
-    mapFields(scvVar, scvVariationMappings)
+  def mapScvVariation(scvVar: Msg): Msg = mapFields(scvVar, scvVariationMappings)
 }

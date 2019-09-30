@@ -20,7 +20,7 @@ object VcvBranches {
     val releases = SideOutput[Msg]
 
     val (main, side) =
-      vcvs.withSideOutputs(releases).withName("Split VCVs and releases").map {
+      vcvs.withSideOutputs(releases).withName("Split VCVs and Releases").map {
         (vcv, ctx) =>
           val vcvCopy = upack.copy(vcv)
           val release = new mutable.LinkedHashMap[Msg, Msg]()
