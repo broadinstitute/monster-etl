@@ -616,4 +616,24 @@ class MsgTransformationsSpec extends FlatSpec with Matchers {
       Str("d") -> Arr(Str("nan"), Str("nan"))
     )
   }
+
+  // ensureArrays
+  it should "ensure designated fields contain array values" in {
+    val input = Obj(
+      Str("a") -> Str("foo"),
+      Str("b") -> Arr(Str("foo")),
+      Str("c") -> Int64(1234L),
+      Str("d") -> Obj(Str("baz") -> Arr(Str("qux")))
+    )
+
+    val ensured = MsgTransformations.ensureArrays(Set("a", "b", "d", "e"))(input)
+
+    ensured shouldBe Obj(
+      Str("a") -> Arr(Str("foo")),
+      Str("b") -> Arr(Str("foo")),
+      Str("c") -> Int64(1234L),
+      Str("d") -> Arr(Obj(Str("baz") -> Arr(Str("qux")))),
+      Str("e") -> Arr()
+    )
+  }
 }

@@ -2,10 +2,10 @@ package org.broadinstitute.monster.etl.encode
 
 import caseapp.{AppName, AppVersion, HelpMessage, ProgName}
 import com.spotify.scio.coders.Coder
-import com.spotify.scio.{BuildInfo => _, io => _, _}
+import com.spotify.scio.{io => _, _}
 import com.spotify.scio.extra.json._
 import io.circe.JsonObject
-import org.broadinstitute.monster.etl._
+import org.broadinstitute.monster.EncodeBuildInfo
 import org.broadinstitute.monster.etl.encode.extract.{
   AuditExtractions,
   EncodeExtractions,
@@ -33,7 +33,7 @@ object ExtractionPipeline {
   )
 
   @AppName("ENCODE Extraction Pipeline")
-  @AppVersion(BuildInfo.version)
+  @AppVersion(EncodeBuildInfo.version)
   @ProgName("org.broadinstitute.monster.etl.encode.ExtractionPipeline")
   /**
     * Command-line arguments for the ETL workflow.

@@ -11,10 +11,10 @@ class V2FIntegrationSpec extends PipelineSpec with Matchers with BeforeAndAfterA
 
   behavior of "V2F ETL Pipeline"
 
-  private val truthDir = "v2f" / "src" / "it" / "test-files" / "outputs"
-  private val compareDir = "v2f" / "src" / "it" / "test-files" / "outputs-to-compare"
-  private val inputDirString = "v2f/src/it/test-files/inputs"
-  private val compareDirString = "v2f/src/it/test-files/outputs-to-compare"
+  private val truthDir = "src" / "it" / "test-files" / "outputs"
+  private val compareDir = "src" / "it" / "test-files" / "outputs-to-compare"
+  private val inputDirString = "src/it/test-files/inputs"
+  private val compareDirString = "src/it/test-files/outputs-to-compare"
 
   // the directory structure and files are created by the first test, so all we need to do is delete them afterwards
   override def afterAll(): Unit = {
@@ -29,7 +29,7 @@ class V2FIntegrationSpec extends PipelineSpec with Matchers with BeforeAndAfterA
   }
 
   it should "write test Dataset Specific data without throwing an error" in {
-    runWithRealContext(PipelineOptionsFactory.create()) {sc =>
+    runWithRealContext(PipelineOptionsFactory.create()) { sc =>
       DatasetSpecificPipeline.convertAndWrite(sc, inputDirString, compareDirString)
     }.waitUntilDone()
   }
@@ -45,14 +45,15 @@ class V2FIntegrationSpec extends PipelineSpec with Matchers with BeforeAndAfterA
   private def createSetFromFiles(directory: File, filePattern: String): Set[Json] = {
     directory
       .glob(filePattern)
-      .flatMap (_.lineIterator)
+      .flatMap(_.lineIterator)
       .map { line =>
         val maybeParsed = io.circe.parser.parse(line)
         maybeParsed.fold(
           err => throw new Exception(s"Failed to parse input line as JSON: $line", err),
           identity
         )
-      }.toSet
+      }
+      .toSet
   }
 
   /**
@@ -64,7 +65,10 @@ class V2FIntegrationSpec extends PipelineSpec with Matchers with BeforeAndAfterA
     */
   private def compareTruthAndCompSets(filePattern: String, description: String): Unit = {
     it should description in {
-      createSetFromFiles(compareDir, filePattern) shouldBe createSetFromFiles(truthDir, filePattern)
+      createSetFromFiles(compareDir, filePattern) shouldBe createSetFromFiles(
+        truthDir,
+        filePattern
+      )
     }
   }
 

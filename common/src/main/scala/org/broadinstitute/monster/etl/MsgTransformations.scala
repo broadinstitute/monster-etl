@@ -385,4 +385,25 @@ object MsgTransformations {
     nanValues: Set[String] = Set.empty
   )(msg: Msg): Msg =
     mapFieldValues(fields, msg)(parseArray(_, delimiter, parseDouble(_, nanValues)))
+
+  /**
+    * Ensure that all the values for a set of fields are arrays.
+    *
+    * Fields that are already arrays are not modified by this method. Scalar fields
+    * are converted to singleton arrays.
+    *
+    * @param fields the set of fields to ensure are arrays
+    * @param msg the Msg object to transform
+    */
+  def ensureArrays(fields: Set[String])(msg: Msg): Msg = {
+    val copy = upack.copy(msg)
+    fields.foreach { field =>
+      val arrayVal = copy.obj.getOrElse(Str(field), Arr()) match {
+        case arr: Arr => arr
+        case other    => Arr(other)
+      }
+      copy.obj.update(Str(field), arrayVal)
+    }
+    copy
+  }
 }

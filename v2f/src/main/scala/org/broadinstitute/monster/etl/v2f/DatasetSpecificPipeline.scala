@@ -1,9 +1,10 @@
 package org.broadinstitute.monster.etl.v2f
 
 import caseapp.{AppName, AppVersion, HelpMessage, ProgName}
-import com.spotify.scio.{ContextAndArgs, ScioContext, BuildInfo => _, io => _}
+import com.spotify.scio.{ContextAndArgs, ScioContext, io => _}
 import com.spotify.scio.coders.Coder
 import com.spotify.scio.values.SCollection
+import org.broadinstitute.monster.V2fBuildInfo
 import org.broadinstitute.monster.etl._
 import upack.Msg
 
@@ -15,7 +16,7 @@ object DatasetSpecificPipeline {
   implicit val msgCoder: Coder[Msg] = Coder.beam(new UpackMsgCoder)
 
   @AppName("V2F Dataset Specific Pipeline")
-  @AppVersion(BuildInfo.version)
+  @AppVersion(V2fBuildInfo.version)
   @ProgName("org.broadinstitute.monster.etl.v2f.DatasetSpecificPipeline")
   /**
     * Command-line arguments for the ETL workflow.
