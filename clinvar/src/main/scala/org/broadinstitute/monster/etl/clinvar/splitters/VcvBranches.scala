@@ -6,16 +6,26 @@ import upack.{Msg, Obj, Str}
 
 import scala.collection.mutable
 
-/** TODO COMMENT */
+/**
+  * Pair of data streams produced by splitting info about archive
+  * releases out of a stream of mapped VCVs.
+  */
 case class VcvBranches(
   vcvs: SCollection[Msg],
   vcvReleases: SCollection[Msg]
 )
 
 object VcvBranches {
-  import org.broadinstitute.monster.etl.clinvar.ClinvarContants._
+  import org.broadinstitute.monster.etl.clinvar.ClinvarConstants._
 
-  /** TODO COMMENT */
+  /**
+    * Split a stream of mapped VCVs into a stream of VCVs and a
+    * stream of VCV ID/version/release-date triples.
+    *
+    * Values for release date are removed from the output stream of VCVs
+    * to avoid spurious upserts in Jade when nothing changes for a VCV
+    * from week to week.
+    */
   def fromVcvStream(vcvs: SCollection[Msg])(implicit coder: Coder[Msg]): VcvBranches = {
     val releases = SideOutput[Msg]
 

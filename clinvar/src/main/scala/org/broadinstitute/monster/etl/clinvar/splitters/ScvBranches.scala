@@ -6,7 +6,10 @@ import upack.{Msg, Obj, Str}
 
 import scala.collection.mutable
 
-/** TODO COMMENT */
+/**
+  * Collection of data streams produced by splitting submitter
+  * and submission information out of a stream of mapped SCVs.
+  */
 case class ScvBranches(
   scvs: SCollection[Msg],
   submitters: SCollection[Msg],
@@ -14,9 +17,14 @@ case class ScvBranches(
 )
 
 object ScvBranches {
-  import org.broadinstitute.monster.etl.clinvar.ClinvarContants._
+  import org.broadinstitute.monster.etl.clinvar.ClinvarConstants._
 
-  /** TODO COMMENT */
+  /**
+    * Split a stream of mapped SCV entities into cross-linked streams
+    * of submitters, submissions, and SCVs.
+    *
+    * The generated submitter and submission streams are deduplicated by ID.
+    */
   def fromScvStream(scvs: SCollection[Msg])(implicit coder: Coder[Msg]): ScvBranches = {
     val submitterOut = SideOutput[Msg]
     val submissionOut = SideOutput[Msg]

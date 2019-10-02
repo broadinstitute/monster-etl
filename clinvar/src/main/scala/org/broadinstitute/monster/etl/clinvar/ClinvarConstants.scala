@@ -3,7 +3,7 @@ package org.broadinstitute.monster.etl.clinvar
 import upack._
 
 /** Container for constants that we use across the ClinVar pipeline. */
-object ClinvarContants {
+object ClinvarConstants {
 
   //// Key names ////
 

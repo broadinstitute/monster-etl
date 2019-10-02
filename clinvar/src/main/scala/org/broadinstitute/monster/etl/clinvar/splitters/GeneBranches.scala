@@ -6,16 +6,24 @@ import upack.{Msg, Obj, Str}
 
 import scala.collection.mutable
 
-/** TODO COMMENT */
+/**
+  * Pair of data streams produced by splitting variation-related
+  * mapping info out of mapped gene entities.
+  */
 case class GeneBranches(
   genes: SCollection[Msg],
   geneAssociations: SCollection[Msg]
 )
 
 object GeneBranches {
-  import org.broadinstitute.monster.etl.clinvar.ClinvarContants._
+  import org.broadinstitute.monster.etl.clinvar.ClinvarConstants._
 
-  /** TODO COMMENT */
+  /**
+    * Split a stream of mapped gene entities into a deduplicated
+    * stream of genes and a stream of gene/variation associations.
+    *
+    * Gene deduplication is performed using the mapped gene ID (symbol).
+    */
   def fromGeneStream(
     genes: SCollection[Msg]
   )(implicit coder: Coder[Msg]): GeneBranches = {

@@ -6,6 +6,7 @@ import ujson.StringRenderer
 import upack.{Arr, Msg, Obj, Str}
 
 import scala.collection.mutable
+import scala.util.matching.Regex
 
 /** Container for functions used to map fields in ClinVar's data. */
 object ClinvarMappers {
@@ -72,7 +73,7 @@ object ClinvarMappers {
 
     inCopy.obj.foreach {
       case (k, v) =>
-        if (ClinvarContants.GeneratedKeys.contains(k)) {
+        if (ClinvarConstants.GeneratedKeys.contains(k)) {
           // Pass through fields generated during splitting.
           out.update(k, v)
         } else {
@@ -85,14 +86,14 @@ object ClinvarMappers {
     // Stringify and store unmodeled fields, if there are any.
     if (content.nonEmpty) {
       val stringContent = upack.transform(Obj(content), StringRenderer())
-      out.update(ClinvarContants.UnmodeledContentKey, Str(stringContent.toString))
+      out.update(ClinvarConstants.UnmodeledContentKey, Str(stringContent.toString))
     }
 
     Obj(out): Msg
   }
 
   val variationMappings = Map(
-    NonEmptyList.of("@VariationID") -> ClinvarContants.IdKey,
+    NonEmptyList.of("@VariationID") -> ClinvarConstants.IdKey,
     NonEmptyList.of("Name") -> Str("name"),
     NonEmptyList.of("VariantType") -> Str("variation_type"),
     NonEmptyList.of("VariationType") -> Str("variation_type"),
@@ -111,7 +112,7 @@ object ClinvarMappers {
     }
 
   val geneMappings = Map(
-    NonEmptyList.of("@Symbol") -> ClinvarContants.IdKey,
+    NonEmptyList.of("@Symbol") -> ClinvarConstants.IdKey,
     NonEmptyList.of("@HGNC_ID") -> Str("hgnc_id"),
     NonEmptyList.of("@FullName") -> Str("full_name"),
     NonEmptyList.of("@Source") -> Str("source"),
@@ -122,7 +123,7 @@ object ClinvarMappers {
   def mapGene(gene: Msg): Msg = mapFields(gene, geneMappings)
 
   val vcvMappings = Map(
-    NonEmptyList.of("@Accession") -> ClinvarContants.IdKey,
+    NonEmptyList.of("@Accession") -> ClinvarConstants.IdKey,
     NonEmptyList.of("@Version") -> Str("version"),
     NonEmptyList.of("@DateCreated") -> Str("date_created"),
     NonEmptyList.of("@DateLastUpdated") -> Str("date_last_updated"),
@@ -141,7 +142,7 @@ object ClinvarMappers {
     }
 
   val rcvMappings = Map(
-    NonEmptyList.of("@Accession") -> ClinvarContants.IdKey,
+    NonEmptyList.of("@Accession") -> ClinvarConstants.IdKey,
     NonEmptyList.of("@Version") -> Str("version"),
     NonEmptyList.of("@Title") -> Str("title"),
     NonEmptyList.of("@DateLastEvaluated") -> Str("date_last_evaluated"),
@@ -164,7 +165,7 @@ object ClinvarMappers {
     NonEmptyList.of("RecordStatus") -> Str("record_status"),
     NonEmptyList.of("ReviewStatus") -> Str("review_status"),
     NonEmptyList.of("@SubmissionDate") -> Str("submission_date"),
-    NonEmptyList.of("ClinVarAccession", "@Accession") -> ClinvarContants.IdKey,
+    NonEmptyList.of("ClinVarAccession", "@Accession") -> ClinvarConstants.IdKey,
     NonEmptyList.of("ClinVarAccession", "@Version") -> Str("version"),
     NonEmptyList.of("ClinVarAccession", "@OrgID") -> Str("org_id"),
     NonEmptyList.of("ClinVarAccession", "@SubmitterName") -> Str("submitter_name"),
@@ -183,11 +184,16 @@ object ClinvarMappers {
       .of("SubmissionNameList", "SubmissionName") -> Str("submission_names")
   )
 
+  /**
+    * Regex matching the YYYY-MM-DD portion of a date field which might also contain
+    * a trailing timestamp.
+    *
+    * Used to normalize fields which are intended to be dates, not timestamps.
+    */
+  val DatePattern: Regex = """^(\d{4}-\d{2}-\d{2}).*""".r
+
   /** Map the names and types of fields in a raw SCV into our desired schema. */
   def mapScv(scv: Msg): Msg = {
-
-    // TODO: interp_date_last_evaluated *sometimes* contains hour values, which breaks BQ.
-    //  We need to detect them and strip them out.
 
     def scvComment(commentType: Msg, commentText: Msg): Msg = {
       val commentObj = Obj(Str("type") -> commentType, Str("text") -> commentText)
@@ -210,13 +216,24 @@ object ClinvarMappers {
       }
       mapped.obj.update(Str("interp_comments"), Arr(normalized))
     }
+    mapped.obj.remove(Str("interp_date_last_evaluated")).foreach { rawDate =>
+      // interp_date_last_evaluated *sometimes* contains hour values, which breaks BQ.
+      // The hour values aren't really important, so we strip them out when present.
+      rawDate.str match {
+        case DatePattern(trimmedDate) =>
+          mapped.obj.update(Str("interp_date_last_evaluated"), Str(trimmedDate))
+        case other =>
+          logger.warn(s"Found un-parseable date [$other] in SCV: $mapped")
+          ()
+      }
+    }
     mapped
   }
 
   val scvVariationMappings = Map(
     NonEmptyList.of("VariantType") -> Str("variation_type"),
     NonEmptyList.of("VariationType") -> Str("variation_type"),
-    NonEmptyList.of("GeneList", "Gene", "@Symbol") -> ClinvarContants.GeneRef
+    NonEmptyList.of("GeneList", "Gene", "@Symbol") -> ClinvarConstants.GeneRef
   )
 
   /** Map the names and types of fields in a raw SCV variation into our desired schema. */

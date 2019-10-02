@@ -8,7 +8,10 @@ import upack.{Arr, Msg, Obj, Str}
 
 import scala.collection.mutable
 
-/** TODO COMMENT */
+/**
+  * Collection of data streams produced by the initial splitting
+  * operation performed on raw VariationArchive entries.
+  */
 case class ArchiveBranches(
   variations: SCollection[Msg],
   genes: SCollection[Msg],
@@ -19,9 +22,15 @@ case class ArchiveBranches(
 )
 
 object ArchiveBranches {
-  import org.broadinstitute.monster.etl.clinvar.ClinvarContants._
+  import org.broadinstitute.monster.etl.clinvar.ClinvarConstants._
 
-  /** TODO COMMENT */
+  /**
+    * Split a stream of raw VariationArchive entries into multiple
+    * streams of un-nested entities.
+    *
+    * Cross-linking between entities in the output streams occurs
+    * prior to elements being pushed out of the split step.
+    */
   def fromArchiveStream(
     archiveStream: SCollection[Msg]
   )(implicit coder: Coder[Msg]): ArchiveBranches = {
@@ -141,7 +150,30 @@ object ArchiveBranches {
     )
   }
 
-  /** TODO COMMENT */
+  /**
+    * Pop and return a list of entries from a nested field within a message.
+    *
+    * XML sections with repeated tags are typically structured like:
+    *
+    *   <WrapperTag>
+    *     <RepeatedTag></RepeatedTag>
+    *     <RepeatedTag></RepeatedTag>
+    *   </WrapperTag>
+    *
+    * Our XML->JSON converter munges things a little bit, by:
+    *   1. Always typing `WrapperTag` as an object containing a single field named `RepeatedTag`
+    *   2. Typing `RepeatedTag` as an array if multiple instances of the tag were present, and
+    *      otherwise typing it as a non-array
+    *
+    * This extraction method assumes this conversion convention, descending through some wrapper
+    * layer to pull out the maybe-array. If the nested value is not an array, it is wrapped by
+    * an `Iterable` before being returned.
+    *
+    * @param msg the entity containing the nested list to extract
+    * @param wrapperName name of the tag / field which contains the potentially-repeated field
+    * @param elementName name of the repeated tag / field which is nested within `wrapperName`
+    * @return all values of `elementName` found under `wrapperName`
+    */
   def extractList(msg: Msg, wrapperName: String, elementName: String): Iterable[Msg] = {
     val maybeList = for {
       wrapper <- msg.obj.remove(Str(wrapperName))
@@ -156,7 +188,12 @@ object ArchiveBranches {
     maybeList.getOrElse(Iterable.empty)
   }
 
-  /** TODO COMMENT */
+  /**
+    * Extract a single top-level variation record from a wrapper message.
+    *
+    * The extracted variation will be popped from the wrapper message's field map.
+    * If no variant is found, this method will fail with an exception.
+    */
   def getTopLevelVariation(msg: Msg): Msg =
     VariationTypes
       .foldLeft(Option.empty[Msg]) { (acc, subtype) =>
@@ -166,7 +203,12 @@ object ArchiveBranches {
         throw new RuntimeException(s"No variant found in entity: $msg")
       }
 
-  /** TODO COMMENT */
+  /**
+    * Extract a specific subclass of variation from a wrapper message, if present.
+    *
+    * If found, the extracted variation will be popped from the wrapper message's field map.
+    * Extracted messages will be tagged with their original subclass type, to avoid losing data.
+    */
   def getVariation(msg: Msg, subclassType: Msg): Option[Msg] =
     msg.obj.remove(subclassType).map {
       case arr @ Arr(many) =>
@@ -177,7 +219,18 @@ object ArchiveBranches {
         other
     }
 
-  /** TODO COMMENT */
+  /**
+    * Collect the IDs of a variation, its children, and all of its descendants.
+    *
+    * The process of ID collection will pop child variation out of their parents'
+    * field maps. To avoid losing data, this method exposes an optional hook which
+    * can be used to push a variation to a side output after it has been cross-linked.
+    *
+    * @param variantMessage the variation entry to traverse for IDs
+    * @param output optional hook which can be used to push un-nested variations
+    *               to a side output after cross-linking
+    * @param getId method which can pull an ID out of a variation method
+    */
   def collectVariantIds(
     variantMessage: Msg,
     output: Option[Msg => Unit]
