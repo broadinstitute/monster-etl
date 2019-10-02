@@ -74,6 +74,7 @@ object EncodeEntity extends Enum[EncodeEntity] {
   override val values = findValues
 
   case object Biosample extends EncodeEntity {
+
     override def fieldsToKeep: Set[String] = super.fieldsToKeep.union(
       Set(
         "biosample_ontology",
@@ -97,6 +98,7 @@ object EncodeEntity extends Enum[EncodeEntity] {
   }
 
   case object Donor extends EncodeEntity {
+
     override def fieldsToKeep: Set[String] = super.fieldsToKeep.union(
       Set(
         "age_units",
@@ -123,6 +125,7 @@ object EncodeEntity extends Enum[EncodeEntity] {
   }
 
   case object Experiment extends EncodeEntity {
+
     override def fieldsToKeep: Set[String] = super.fieldsToKeep.union(
       Set(
         "date_released",
@@ -138,6 +141,7 @@ object EncodeEntity extends Enum[EncodeEntity] {
   }
 
   case object File extends EncodeEntity {
+
     override def fieldsToKeep: Set[String] = super.fieldsToKeep.union(
       Set(
         "file_format",
