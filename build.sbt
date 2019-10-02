@@ -12,7 +12,14 @@ val scalaTestVersion = "3.0.8"
 // Settings to apply to all sub-projects.
 // Can't be applied at the build level because of scoping rules.
 val commonSettings = Seq(
-  scalacOptions += "-Xmacro-settings:show-coder-fallback=true"
+  scalacOptions += "-Xmacro-settings:show-coder-fallback=true",
+  libraryDependencies ++= Seq(
+    "org.apache.beam" % "beam-runners-direct-java" % beamVersion,
+    "org.apache.beam" % "beam-runners-google-cloud-dataflow-java" % beamVersion
+  ).map(_ % Runtime),
+  libraryDependencies ++= Seq(
+    "com.spotify" %% "scio-test" % scioVersion
+  ).map(_ % s"${Test.name},${IntegrationTest.name}")
 )
 
 lazy val `monster-etl` = project
@@ -32,8 +39,7 @@ lazy val common = project
     ),
     libraryDependencies ++= Seq(
       "com.github.pathikrit" %% "better-files" % betterFilesVersion,
-      "com.spotify" %% "scio-test" % scioVersion,
-      "org.scalatest" %% "scalatest" % scalaTestVersion,
+      "org.scalatest" %% "scalatest" % scalaTestVersion
     ).map(_ % Test)
   )
 
@@ -46,13 +52,8 @@ lazy val encode = project
     libraryDependencies ++= Seq(
       "ch.qos.logback" % "logback-classic" % logbackVersion,
       "com.beachape" %% "enumeratum" % enumeratumVersion,
-      "com.spotify" %% "scio-extra" % scioVersion,
-      "org.apache.beam" % "beam-runners-direct-java" % beamVersion % Runtime,
-      "org.apache.beam" % "beam-runners-google-cloud-dataflow-java" % beamVersion % Runtime,
-    ),
-    libraryDependencies ++= Seq(
-      "com.spotify" %% "scio-test" % scioVersion
-    ).map(_ % Test)
+      "com.spotify" %% "scio-extra" % scioVersion
+    )
   )
 
 lazy val v2f = project
@@ -64,14 +65,8 @@ lazy val v2f = project
     libraryDependencies ++= Seq(
       "com.spotify" %% "scio-extra" % scioVersion,
       "com.github.tototoshi" %% "scala-csv" % scalaCsvVersion,
-      "com.github.pathikrit" %% "better-files" % betterFilesVersion,
-      "org.apache.beam" % "beam-runners-direct-java" % beamVersion % Runtime,
-      "org.apache.beam" % "beam-runners-google-cloud-dataflow-java" % beamVersion % Runtime,
-    ),
-    // All tests.
-    libraryDependencies ++= Seq(
-      "com.spotify" %% "scio-test" % scioVersion
-    ).map(_ % s"${Test.name},${IntegrationTest.name}")
+      "com.github.pathikrit" %% "better-files" % betterFilesVersion
+    )
   )
 
 lazy val clinvar = project
@@ -79,13 +74,3 @@ lazy val clinvar = project
   .enablePlugins(BasePlugin)
   .dependsOn(common)
   .settings(commonSettings)
-  .settings(
-    libraryDependencies ++= Seq(
-      "org.apache.beam" % "beam-runners-direct-java" % beamVersion % Runtime,
-      "org.apache.beam" % "beam-runners-google-cloud-dataflow-java" % beamVersion % Runtime,
-    ),
-    // All tests.
-    libraryDependencies ++= Seq(
-      "com.spotify" %% "scio-test" % scioVersion
-    ).map(_ % s"${Test.name},${IntegrationTest.name}")
-  )
