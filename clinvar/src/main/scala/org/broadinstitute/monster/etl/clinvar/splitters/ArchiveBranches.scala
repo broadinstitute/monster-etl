@@ -132,11 +132,14 @@ object ArchiveBranches {
           // extract Variation Archive Trait Sets.
           extractList(recordCopy, "Interpretations", "Interpretation").foreach {
             interpretation =>
-              val traitSets = interpretation.obj(Str("ConditionList")).obj(Str("TraitSet")) match {
-                case Arr(msgs) => msgs
-                case msg => Iterable(msg)
-              }
-              traitSets.foreach {traitSet =>
+              val traitSets =
+                interpretation.obj(Str("ConditionList")).obj(Str("TraitSet")) match {
+                  // the TraitSet tag might have one or multiple elements
+                  case Arr(msgs) => msgs
+                  case msg       => Iterable(msg)
+                }
+              traitSets.foreach { traitSet =>
+                // add an entry for each traitSet element
                 val traitSetObj = new mutable.LinkedHashMap[Msg, Msg]
                 traitSetObj.update(IdKey, traitSet.obj(Str("@ID")))
                 traitSetObj.update(Str("type"), traitSet.obj(Str("@Type")))
