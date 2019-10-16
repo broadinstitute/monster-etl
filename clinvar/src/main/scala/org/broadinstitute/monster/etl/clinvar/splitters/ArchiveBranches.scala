@@ -18,7 +18,8 @@ case class ArchiveBranches(
   vcvs: SCollection[Msg],
   rcvs: SCollection[Msg],
   scvs: SCollection[Msg],
-  scvVariations: SCollection[Msg]
+  scvVariations: SCollection[Msg],
+  vaTraitSets: SCollection[Msg]
 )
 
 object ArchiveBranches {
@@ -40,6 +41,7 @@ object ArchiveBranches {
     val rcvOut = SideOutput[Msg]
     val scvOut = SideOutput[Msg]
     val scvVariationOut = SideOutput[Msg]
+    val vaTraitSets = SideOutput[Msg]
 
     val (variationStream, sideCtx) = archiveStream
       .withSideOutputs(
@@ -47,7 +49,8 @@ object ArchiveBranches {
         vcvOut,
         rcvOut,
         scvOut,
-        scvVariationOut
+        scvVariationOut,
+        vaTraitSets
       )
       .withName("Split VCVs")
       .map { (fullVcv, ctx) =>
@@ -126,6 +129,22 @@ object ArchiveBranches {
               ctx.output(scvOut, scv)
           }
 
+          // extract Variation Archive Trait Sets.
+          extractList(recordCopy, "Interpretations", "Interpretation").foreach {
+            interpretation =>
+              val traitSets = interpretation.obj(Str("ConditionList")).obj(Str("TraitSet")) match {
+                case Arr(msgs) => msgs
+                case msg => Iterable(msg)
+              }
+              traitSets.foreach {traitSet =>
+                val traitSetObj = new mutable.LinkedHashMap[Msg, Msg]
+                traitSetObj.update(IdKey, traitSet.obj(Str("@ID")))
+                traitSetObj.update(Str("type"), traitSet.obj(Str("@Type")))
+                traitSetObj.update(Str("content"), traitSet)
+                ctx.output(vaTraitSets, Obj(traitSetObj))
+              }
+          }
+
           // Re-inject whatever fields are left in the record, along
           // with any top-level fields for the VCV.
           vcvObj.foreach {
@@ -146,7 +165,8 @@ object ArchiveBranches {
       vcvs = sideCtx(vcvOut),
       rcvs = sideCtx(rcvOut),
       scvs = sideCtx(scvOut),
-      scvVariations = sideCtx(scvVariationOut)
+      scvVariations = sideCtx(scvVariationOut),
+      vaTraitSets = sideCtx(vaTraitSets)
     )
   }
 
