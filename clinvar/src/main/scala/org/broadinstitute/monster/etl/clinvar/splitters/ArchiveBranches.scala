@@ -133,6 +133,7 @@ object ArchiveBranches {
           extractList(recordCopy, "Interpretations", "Interpretation").foreach {
             interpretation =>
               val traitSets =
+                // TODO do we need to anticipate the possibility of no ConditionList or no TraitSet?
                 interpretation.obj(Str("ConditionList")).obj(Str("TraitSet")) match {
                   // the TraitSet tag might have one or multiple elements
                   case Arr(msgs) => msgs
@@ -143,7 +144,8 @@ object ArchiveBranches {
                 val traitSetObj = new mutable.LinkedHashMap[Msg, Msg]
                 traitSetObj.update(IdKey, traitSet.obj(Str("@ID")))
                 traitSetObj.update(Str("type"), traitSet.obj(Str("@Type")))
-                traitSetObj.update(Str("content"), traitSet)
+                traitSetObj.update(Str("content"), traitSet) // TODO should we remove @ID and @Type from this?
+
                 ctx.output(vaTraitSets, Obj(traitSetObj))
               }
           }

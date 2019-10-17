@@ -4,6 +4,7 @@ import caseapp.{AppName, AppVersion, HelpMessage, ProgName}
 import com.spotify.scio.ContextAndArgs
 import com.spotify.scio.coders.Coder
 import org.broadinstitute.monster.ClinvarBuildInfo
+import org.broadinstitute.monster.etl.clinvar.ClinvarConstants.IdKey
 import org.broadinstitute.monster.etl.clinvar.splitters._
 import org.broadinstitute.monster.etl.{MsgIO, UpackMsgCoder}
 import upack._
@@ -51,6 +52,8 @@ object ClinvarPipeline {
     val scvVariations = archiveBranches.scvVariations.transform("Cleanup SCV Variations")(
       _.map(ClinvarMappers.mapScvVariation)
     )
+    // TODO should this distinctBy be done elsewhere?
+    val distinctVATraitSets = archiveBranches.vaTraitSets.distinctBy(_.obj(IdKey).str)
 
     // Further split the gene stream to distinguish base genes from associations.
     val geneBranches = GeneBranches.fromGeneStream(genes)
@@ -109,6 +112,11 @@ object ClinvarPipeline {
       scvVariations,
       "SCV Variations",
       s"${parsedArgs.outputPrefix}/clinical_assertion_variation"
+    )
+    MsgIO.writeJsonLists(
+      distinctVATraitSets,
+      "Variation Archive Trait Sets",
+      s"${parsedArgs.outputPrefix}/variation_archive_trait_set"
     )
 
     pipelineContext.close()
