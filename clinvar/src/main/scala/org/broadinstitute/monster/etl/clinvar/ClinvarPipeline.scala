@@ -54,6 +54,7 @@ object ClinvarPipeline {
     )
     // TODO should this distinctBy be done elsewhere?
     val distinctVATraitSets = archiveBranches.vaTraitSets.distinctBy(_.obj(IdKey).str)
+    val distinctVATraits = archiveBranches.vaTraits
 
     // Further split the gene stream to distinguish base genes from associations.
     val geneBranches = GeneBranches.fromGeneStream(genes)
@@ -117,6 +118,11 @@ object ClinvarPipeline {
       distinctVATraitSets,
       "Variation Archive Trait Sets",
       s"${parsedArgs.outputPrefix}/variation_archive_trait_set"
+    )
+    MsgIO.writeJsonLists(
+      distinctVATraits,
+      "Variation Archive Traits",
+      s"${parsedArgs.outputPrefix}/variation_archive_trait"
     )
 
     pipelineContext.close()

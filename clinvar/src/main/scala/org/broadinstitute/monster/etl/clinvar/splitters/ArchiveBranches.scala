@@ -19,7 +19,8 @@ case class ArchiveBranches(
   rcvs: SCollection[Msg],
   scvs: SCollection[Msg],
   scvVariations: SCollection[Msg],
-  vaTraitSets: SCollection[Msg]
+  vaTraitSets: SCollection[Msg],
+  vaTraits: SCollection[Msg]
 )
 
 object ArchiveBranches {
@@ -42,6 +43,7 @@ object ArchiveBranches {
     val scvOut = SideOutput[Msg]
     val scvVariationOut = SideOutput[Msg]
     val vaTraitSets = SideOutput[Msg]
+    val vaTraits = SideOutput[Msg]
 
     val (variationStream, sideCtx) = archiveStream
       .withSideOutputs(
@@ -50,7 +52,8 @@ object ArchiveBranches {
         rcvOut,
         scvOut,
         scvVariationOut,
-        vaTraitSets
+        vaTraitSets,
+        vaTraits
       )
       .withName("Split VCVs")
       .map { (fullVcv, ctx) =>
@@ -147,6 +150,63 @@ object ArchiveBranches {
                 traitSetObj.update(Str("content"), traitSet) // TODO should we remove @ID and @Type from this?
 
                 ctx.output(vaTraitSets, Obj(traitSetObj))
+
+                val traits = traitSet.obj(Str("Trait")) match {
+                  // the Trait might have one or multiple elements
+                  case Arr(msgs) => msgs
+                  case msg       => Iterable(msg)
+                }
+
+                traits.foreach { oneTrait =>
+                  val traitObj = new mutable.LinkedHashMap[Msg, Msg]
+                  // from the "easy" way
+
+                  // parse XRef elements to find the one that is "MedGen" if it is present
+                  // note that this is the primary key id for VariationArchiveTraits
+
+                  val maybeXref = oneTrait.obj.get(Str("XRef"))
+
+                  val xrefs = maybeXref.fold {
+                    Iterable.empty[Msg]
+                  } {
+                    case Arr(msgs) => msgs
+                    case msg       => Iterable(msg)
+                  }
+
+                  xrefs.foreach { xref =>
+                    // if the XRef element has a @DB of "MedGen" then use the @ID for the ID
+                    if (xref.obj(Str("@DB")).str == "MedGen") {
+                      traitObj.update(IdKey, xref.obj(Str("@ID")))
+                    }
+                  }
+
+                  traitObj.update(Str("trait_id"), oneTrait.obj(Str("@ID")))
+                  traitObj.update(Str("type"), oneTrait.obj(Str("@Type")))
+                  traitObj.update(Str("content"), oneTrait)
+
+                  // parse Name elements to find the one that is "preferred"
+                  val names = oneTrait.obj(Str("Name")) match {
+                    // Name might have one or multiple elements
+                    case Arr(msgs) => msgs
+                    case msg       => Iterable(msg)
+                  }
+                  names.foreach { name =>
+                    // if the ElementValue node has a @Type of "Preferred" then use the "$" for the name
+                    if (name
+                          .obj(Str("ElementValue"))
+                          .obj(Str("@Type"))
+                          .str == "Preferred") {
+                      traitObj.update(
+                        Str("name"),
+                        name.obj(Str("ElementValue")).obj(Str("$"))
+                      )
+                    }
+                  }
+
+                  // from the hard way? aka the TraitMappingList stuff
+
+                  ctx.output(vaTraits, Obj(traitObj))
+                }
               }
           }
 
@@ -171,7 +231,8 @@ object ArchiveBranches {
       rcvs = sideCtx(rcvOut),
       scvs = sideCtx(scvOut),
       scvVariations = sideCtx(scvVariationOut),
-      vaTraitSets = sideCtx(vaTraitSets)
+      vaTraitSets = sideCtx(vaTraitSets),
+      vaTraits = sideCtx(vaTraits)
     )
   }
 
