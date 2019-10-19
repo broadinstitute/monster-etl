@@ -112,7 +112,8 @@ object ClinvarMappers {
     }
 
   val geneMappings = Map(
-    NonEmptyList.of("@Symbol") -> ClinvarConstants.IdKey,
+    NonEmptyList.of("@GeneID") -> ClinvarConstants.IdKey,
+    NonEmptyList.of("@Symbol") -> Str("symbol"),
     NonEmptyList.of("@HGNC_ID") -> Str("hgnc_id"),
     NonEmptyList.of("@FullName") -> Str("full_name"),
     NonEmptyList.of("@Source") -> Str("source"),
@@ -232,8 +233,7 @@ object ClinvarMappers {
 
   val scvVariationMappings = Map(
     NonEmptyList.of("VariantType") -> Str("variation_type"),
-    NonEmptyList.of("VariationType") -> Str("variation_type"),
-    NonEmptyList.of("GeneList", "Gene", "@Symbol") -> ClinvarConstants.GeneRef
+    NonEmptyList.of("VariationType") -> Str("variation_type")
   )
 
   /** Map the names and types of fields in a raw SCV variation into our desired schema. */
