@@ -266,4 +266,13 @@ class ClinvarMapper(implicit msgCoder: Coder[Msg]) extends Serializable {
   /** Map the names and types of fields in raw SCV trait sets into our desired schema. */
   val mapScvTraitSets: Mapper =
     _.transform("Cleanup SCV Trait Sets")(_.map(mapFields(_, scvTraitSetMappings)))
+
+  val scvTraitMappings = Map(
+    NonEmptyList.of("@Type") -> Str("type"),
+    NonEmptyList.of("Name", "ElementValue", "$") -> Str("name")
+  )
+
+  /** Map the names and types of fields in raw SCV traits into our desired schema. */
+  val mapScvTraits: Mapper =
+    _.transform("Cleanup SCV Traits")(_.map(mapFields(_, scvTraitMappings)))
 }

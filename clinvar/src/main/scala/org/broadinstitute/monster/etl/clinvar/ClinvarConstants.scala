@@ -25,6 +25,9 @@ object ClinvarConstants {
   /** Standard name used for columns pointing to the SCV Observation table. */
   val ScvObsRef: Msg = Str("clinical_assertion_observation_id")
 
+  /** Standard name used for columns pointing to the SCV TraitSet table. */
+  val ScvTraitSetRef: Msg = Str("clinical_assertion_trait_set_id")
+
   /** Standard name used for columns pointing to the Submitter table. */
   val SubmitterRef: Msg = Str("submitter_id")
 
@@ -56,6 +59,7 @@ object ClinvarConstants {
     VarRef,
     ScvRef,
     ScvObsRef,
+    ScvTraitSetRef,
     SubmitterRef,
     SubmissionRef,
     ChildrenRef,

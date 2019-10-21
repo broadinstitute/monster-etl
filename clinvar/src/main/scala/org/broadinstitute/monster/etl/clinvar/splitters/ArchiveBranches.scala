@@ -20,7 +20,8 @@ case class ArchiveBranches(
   scvs: SCollection[Msg],
   scvVariations: SCollection[Msg],
   scvObservations: SCollection[Msg],
-  scvTraitSets: SCollection[Msg]
+  scvTraitSets: SCollection[Msg],
+  scvTraits: SCollection[Msg]
 )
 
 object ArchiveBranches {
@@ -44,6 +45,7 @@ object ArchiveBranches {
     val scvVariationOut = SideOutput[Msg]
     val scvObservationOut = SideOutput[Msg]
     val scvTraitSetOut = SideOutput[Msg]
+    val scvTraitOut = SideOutput[Msg]
 
     val (variationStream, sideCtx) = archiveStream
       .withSideOutputs(
@@ -53,7 +55,8 @@ object ArchiveBranches {
         scvOut,
         scvVariationOut,
         scvObservationOut,
-        scvTraitSetOut
+        scvTraitSetOut,
+        scvTraitOut
       )
       .withName("Split Variation Archives")
       .map { (fullVcv, ctx) =>
@@ -128,6 +131,38 @@ object ArchiveBranches {
                   id
                 }
 
+              /*
+               * Common logic for extracting, linking, and pushing TraitSet nodes
+               * out of SCV and SCV Observations.
+               *
+               * Traits nested within the TraitSet are also extracted, linked, and
+               * pushed as part of this process.
+               */
+              def extractScvTraitSet(wrapper: Msg, id: Msg, ref: Msg): Unit =
+                wrapper.obj.remove(Str("TraitSet")).foreach { traitSet =>
+                  // Link the trait set back to its parent.
+                  traitSet.obj.update(IdKey, id)
+                  traitSet.obj.update(ref, id)
+
+                  // Process any traits nested within the set.
+                  val traitCounter = new AtomicInteger(0)
+                  traitSet.obj
+                    .remove(Str("Trait"))
+                    .toIterable
+                    .flatMap {
+                      case Arr(traits) => traits
+                      case other       => Iterable(other)
+                    }
+                    .foreach { `trait` =>
+                      val traitId = Str(s"${id.str}.${traitCounter.getAndIncrement()}")
+                      `trait`.obj.update(IdKey, traitId)
+                      `trait`.obj.update(ScvTraitSetRef, id)
+                      ctx.output(scvTraitOut, `trait`)
+                    }
+
+                  ctx.output(scvTraitSetOut, traitSet)
+                }
+
               // Link and push SCV observations.
               counter.set(0)
               extractList(scv, "ObservedInList", "ObservedIn").foreach { observation =>
@@ -136,21 +171,14 @@ object ArchiveBranches {
                 observation.obj.update(ScvRef, scvId)
 
                 // Extract, link, and push the observed trait set (if any).
-                observation.obj.remove(Str("TraitSet")).foreach { traitSet =>
-                  traitSet.obj.update(IdKey, id)
-                  traitSet.obj.update(ScvObsRef, id)
-                  ctx.output(scvTraitSetOut, traitSet)
-                }
+                extractScvTraitSet(observation, id, ScvObsRef)
 
+                // Push out the observation.
                 ctx.output(scvObservationOut, observation)
               }
 
               // Extract, link, and push the top-level trait set (if any).
-              scvObj.remove(Str("TraitSet")).foreach { traitSet =>
-                traitSet.obj.update(IdKey, scvId)
-                traitSet.obj.update(ScvRef, scvId)
-                ctx.output(scvTraitSetOut, traitSet)
-              }
+              extractScvTraitSet(scv, scvId, ScvRef)
 
               // Push out the SCV.
               ctx.output(scvOut, scv)
@@ -178,7 +206,8 @@ object ArchiveBranches {
       scvs = sideCtx(scvOut),
       scvVariations = sideCtx(scvVariationOut),
       scvObservations = sideCtx(scvObservationOut),
-      scvTraitSets = sideCtx(scvTraitSetOut)
+      scvTraitSets = sideCtx(scvTraitSetOut),
+      scvTraits = sideCtx(scvTraitOut)
     )
   }
 
