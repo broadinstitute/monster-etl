@@ -18,8 +18,9 @@ case class ArchiveBranches(
   vcvs: SCollection[Msg],
   rcvs: SCollection[Msg],
   scvs: SCollection[Msg],
+  scvVariations: SCollection[Msg],
   scvObservations: SCollection[Msg],
-  scvVariations: SCollection[Msg]
+  scvTraitSets: SCollection[Msg]
 )
 
 object ArchiveBranches {
@@ -40,8 +41,9 @@ object ArchiveBranches {
     val vcvOut = SideOutput[Msg]
     val rcvOut = SideOutput[Msg]
     val scvOut = SideOutput[Msg]
-    val scvObservationOut = SideOutput[Msg]
     val scvVariationOut = SideOutput[Msg]
+    val scvObservationOut = SideOutput[Msg]
+    val scvTraitSetOut = SideOutput[Msg]
 
     val (variationStream, sideCtx) = archiveStream
       .withSideOutputs(
@@ -49,8 +51,9 @@ object ArchiveBranches {
         vcvOut,
         rcvOut,
         scvOut,
+        scvVariationOut,
         scvObservationOut,
-        scvVariationOut
+        scvTraitSetOut
       )
       .withName("Split Variation Archives")
       .map { (fullVcv, ctx) =>
@@ -131,7 +134,22 @@ object ArchiveBranches {
                 val id = Str(s"${scvId.str}.${counter.getAndIncrement()}")
                 observation.obj.update(IdKey, id)
                 observation.obj.update(ScvRef, scvId)
+
+                // Extract, link, and push the observed trait set (if any).
+                observation.obj.remove(Str("TraitSet")).foreach { traitSet =>
+                  traitSet.obj.update(IdKey, id)
+                  traitSet.obj.update(ScvObsRef, id)
+                  ctx.output(scvTraitSetOut, traitSet)
+                }
+
                 ctx.output(scvObservationOut, observation)
+              }
+
+              // Extract, link, and push the top-level trait set (if any).
+              scvObj.remove(Str("TraitSet")).foreach { traitSet =>
+                traitSet.obj.update(IdKey, scvId)
+                traitSet.obj.update(ScvRef, scvId)
+                ctx.output(scvTraitSetOut, traitSet)
               }
 
               // Push out the SCV.
@@ -158,8 +176,9 @@ object ArchiveBranches {
       vcvs = sideCtx(vcvOut),
       rcvs = sideCtx(rcvOut),
       scvs = sideCtx(scvOut),
+      scvVariations = sideCtx(scvVariationOut),
       scvObservations = sideCtx(scvObservationOut),
-      scvVariations = sideCtx(scvVariationOut)
+      scvTraitSets = sideCtx(scvTraitSetOut)
     )
   }
 

@@ -1,6 +1,8 @@
 package org.broadinstitute.monster.etl.clinvar
 
 import cats.data.NonEmptyList
+import com.spotify.scio.coders.Coder
+import com.spotify.scio.values.SCollection
 import org.broadinstitute.monster.etl.MsgTransformations
 import ujson.StringRenderer
 import upack.{Arr, Msg, Obj, Str}
@@ -9,7 +11,7 @@ import scala.collection.mutable
 import scala.util.matching.Regex
 
 /** Container for functions used to map fields in ClinVar's data. */
-object ClinvarMappers {
+class ClinvarMapper(implicit msgCoder: Coder[Msg]) extends Serializable {
 
   val logger = org.slf4j.LoggerFactory.getLogger(getClass)
 
@@ -92,6 +94,8 @@ object ClinvarMappers {
     Obj(out): Msg
   }
 
+  type Mapper = SCollection[Msg] => SCollection[Msg]
+
   val variationMappings = Map(
     NonEmptyList.of("@VariationID") -> ClinvarConstants.IdKey,
     NonEmptyList.of("Name") -> Str("name"),
@@ -103,13 +107,16 @@ object ClinvarMappers {
     NonEmptyList.of("@NumberOfCopies") -> Str("num_copies")
   )
 
-  /** Map the names and types of fields in a raw variation into our desired schema. */
-  def mapVariation(variation: Msg): Msg =
-    MsgTransformations.parseLongs(Set("allele_id", "num_chromosomes", "num_copies")) {
-      MsgTransformations.ensureArrays(Set("protein_change")) {
-        mapFields(variation, variationMappings)
+  /** Map the names and types of fields in raw variations into our desired schema. */
+  val mapVariations: Mapper = _.transform("Cleanup Variations") {
+    _.map { variation =>
+      MsgTransformations.parseLongs(Set("allele_id", "num_chromosomes", "num_copies")) {
+        MsgTransformations.ensureArrays(Set("protein_change")) {
+          mapFields(variation, variationMappings)
+        }
       }
     }
+  }
 
   val geneMappings = Map(
     NonEmptyList.of("@GeneID") -> ClinvarConstants.IdKey,
@@ -120,8 +127,8 @@ object ClinvarMappers {
     NonEmptyList.of("@RelationshipType") -> Str("relationship_type")
   )
 
-  /** Map the names and types of fields in a raw gene into our desired schema. */
-  def mapGene(gene: Msg): Msg = mapFields(gene, geneMappings)
+  /** Map the names and types of fields in raw genes into our desired schema. */
+  val mapGenes: Mapper = _.transform("Cleanup Genes")(_.map(mapFields(_, geneMappings)))
 
   val vcvMappings = Map(
     NonEmptyList.of("@Accession") -> ClinvarConstants.IdKey,
@@ -136,11 +143,14 @@ object ClinvarMappers {
     NonEmptyList.of("@ReleaseDate") -> Str("release_date")
   )
 
-  /** Map the names and types of fields in a raw VCV into our desired schema. */
-  def mapVcv(vcv: Msg): Msg =
-    MsgTransformations.parseLongs(Set("version", "num_submissions", "num_submitters")) {
-      mapFields(vcv, vcvMappings)
+  /** Map the names and types of fields in raw VCVs into our desired schema. */
+  val mapVcvs: Mapper = _.transform("Cleanup VCVs") {
+    _.map { vcv =>
+      MsgTransformations.parseLongs(Set("version", "num_submissions", "num_submitters")) {
+        mapFields(vcv, vcvMappings)
+      }
     }
+  }
 
   val rcvMappings = Map(
     NonEmptyList.of("@Accession") -> ClinvarConstants.IdKey,
@@ -153,11 +163,14 @@ object ClinvarMappers {
     NonEmptyList.of("@independentObservations") -> Str("independent_observations")
   )
 
-  /** Map the names and types of fields in a raw RCV into our desired schema. */
-  def mapRcv(rcv: Msg): Msg =
-    MsgTransformations.parseLongs(
-      Set("version", "submission_count", "independent_observations")
-    )(mapFields(rcv, rcvMappings))
+  /** Map the names and types of fields in raw RCVs into our desired schema. */
+  val mapRcvs: Mapper = _.transform("Cleanup RCVs") {
+    _.map { rcv =>
+      MsgTransformations.parseLongs(
+        Set("version", "submission_count", "independent_observations")
+      )(mapFields(rcv, rcvMappings))
+    }
+  }
 
   val scvMappings = Map(
     NonEmptyList.of("Assertion") -> Str("assertion_type"),
@@ -193,55 +206,64 @@ object ClinvarMappers {
     */
   val DatePattern: Regex = """^(\d{4}-\d{2}-\d{2}).*""".r
 
-  /** Map the names and types of fields in a raw SCV into our desired schema. */
-  def mapScv(scv: Msg): Msg = {
-
+  /** Map the names and types of fields in raw SCVs into our desired schema. */
+  val mapScvs: Mapper = _.transform("Cleanup SCVs") { scvs =>
     def scvComment(commentType: Msg, commentText: Msg): Msg = {
       val commentObj = Obj(Str("type") -> commentType, Str("text") -> commentText)
       Str(upack.transform(commentObj, StringRenderer()).toString)
     }
 
-    val mapped =
-      MsgTransformations.ensureArrays(Set("submission_names", "interp_comments")) {
-        mapFields(scv, scvMappings)
+    scvs.map { scv =>
+      val mapped =
+        MsgTransformations.ensureArrays(Set("submission_names", "interp_comments")) {
+          mapFields(scv, scvMappings)
+        }
+      mapped.obj.remove(Str("interp_comments")).foreach { rawComments =>
+        // SCV comments always contain a text body, and sometimes are tagged with a type.
+        // If they have a type, they'll be extracted as objects.
+        // Otherwise they'll be extracted as scalar strings.
+        // We normalize them to always be stored as stringified JSON objects, with
+        // an 'unknown' type when needed.
+        val normalized = rawComments.arr.map {
+          case Obj(fields) => scvComment(fields(Str("@Type")), fields(Str("$")))
+          case other       => scvComment(Str("unknown"), other)
+        }
+        mapped.obj.update(Str("interp_comments"), Arr(normalized))
       }
-    mapped.obj.remove(Str("interp_comments")).foreach { rawComments =>
-      // SCV comments always contain a text body, and sometimes are tagged with a type.
-      // If they have a type, they'll be extracted as objects.
-      // Otherwise they'll be extracted as scalar strings.
-      // We normalize them to always be stored as stringified JSON objects, with
-      // an 'unknown' type when needed.
-      val normalized = rawComments.arr.map {
-        case Obj(fields) => scvComment(fields(Str("@Type")), fields(Str("$")))
-        case other       => scvComment(Str("unknown"), other)
+      mapped.obj.remove(Str("interp_date_last_evaluated")).foreach { rawDate =>
+        // interp_date_last_evaluated *sometimes* contains hour values, which breaks BQ.
+        // The hour values aren't really important, so we strip them out when present.
+        rawDate.str match {
+          case DatePattern(trimmedDate) =>
+            mapped.obj.update(Str("interp_date_last_evaluated"), Str(trimmedDate))
+          case other =>
+            logger.warn(s"Found un-parseable date [$other] in SCV: $mapped")
+            ()
+        }
       }
-      mapped.obj.update(Str("interp_comments"), Arr(normalized))
+      mapped
     }
-    mapped.obj.remove(Str("interp_date_last_evaluated")).foreach { rawDate =>
-      // interp_date_last_evaluated *sometimes* contains hour values, which breaks BQ.
-      // The hour values aren't really important, so we strip them out when present.
-      rawDate.str match {
-        case DatePattern(trimmedDate) =>
-          mapped.obj.update(Str("interp_date_last_evaluated"), Str(trimmedDate))
-        case other =>
-          logger.warn(s"Found un-parseable date [$other] in SCV: $mapped")
-          ()
-      }
-    }
-    mapped
   }
-
-  // Purposefully empty; we want to dump everything in 'content' for now.
-  val scvObservationMappings = Map.empty[NonEmptyList[String], Msg]
-
-  /** Map the names and types of fields in a raw SCV observation into our desired schema. */
-  def mapScvObservation(scvObs: Msg): Msg = mapFields(scvObs, scvObservationMappings)
 
   val scvVariationMappings = Map(
     NonEmptyList.of("VariantType") -> Str("variation_type"),
     NonEmptyList.of("VariationType") -> Str("variation_type")
   )
 
-  /** Map the names and types of fields in a raw SCV variation into our desired schema. */
-  def mapScvVariation(scvVar: Msg): Msg = mapFields(scvVar, scvVariationMappings)
+  /** Map the names and types of fields in raw SCV variations into our desired schema. */
+  val mapScvVariations: Mapper =
+    _.transform("Cleanup SCV Variations")(_.map(mapFields(_, scvVariationMappings)))
+
+  // Purposefully empty; we want to dump everything in 'content' for now.
+  val scvObservationMappings = Map.empty[NonEmptyList[String], Msg]
+
+  /** Map the names and types of fields in raw SCV observations into our desired schema. */
+  val mapScvObservations: Mapper =
+    _.transform("Cleanup SCV Observations")(_.map(mapFields(_, scvObservationMappings)))
+
+  val scvTraitSetMappings = Map(NonEmptyList.of("@Type") -> Str("type"))
+
+  /** Map the names and types of fields in raw SCV trait sets into our desired schema. */
+  val mapScvTraitSets: Mapper =
+    _.transform("Cleanup SCV Trait Sets")(_.map(mapFields(_, scvTraitSetMappings)))
 }

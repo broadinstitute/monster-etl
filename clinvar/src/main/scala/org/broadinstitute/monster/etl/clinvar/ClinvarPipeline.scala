@@ -37,24 +37,15 @@ object ClinvarPipeline {
     val archiveBranches = ArchiveBranches.fromArchiveStream(fullArchives)
 
     // Map the fields and types of each entity stream.
-    val variations = archiveBranches.variations.transform("Cleanup Variations")(
-      _.map(ClinvarMappers.mapVariation)
-    )
-    val genes =
-      archiveBranches.genes.transform("Cleanup Genes")(_.map(ClinvarMappers.mapGene))
-    val vcvs =
-      archiveBranches.vcvs.transform("Cleanup VCVs")(_.map(ClinvarMappers.mapVcv))
-    val rcvs =
-      archiveBranches.rcvs.transform("Cleanup RCVs")(_.map(ClinvarMappers.mapRcv))
-    val scvs =
-      archiveBranches.scvs.transform("Cleanup SCVs")(_.map(ClinvarMappers.mapScv))
-    val scvObservations =
-      archiveBranches.scvObservations.transform("Cleanup SCV Observations")(
-        _.map(ClinvarMappers.mapScvObservation)
-      )
-    val scvVariations = archiveBranches.scvVariations.transform("Cleanup SCV Variations")(
-      _.map(ClinvarMappers.mapScvVariation)
-    )
+    val mapper = new ClinvarMapper()
+    val variations = mapper.mapVariations(archiveBranches.variations)
+    val genes = mapper.mapGenes(archiveBranches.genes)
+    val vcvs = mapper.mapVcvs(archiveBranches.vcvs)
+    val rcvs = mapper.mapRcvs(archiveBranches.rcvs)
+    val scvs = mapper.mapScvs(archiveBranches.scvs)
+    val scvVariations = mapper.mapScvVariations(archiveBranches.scvVariations)
+    val scvObservations = mapper.mapScvObservations(archiveBranches.scvObservations)
+    val scvTraitSets = mapper.mapScvTraitSets(archiveBranches.scvTraitSets)
 
     // Further split the gene stream to distinguish base genes from associations.
     val geneBranches = GeneBranches.fromGeneStream(genes)
@@ -110,14 +101,19 @@ object ClinvarPipeline {
       s"${parsedArgs.outputPrefix}/submission"
     )
     MsgIO.writeJsonLists(
+      scvVariations,
+      "SCV Variations",
+      s"${parsedArgs.outputPrefix}/clinical_assertion_variation"
+    )
+    MsgIO.writeJsonLists(
       scvObservations,
       "SCV Observations",
       s"${parsedArgs.outputPrefix}/clinical_assertion_observation"
     )
     MsgIO.writeJsonLists(
-      scvVariations,
-      "SCV Variations",
-      s"${parsedArgs.outputPrefix}/clinical_assertion_variation"
+      scvTraitSets,
+      "SCV Trait Sets",
+      s"${parsedArgs.outputPrefix}/clinical_assertion_trait_set"
     )
 
     pipelineContext.close()
