@@ -18,6 +18,7 @@ case class ArchiveBranches(
   vcvs: SCollection[Msg],
   rcvs: SCollection[Msg],
   scvs: SCollection[Msg],
+  scvObservations: SCollection[Msg],
   scvVariations: SCollection[Msg]
 )
 
@@ -39,6 +40,7 @@ object ArchiveBranches {
     val vcvOut = SideOutput[Msg]
     val rcvOut = SideOutput[Msg]
     val scvOut = SideOutput[Msg]
+    val scvObservationOut = SideOutput[Msg]
     val scvVariationOut = SideOutput[Msg]
 
     val (variationStream, sideCtx) = archiveStream
@@ -47,9 +49,10 @@ object ArchiveBranches {
         vcvOut,
         rcvOut,
         scvOut,
+        scvObservationOut,
         scvVariationOut
       )
-      .withName("Split VCVs")
+      .withName("Split Variation Archives")
       .map { (fullVcv, ctx) =>
         val vcvObj = fullVcv.obj
         val recordCopy =
@@ -122,6 +125,15 @@ object ArchiveBranches {
                   id
                 }
 
+              // Link and push SCV observations.
+              counter.set(0)
+              extractList(scv, "ObservedInList", "ObservedIn").foreach { observation =>
+                val id = Str(s"${scvId.str}.${counter.getAndIncrement()}")
+                observation.obj.update(IdKey, id)
+                observation.obj.update(ScvRef, scvId)
+                ctx.output(scvObservationOut, observation)
+              }
+
               // Push out the SCV.
               ctx.output(scvOut, scv)
           }
@@ -146,6 +158,7 @@ object ArchiveBranches {
       vcvs = sideCtx(vcvOut),
       rcvs = sideCtx(rcvOut),
       scvs = sideCtx(scvOut),
+      scvObservations = sideCtx(scvObservationOut),
       scvVariations = sideCtx(scvVariationOut)
     )
   }

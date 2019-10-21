@@ -48,6 +48,10 @@ object ClinvarPipeline {
       archiveBranches.rcvs.transform("Cleanup RCVs")(_.map(ClinvarMappers.mapRcv))
     val scvs =
       archiveBranches.scvs.transform("Cleanup SCVs")(_.map(ClinvarMappers.mapScv))
+    val scvObservations =
+      archiveBranches.scvObservations.transform("Cleanup SCV Observations")(
+        _.map(ClinvarMappers.mapScvObservation)
+      )
     val scvVariations = archiveBranches.scvVariations.transform("Cleanup SCV Variations")(
       _.map(ClinvarMappers.mapScvVariation)
     )
@@ -104,6 +108,11 @@ object ClinvarPipeline {
       scvBranches.submissions,
       "Submissions",
       s"${parsedArgs.outputPrefix}/submission"
+    )
+    MsgIO.writeJsonLists(
+      scvObservations,
+      "SCV Observations",
+      s"${parsedArgs.outputPrefix}/clinical_assertion_observation"
     )
     MsgIO.writeJsonLists(
       scvVariations,

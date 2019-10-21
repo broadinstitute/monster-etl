@@ -231,6 +231,12 @@ object ClinvarMappers {
     mapped
   }
 
+  // Purposefully empty; we want to dump everything in 'content' for now.
+  val scvObservationMappings = Map.empty[NonEmptyList[String], Msg]
+
+  /** Map the names and types of fields in a raw SCV observation into our desired schema. */
+  def mapScvObservation(scvObs: Msg): Msg = mapFields(scvObs, scvObservationMappings)
+
   val scvVariationMappings = Map(
     NonEmptyList.of("VariantType") -> Str("variation_type"),
     NonEmptyList.of("VariationType") -> Str("variation_type")
