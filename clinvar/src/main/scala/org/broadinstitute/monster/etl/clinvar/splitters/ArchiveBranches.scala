@@ -201,93 +201,26 @@ object ArchiveBranches {
                 }
               traitSets.foreach { traitSet =>
                 // add an entry for each traitSet element
-                ctx.output(vaTraitSetOut, traitSet)
 
                 // extract Variation Archive Traits.
-                val traits = traitSet.obj(Str("Trait")) match {
+                val traits = traitSet.obj.remove(Str("Trait")) match {
                   // the Trait might have one or multiple elements
-                  case Arr(msgs) => msgs
-                  case msg       => Iterable(msg)
+                  case Some(Arr(msgs)) => msgs
+                  case Some(msg)       => Iterable(msg)
+                  case None            => Iterable.empty
                 }
 
+                val traitMappings =
+                  extractList(recordCopy, "TraitMappingList", "TraitMapping")
+
+                // extract TraitMappingList.TraitMapping elements, which are sometimes needed to extract the MedGen ID
                 traits.foreach { `trait` =>
-                  val traitObj = `trait`.obj
-                  // ID: This primary key might be in ConditionList or TraitMappingList
-                  // parse XRef elements to find the one that is "MedGen" if it is present
-                  // note that this is the primary key id for VariationArchiveTraits
-                  // if XRef tag with MedGen ID doesn't exist, we look to the TraitMappingList
-
-                  val maybeXref = `trait`.obj.get(Str("XRef"))
-
-                  val xrefs = maybeXref.fold {
-                    Iterable.empty[Msg]
-                  } {
-                    case Arr(msgs) => msgs
-                    case msg       => Iterable(msg)
-                  }
-
-                  xrefs.foreach { xref =>
-                    // if the XRef element has a @DB of "MedGen" then use the @ID for the ID
-                    if (xref.obj(Str("@DB")).str == "MedGen") {
-                      traitObj.update(IdKey, xref.obj(Str("@ID")))
-                    }
-                  }
-
-                  // TraitMappingList approach to get the ID
-                  if (xrefs.isEmpty) {
-                    extractList(recordCopy, "TraitMappingList", "TraitMapping").foreach {
-                      allMappings =>
-                        val traitMappings = allMappings match {
-                          case Arr(msgs) => msgs
-                          case msg       => Iterable(msg)
-                        }
-                        traitMappings.foreach { traitMapping =>
-                          // 1. filter down by traitObj's "trait_id" == traitMapping's "@ClinicalAssertionID"
-                          if (traitObj(Str("trait_id")) == traitMapping.obj(
-                                Str("@ClinicalAssertionID")
-                              ) &&
-                              // 2. filter down by traitObj's "type" == traitMapping's "@TraitType"
-                              traitObj(Str("type")) == traitMapping.obj(
-                                Str("@TraitType")
-                              )) {
-                            traitMapping.obj(Str("@MappingType")).str match {
-                              // 3a. if traitMapping's "@MappingType" is "Name", then filter by
-                              //      traitObj's "name" == traitMapping's "@MappingValue"
-                              //      and pull out traitMapping's "Medgen", "@CUI" value
-                              case "Name" =>
-                                if (traitObj(Str("name")) == traitMapping.obj(
-                                      Str("@MappingValue")
-                                    )) {
-                                  traitObj.update(
-                                    IdKey,
-                                    traitMapping.obj(Str("MedGen")).obj(Str("@CUI"))
-                                  )
-                                }
-                              // 3b. if traitMapping's "@MappingType" is "XRef", then look through oneTrait's
-                              //     XRef elements and match on oneTrait's "@DB" and "@ID" to traitMapping's
-                              //      "@MappingRef" and "@MappingValue" respectively; if matched, then use
-                              //      traitMapping's "MedGen", "@CUI" value
-                              case "XRef" =>
-                                xrefs.foreach { xref =>
-                                  if (xref.obj(Str("@DB")) == traitMapping.obj(
-                                        Str("@MappingRef")
-                                      ) &&
-                                      xref.obj(Str("@ID")) == traitMapping.obj(
-                                        Str("@CUI")
-                                      )) {
-                                    traitObj.update(
-                                      IdKey,
-                                      traitMapping.obj(Str("MedGen")).obj(Str("@CUI"))
-                                    )
-                                  }
-                                }
-                            }
-                          }
-                        }
-                    }
+                  traitMappings.foreach {
+                    `trait`.obj.update(Str("TraitMapping"), _)
                   }
                   ctx.output(vaTraitOut, `trait`)
                 }
+                ctx.output(vaTraitSetOut, traitSet)
               }
           }
 

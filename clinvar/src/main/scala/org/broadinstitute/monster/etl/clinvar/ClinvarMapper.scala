@@ -285,9 +285,81 @@ class ClinvarMapper(implicit msgCoder: Coder[Msg]) extends Serializable {
             )
           }
         }
+
+        // ID: This primary key might be in ConditionList or TraitMappingList
+        // parse XRef elements to find the one that is "MedGen" if it is present
+        // note that this is the primary key id for VariationArchiveTraits
+        // if XRef tag with MedGen ID doesn't exist, we look to the TraitMappingList
+
+        val maybeXref = `trait`.obj.get(Str("XRef"))
+
+        val xrefs = maybeXref.fold {
+          Iterable.empty[Msg]
+        } {
+          case Arr(msgs) => msgs
+          case msg       => Iterable(msg)
+        }
+
+        xrefs.foreach { xref =>
+          // if the XRef element has a @DB of "MedGen" then use the @ID for the ID
+          if (xref.obj(Str("@DB")).str == "MedGen") {
+            mapped.obj.update(IdKey, xref.obj(Str("@ID")))
+          }
+        }
+
+        if (xrefs.isEmpty) {
+          val traitMappings = `trait`.obj.get(Str("TraitMapping")) match {
+            case Some(Arr(msgs)) => msgs
+            case Some(msg)       => Iterable(msg)
+            case None            => Iterable.empty
+          }
+          traitMappings.foreach { traitMapping =>
+            // 1. filter down by traitObj's "trait_id" == traitMapping's "@ClinicalAssertionID"
+            if (mapped.obj(Str("trait_id")) == traitMapping.obj(
+                  Str("@ClinicalAssertionID")
+                ) &&
+                // 2. filter down by traitObj's "type" == traitMapping's "@TraitType"
+                mapped.obj(Str("type")) == traitMapping.obj(
+                  Str("@TraitType")
+                )) {
+              traitMapping.obj(Str("@MappingType")).str match {
+                // 3a. if traitMapping's "@MappingType" is "Name", then filter by
+                //      traitObj's "name" == traitMapping's "@MappingValue"
+                //      and pull out traitMapping's "Medgen", "@CUI" value
+                case "Name" =>
+                  if (mapped.obj(Str("name")) == traitMapping.obj(
+                        Str("@MappingValue")
+                      )) {
+                    mapped.obj.update(
+                      IdKey,
+                      traitMapping.obj(Str("MedGen")).obj(Str("@CUI"))
+                    )
+                  }
+                // 3b. if traitMapping's "@MappingType" is "XRef", then look through oneTrait's
+                //     XRef elements and match on oneTrait's "@DB" and "@ID" to traitMapping's
+                //      "@MappingRef" and "@MappingValue" respectively; if matched, then use
+                //      traitMapping's "MedGen", "@CUI" value
+                case "XRef" =>
+                  xrefs.foreach { xref =>
+                    if (xref.obj(Str("@DB")) == traitMapping.obj(
+                          Str("@MappingRef")
+                        ) &&
+                        xref.obj(Str("@ID")) == traitMapping.obj(
+                          Str("@CUI")
+                        )) {
+                      mapped.obj.update(
+                        IdKey,
+                        traitMapping.obj(Str("MedGen")).obj(Str("@CUI"))
+                      )
+                    }
+                  }
+              }
+            }
+          }
+        }
         mapped
       }
-    }
+    }.distinctBy(_.obj(IdKey).str)
 
   val scvVariationMappings = Map(
     NonEmptyList.of("VariantType") -> Str("variation_type"),

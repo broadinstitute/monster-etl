@@ -4,7 +4,6 @@ import caseapp.{AppName, AppVersion, HelpMessage, ProgName}
 import com.spotify.scio.ContextAndArgs
 import com.spotify.scio.coders.Coder
 import org.broadinstitute.monster.ClinvarBuildInfo
-import org.broadinstitute.monster.etl.clinvar.ClinvarConstants.IdKey
 import org.broadinstitute.monster.etl.clinvar.splitters._
 import org.broadinstitute.monster.etl.{MsgIO, UpackMsgCoder}
 import upack._
@@ -49,7 +48,7 @@ object ClinvarPipeline {
     val scvTraitSets = mapper.mapScvTraitSets(archiveBranches.scvTraitSets)
     val scvTraits = mapper.mapScvTraits(archiveBranches.scvTraits)
     val vaTraitSets = mapper.mapVaTraitSets(archiveBranches.vaTraitSets)
-    val vaTraits = mapper.mapVaTraitSets(archiveBranches.vaTraits)
+    val vaTraits = mapper.mapVaTraits(archiveBranches.vaTraits)
 
     // Further split the gene stream to distinguish base genes from associations.
     val geneBranches = GeneBranches.fromGeneStream(genes)
@@ -130,7 +129,7 @@ object ClinvarPipeline {
       s"${parsedArgs.outputPrefix}/variation_archive_trait_set"
     )
     MsgIO.writeJsonLists(
-      vaTraitSets,
+      vaTraits,
       "Variation Archive Traits",
       s"${parsedArgs.outputPrefix}/variation_archive_trait"
     )
