@@ -4,6 +4,7 @@ import cats.data.NonEmptyList
 import com.spotify.scio.coders.Coder
 import com.spotify.scio.values.SCollection
 import org.broadinstitute.monster.etl.MsgTransformations
+import org.broadinstitute.monster.etl.clinvar.ClinvarConstants.IdKey
 import ujson.StringRenderer
 import upack.{Arr, Msg, Obj, Str}
 
@@ -226,7 +227,7 @@ class ClinvarMapper(implicit msgCoder: Coder[Msg]) extends Serializable {
         // an 'unknown' type when needed.
         val normalized = rawComments.arr.map {
           case Obj(fields) => scvComment(fields(Str("@Type")), fields(Str("$")))
-          case other => scvComment(Str("unknown"), other)
+          case other       => scvComment(Str("unknown"), other)
         }
         mapped.obj.update(Str("interp_comments"), Arr(normalized))
       }
@@ -251,7 +252,9 @@ class ClinvarMapper(implicit msgCoder: Coder[Msg]) extends Serializable {
   )
 
   val mapVaTraitSets: Mapper =
-    _.transform("Cleanup Variation Archive Trait Sets")(_.map(mapFields(_, vaTraitSetMappings)))
+    _.transform("Cleanup Variation Archive Trait Sets")(
+      _.map(mapFields(_, vaTraitSetMappings))
+    ).distinctBy(_.obj(IdKey).str)
 
   val vaTraitMappings = Map(
     NonEmptyList.of("@ID") -> Str("trait_id"),
@@ -259,13 +262,37 @@ class ClinvarMapper(implicit msgCoder: Coder[Msg]) extends Serializable {
   )
 
   val mapVaTraits: Mapper =
-    _.transform("Cleanup Variation Archive Traits")(_.map(mapFields(_, vaTraitMappings)))
+    _.transform("Cleanup Variation Archive Traits") {
+      _.map { `trait` =>
+        val mapped = mapFields(`trait`, vaTraitMappings)
+
+        // Name: This will always be pulled from the ConditionList element?
+        // parse Name elements to find the one that is "preferred"
+        val names = `trait`.obj(Str("Name")) match {
+          // Name might have one or multiple elements
+          case Arr(msgs) => msgs
+          case msg       => Iterable(msg)
+        }
+        names.foreach { name =>
+          // if the ElementValue node has a @Type of "Preferred" then use the "$" for the name
+          if (name
+                .obj(Str("ElementValue"))
+                .obj(Str("@Type"))
+                .str == "Preferred") {
+            mapped.obj.update(
+              Str("name"),
+              name.obj(Str("ElementValue")).obj(Str("$"))
+            )
+          }
+        }
+        mapped
+      }
+    }
 
   val scvVariationMappings = Map(
     NonEmptyList.of("VariantType") -> Str("variation_type"),
     NonEmptyList.of("VariationType") -> Str("variation_type")
   )
-
 
   /** Map the names and types of fields in raw SCV variations into our desired schema. */
   val mapScvVariations: Mapper =

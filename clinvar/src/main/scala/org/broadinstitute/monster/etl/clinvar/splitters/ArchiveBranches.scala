@@ -210,34 +210,14 @@ object ArchiveBranches {
                   case msg       => Iterable(msg)
                 }
 
-                traits.foreach { oneTrait =>
-                  val traitObj = oneTrait.obj
-                  // Name: This will always be pulled from the ConditionList element?
-                  // parse Name elements to find the one that is "preferred"
-                  val names = oneTrait.obj(Str("Name")) match {
-                    // Name might have one or multiple elements
-                    case Arr(msgs) => msgs
-                    case msg       => Iterable(msg)
-                  }
-                  names.foreach { name =>
-                    // if the ElementValue node has a @Type of "Preferred" then use the "$" for the name
-                    if (name
-                          .obj(Str("ElementValue"))
-                          .obj(Str("@Type"))
-                          .str == "Preferred") {
-                      traitObj.update(
-                        Str("name"),
-                        name.obj(Str("ElementValue")).obj(Str("$"))
-                      )
-                    }
-                  }
-
+                traits.foreach { `trait` =>
+                  val traitObj = `trait`.obj
                   // ID: This primary key might be in ConditionList or TraitMappingList
                   // parse XRef elements to find the one that is "MedGen" if it is present
                   // note that this is the primary key id for VariationArchiveTraits
                   // if XRef tag with MedGen ID doesn't exist, we look to the TraitMappingList
 
-                  val maybeXref = oneTrait.obj.get(Str("XRef"))
+                  val maybeXref = `trait`.obj.get(Str("XRef"))
 
                   val xrefs = maybeXref.fold {
                     Iterable.empty[Msg]
@@ -306,7 +286,7 @@ object ArchiveBranches {
                         }
                     }
                   }
-                  ctx.output(vaTraitOut, oneTrait)
+                  ctx.output(vaTraitOut, `trait`)
                 }
               }
           }
