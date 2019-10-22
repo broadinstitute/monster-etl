@@ -269,10 +269,46 @@ class ClinvarMapper(implicit msgCoder: Coder[Msg]) extends Serializable {
 
   val scvTraitMappings = Map(
     NonEmptyList.of("@Type") -> Str("type"),
-    NonEmptyList.of("Name", "ElementValue", "$") -> Str("name")
+    NonEmptyList.of("Name", "ElementValue", "$") -> Str("name"),
+    NonEmptyList.of("XRef") -> Str("raw_xrefs")
   )
 
   /** Map the names and types of fields in raw SCV traits into our desired schema. */
   val mapScvTraits: Mapper =
-    _.transform("Cleanup SCV Traits")(_.map(mapFields(_, scvTraitMappings)))
+    _.transform("Cleanup SCV Traits") {
+      _.map { `trait` =>
+        val mapped = mapFields(`trait`, scvTraitMappings)
+
+        val otherRefs = new mutable.ArrayBuffer[Msg]()
+        mapped.obj
+          .remove(Str("raw_xrefs"))
+          .toIterable
+          .flatMap {
+            case Arr(refs) => refs
+            case ref       => Iterable(ref)
+          }
+          .foreach { rawRef =>
+            // Special-case the MedGen ID to make traits easier to cross-link
+            // against VCV traits later.
+            if (rawRef.obj(Str("@DB")) == Str("MedGen")) {
+              mapped.obj.update(Str("medgen_id"), rawRef.obj(Str("@ID")))
+            } else {
+              val cleaned = Obj(new mutable.LinkedHashMap[Msg, Msg]())
+              rawRef.obj.foreach {
+                case (k, v) =>
+                  val cleanedKey = k.str.replaceAllLiterally("@", "")
+                  cleaned.obj.update(Str(cleanedKey), v)
+              }
+              val stringRef = upack
+                .transform(MsgTransformations.keysToSnakeCase(cleaned), StringRenderer())
+                .toString
+              otherRefs.append(Str(stringRef))
+            }
+          }
+
+        mapped.obj.update(Str("other_xrefs"), Arr(otherRefs))
+        mapped
+      }
+
+    }
 }
