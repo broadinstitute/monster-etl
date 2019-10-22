@@ -226,7 +226,7 @@ class ClinvarMapper(implicit msgCoder: Coder[Msg]) extends Serializable {
         // an 'unknown' type when needed.
         val normalized = rawComments.arr.map {
           case Obj(fields) => scvComment(fields(Str("@Type")), fields(Str("$")))
-          case other       => scvComment(Str("unknown"), other)
+          case other => scvComment(Str("unknown"), other)
         }
         mapped.obj.update(Str("interp_comments"), Arr(normalized))
       }
@@ -245,10 +245,27 @@ class ClinvarMapper(implicit msgCoder: Coder[Msg]) extends Serializable {
     }
   }
 
+  val vaTraitSetMappings = Map(
+    NonEmptyList.of("@ID") -> ClinvarConstants.IdKey,
+    NonEmptyList.of("@Type") -> Str("type")
+  )
+
+  val mapVaTraitSets: Mapper =
+    _.transform("Cleanup Variation Archive Trait Sets")(_.map(mapFields(_, vaTraitSetMappings)))
+
+  val vaTraitMappings = Map(
+    NonEmptyList.of("@ID") -> Str("trait_id"),
+    NonEmptyList.of("@Type") -> Str("type")
+  )
+
+  val mapVaTraits: Mapper =
+    _.transform("Cleanup Variation Archive Traits")(_.map(mapFields(_, vaTraitMappings)))
+
   val scvVariationMappings = Map(
     NonEmptyList.of("VariantType") -> Str("variation_type"),
     NonEmptyList.of("VariationType") -> Str("variation_type")
   )
+
 
   /** Map the names and types of fields in raw SCV variations into our desired schema. */
   val mapScvVariations: Mapper =

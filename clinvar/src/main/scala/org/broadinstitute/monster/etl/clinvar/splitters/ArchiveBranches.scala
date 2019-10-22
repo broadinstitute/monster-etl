@@ -19,12 +19,11 @@ case class ArchiveBranches(
   rcvs: SCollection[Msg],
   scvs: SCollection[Msg],
   scvVariations: SCollection[Msg],
-  vaTraitSets: SCollection[Msg],
-  vaTraits: SCollection[Msg]
-  scvVariations: SCollection[Msg],
   scvObservations: SCollection[Msg],
   scvTraitSets: SCollection[Msg],
-  scvTraits: SCollection[Msg]
+  scvTraits: SCollection[Msg],
+  vaTraitSets: SCollection[Msg],
+  vaTraits: SCollection[Msg]
 )
 
 object ArchiveBranches {
@@ -46,11 +45,11 @@ object ArchiveBranches {
     val rcvOut = SideOutput[Msg]
     val scvOut = SideOutput[Msg]
     val scvVariationOut = SideOutput[Msg]
-    val vaTraitSets = SideOutput[Msg]
-    val vaTraits = SideOutput[Msg]
     val scvObservationOut = SideOutput[Msg]
     val scvTraitSetOut = SideOutput[Msg]
     val scvTraitOut = SideOutput[Msg]
+    val vaTraitSetOut = SideOutput[Msg]
+    val vaTraitOut = SideOutput[Msg]
 
     val (variationStream, sideCtx) = archiveStream
       .withSideOutputs(
@@ -59,12 +58,11 @@ object ArchiveBranches {
         rcvOut,
         scvOut,
         scvVariationOut,
-        vaTraitSets,
-        vaTraits
-        scvVariationOut,
         scvObservationOut,
         scvTraitSetOut,
-        scvTraitOut
+        scvTraitOut,
+        vaTraitSetOut,
+        vaTraitOut
       )
       .withName("Split Variation Archives")
       .map { (fullVcv, ctx) =>
@@ -196,7 +194,6 @@ object ArchiveBranches {
           extractList(recordCopy, "Interpretations", "Interpretation").foreach {
             interpretation =>
               val traitSets =
-                // TODO do we need to anticipate the possibility of no ConditionList or no TraitSet?
                 interpretation.obj(Str("ConditionList")).obj(Str("TraitSet")) match {
                   // the TraitSet tag might have one or multiple elements
                   case Arr(msgs) => msgs
@@ -204,11 +201,7 @@ object ArchiveBranches {
                 }
               traitSets.foreach { traitSet =>
                 // add an entry for each traitSet element
-                val traitSetObj = traitSet.obj
-                traitSetObj.update(IdKey, traitSet.obj(Str("@ID")))
-                traitSetObj.update(Str("type"), traitSet.obj(Str("@Type")))
-
-                ctx.output(vaTraitSets, traitSet)
+                ctx.output(vaTraitSetOut, traitSet)
 
                 // extract Variation Archive Traits.
                 val traits = traitSet.obj(Str("Trait")) match {
@@ -219,15 +212,7 @@ object ArchiveBranches {
 
                 traits.foreach { oneTrait =>
                   val traitObj = oneTrait.obj
-                  // from the "easy" way
-
-                  // TraitID: This will always be pulled from the ConditionList element?
-                  traitObj.update(Str("trait_id"), oneTrait.obj(Str("@ID")))
-
-                  // Type: This will always be pulled from the ConditionList element?
-                  traitObj.update(Str("type"), oneTrait.obj(Str("@Type")))
-
-                  // Name: Might be in ConditionList or TraitMappingList?
+                  // Name: This will always be pulled from the ConditionList element?
                   // parse Name elements to find the one that is "preferred"
                   val names = oneTrait.obj(Str("Name")) match {
                     // Name might have one or multiple elements
@@ -321,7 +306,7 @@ object ArchiveBranches {
                         }
                     }
                   }
-                  ctx.output(vaTraits, oneTrait)
+                  ctx.output(vaTraitOut, oneTrait)
                 }
               }
           }
@@ -347,12 +332,11 @@ object ArchiveBranches {
       rcvs = sideCtx(rcvOut),
       scvs = sideCtx(scvOut),
       scvVariations = sideCtx(scvVariationOut),
-      vaTraitSets = sideCtx(vaTraitSets),
-      vaTraits = sideCtx(vaTraits)
-      scvVariations = sideCtx(scvVariationOut),
       scvObservations = sideCtx(scvObservationOut),
       scvTraitSets = sideCtx(scvTraitSetOut),
-      scvTraits = sideCtx(scvTraitOut)
+      scvTraits = sideCtx(scvTraitOut),
+      vaTraitSets = sideCtx(vaTraitSetOut),
+      vaTraits = sideCtx(vaTraitOut)
     )
   }
 
