@@ -126,12 +126,12 @@ object ClinvarPipeline {
     MsgIO.writeJsonLists(
       traitSets,
       "Trait Sets",
-      s"${parsedArgs.outputPrefix}/variation_archive_trait_set"
+      s"${parsedArgs.outputPrefix}/trait_set"
     )
     MsgIO.writeJsonLists(
       traits,
       "Traits",
-      s"${parsedArgs.outputPrefix}/variation_archive_trait"
+      s"${parsedArgs.outputPrefix}/trait"
     )
 
     pipelineContext.close()
