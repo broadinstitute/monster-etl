@@ -22,8 +22,8 @@ case class ArchiveBranches(
   scvObservations: SCollection[Msg],
   scvTraitSets: SCollection[Msg],
   scvTraits: SCollection[Msg],
-  vaTraitSets: SCollection[Msg],
-  vaTraits: SCollection[Msg]
+  traitSets: SCollection[Msg],
+  traits: SCollection[Msg]
 )
 
 object ArchiveBranches {
@@ -48,8 +48,8 @@ object ArchiveBranches {
     val scvObservationOut = SideOutput[Msg]
     val scvTraitSetOut = SideOutput[Msg]
     val scvTraitOut = SideOutput[Msg]
-    val vaTraitSetOut = SideOutput[Msg]
-    val vaTraitOut = SideOutput[Msg]
+    val traitSetOut = SideOutput[Msg]
+    val traitOut = SideOutput[Msg]
 
     val (variationStream, sideCtx) = archiveStream
       .withSideOutputs(
@@ -61,8 +61,8 @@ object ArchiveBranches {
         scvObservationOut,
         scvTraitSetOut,
         scvTraitOut,
-        vaTraitSetOut,
-        vaTraitOut
+        traitSetOut,
+        traitOut
       )
       .withName("Split Variation Archives")
       .map { (fullVcv, ctx) =>
@@ -218,9 +218,9 @@ object ArchiveBranches {
                   traitMappings.foreach {
                     `trait`.obj.update(Str("TraitMapping"), _)
                   }
-                  ctx.output(vaTraitOut, `trait`)
+                  ctx.output(traitOut, `trait`)
                 }
-                ctx.output(vaTraitSetOut, traitSet)
+                ctx.output(traitSetOut, traitSet)
               }
           }
 
@@ -248,8 +248,8 @@ object ArchiveBranches {
       scvObservations = sideCtx(scvObservationOut),
       scvTraitSets = sideCtx(scvTraitSetOut),
       scvTraits = sideCtx(scvTraitOut),
-      vaTraitSets = sideCtx(vaTraitSetOut),
-      vaTraits = sideCtx(vaTraitOut)
+      traitSets = sideCtx(traitSetOut),
+      traits = sideCtx(traitOut)
     )
   }
 

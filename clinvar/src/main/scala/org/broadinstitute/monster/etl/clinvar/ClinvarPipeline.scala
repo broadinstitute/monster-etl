@@ -47,8 +47,8 @@ object ClinvarPipeline {
     val scvObservations = mapper.mapScvObservations(archiveBranches.scvObservations)
     val scvTraitSets = mapper.mapScvTraitSets(archiveBranches.scvTraitSets)
     val scvTraits = mapper.mapScvTraits(archiveBranches.scvTraits)
-    val vaTraitSets = mapper.mapVaTraitSets(archiveBranches.vaTraitSets)
-    val vaTraits = mapper.mapVaTraits(archiveBranches.vaTraits)
+    val traitSets = mapper.mapTraitSets(archiveBranches.traitSets)
+    val traits = mapper.mapTraits(archiveBranches.traits)
 
     // Further split the gene stream to distinguish base genes from associations.
     val geneBranches = GeneBranches.fromGeneStream(genes)
@@ -124,13 +124,13 @@ object ClinvarPipeline {
       s"${parsedArgs.outputPrefix}/clinical_assertion_trait"
     )
     MsgIO.writeJsonLists(
-      vaTraitSets,
-      "Variation Archive Trait Sets",
+      traitSets,
+      "Trait Sets",
       s"${parsedArgs.outputPrefix}/variation_archive_trait_set"
     )
     MsgIO.writeJsonLists(
-      vaTraits,
-      "Variation Archive Traits",
+      traits,
+      "Traits",
       s"${parsedArgs.outputPrefix}/variation_archive_trait"
     )
 
