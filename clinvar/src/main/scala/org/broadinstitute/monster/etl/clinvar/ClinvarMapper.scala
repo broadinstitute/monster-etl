@@ -313,7 +313,7 @@ class ClinvarMapper(implicit msgCoder: Coder[Msg]) extends Serializable {
             case Some(msg)       => Iterable(msg)
             case None            => Iterable.empty
           }
-          mapped.obj.update(IdKey, Str(""))
+          mapped.obj.update(IdKey, Str("None"))
           traitMappings.foreach { traitMapping =>
             // 1. filter down by traitObj's "trait_id" == traitMapping's "@ClinicalAssertionID"
             if (mapped.obj(Str("trait_id")) == traitMapping.obj(
