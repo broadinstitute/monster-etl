@@ -12,6 +12,7 @@ import scala.util.matching.Regex
 
 /** Container for functions used to map fields in ClinVar's data. */
 class ClinvarMapper(implicit msgCoder: Coder[Msg]) extends Serializable {
+  import ClinvarConstants.IdKey
 
   val logger = org.slf4j.LoggerFactory.getLogger(getClass)
 
@@ -97,7 +98,7 @@ class ClinvarMapper(implicit msgCoder: Coder[Msg]) extends Serializable {
   type Mapper = SCollection[Msg] => SCollection[Msg]
 
   val variationMappings = Map(
-    NonEmptyList.of("@VariationID") -> ClinvarConstants.IdKey,
+    NonEmptyList.of("@VariationID") -> IdKey,
     NonEmptyList.of("Name") -> Str("name"),
     NonEmptyList.of("VariantType") -> Str("variation_type"),
     NonEmptyList.of("VariationType") -> Str("variation_type"),
@@ -119,7 +120,7 @@ class ClinvarMapper(implicit msgCoder: Coder[Msg]) extends Serializable {
   }
 
   val geneMappings = Map(
-    NonEmptyList.of("@GeneID") -> ClinvarConstants.IdKey,
+    NonEmptyList.of("@GeneID") -> IdKey,
     NonEmptyList.of("@Symbol") -> Str("symbol"),
     NonEmptyList.of("@HGNC_ID") -> Str("hgnc_id"),
     NonEmptyList.of("@FullName") -> Str("full_name"),
@@ -131,7 +132,7 @@ class ClinvarMapper(implicit msgCoder: Coder[Msg]) extends Serializable {
   val mapGenes: Mapper = _.transform("Cleanup Genes")(_.map(mapFields(_, geneMappings)))
 
   val vcvMappings = Map(
-    NonEmptyList.of("@Accession") -> ClinvarConstants.IdKey,
+    NonEmptyList.of("@Accession") -> IdKey,
     NonEmptyList.of("@Version") -> Str("version"),
     NonEmptyList.of("@DateCreated") -> Str("date_created"),
     NonEmptyList.of("@DateLastUpdated") -> Str("date_last_updated"),
@@ -153,7 +154,7 @@ class ClinvarMapper(implicit msgCoder: Coder[Msg]) extends Serializable {
   }
 
   val rcvMappings = Map(
-    NonEmptyList.of("@Accession") -> ClinvarConstants.IdKey,
+    NonEmptyList.of("@Accession") -> IdKey,
     NonEmptyList.of("@Version") -> Str("version"),
     NonEmptyList.of("@Title") -> Str("title"),
     NonEmptyList.of("@DateLastEvaluated") -> Str("date_last_evaluated"),
@@ -179,7 +180,7 @@ class ClinvarMapper(implicit msgCoder: Coder[Msg]) extends Serializable {
     NonEmptyList.of("RecordStatus") -> Str("record_status"),
     NonEmptyList.of("ReviewStatus") -> Str("review_status"),
     NonEmptyList.of("@SubmissionDate") -> Str("submission_date"),
-    NonEmptyList.of("ClinVarAccession", "@Accession") -> ClinvarConstants.IdKey,
+    NonEmptyList.of("ClinVarAccession", "@Accession") -> IdKey,
     NonEmptyList.of("ClinVarAccession", "@Version") -> Str("version"),
     NonEmptyList.of("ClinVarAccession", "@OrgID") -> Str("org_id"),
     NonEmptyList.of("ClinVarAccession", "@SubmitterName") -> Str("submitter_name"),
@@ -244,6 +245,125 @@ class ClinvarMapper(implicit msgCoder: Coder[Msg]) extends Serializable {
       mapped
     }
   }
+
+  val traitSetMappings = Map(
+    NonEmptyList.of("@ID") -> IdKey,
+    NonEmptyList.of("@Type") -> Str("type")
+  )
+
+  val mapTraitSets: Mapper =
+    _.transform("Cleanup Trait Sets")(
+      _.map(mapFields(_, traitSetMappings))
+    ).distinctBy(_.obj(IdKey).str)
+
+  val traitMappings = Map(
+    NonEmptyList.of("@ID") -> Str("trait_id"),
+    NonEmptyList.of("@Type") -> Str("type"),
+    NonEmptyList.of("Name") -> Str("name"),
+    NonEmptyList.of("XRef") -> Str("xref"),
+    NonEmptyList.of("TraitMapping") -> Str("trait_mapping")
+  )
+
+  val mapTraits: Mapper =
+    _.transform("Cleanup Variation Archive Traits") {
+      _.map { `trait` =>
+        val mapped = mapFields(`trait`, traitMappings)
+
+        // Name: This will always be pulled from the ConditionList element?
+        // parse Name elements to find the one that is "preferred"
+        val names = mapped.obj(Str("name")) match {
+          // Name might have one or multiple elements
+          case Arr(msgs) => msgs
+          case msg       => Iterable(msg)
+        }
+        names.foreach { name =>
+          // if the ElementValue node has a @Type of "Preferred" then use the "$" for the name
+          if (name
+                .obj(Str("ElementValue"))
+                .obj(Str("@Type"))
+                .str == "Preferred") {
+            mapped.obj.update(
+              Str("name"),
+              name.obj(Str("ElementValue")).obj(Str("$"))
+            )
+          }
+        }
+
+        // ID: This primary key might be in ConditionList or TraitMappingList
+        // parse XRef elements to find the one that is "MedGen" if it is present
+        // note that this is the primary key id for VariationArchiveTraits
+        // if XRef tag with MedGen ID doesn't exist, we look to the TraitMappingList
+
+        val maybeXref = mapped.obj.remove(Str("xref"))
+
+        val xrefs = maybeXref.fold(Iterable.empty[Msg]) {
+          case Arr(msgs) => msgs
+          case msg       => Iterable(msg)
+        }
+
+        xrefs.foreach { xref =>
+          // if the XRef element has a @DB of "MedGen" then use the @ID for the ID
+          if (xref.obj(Str("@DB")).str == "MedGen") {
+            mapped.obj.update(IdKey, xref.obj(Str("@ID")))
+          }
+        }
+
+        val traitMappingElements = mapped.obj.remove(Str("trait_mapping")) match {
+          case Some(Arr(msgs)) => msgs
+          case Some(msg)       => Iterable(msg)
+          case None            => Iterable.empty
+        }
+
+        if (xrefs.isEmpty) {
+
+          mapped.obj.update(IdKey, Str("None"))
+          traitMappingElements.foreach { traitMapping =>
+            // 1. filter down by traitObj's "trait_id" == traitMapping's "@ClinicalAssertionID"
+            if (mapped.obj(Str("trait_id")) == traitMapping.obj(
+                  Str("@ClinicalAssertionID")
+                ) &&
+                // 2. filter down by traitObj's "type" == traitMapping's "@TraitType"
+                mapped.obj(Str("type")) == traitMapping.obj(
+                  Str("@TraitType")
+                )) {
+              traitMapping.obj(Str("@MappingType")).str match {
+                // 3a. if traitMapping's "@MappingType" is "Name", then filter by
+                //      traitObj's "name" == traitMapping's "@MappingValue"
+                //      and pull out traitMapping's "Medgen", "@CUI" value
+                case "Name" =>
+                  if (mapped.obj(Str("name")) == traitMapping.obj(
+                        Str("@MappingValue")
+                      )) {
+                    mapped.obj.update(
+                      IdKey,
+                      traitMapping.obj(Str("MedGen")).obj(Str("@CUI"))
+                    )
+                  }
+                // 3b. if traitMapping's "@MappingType" is "XRef", then look through oneTrait's
+                //     XRef elements and match on oneTrait's "@DB" and "@ID" to traitMapping's
+                //      "@MappingRef" and "@MappingValue" respectively; if matched, then use
+                //      traitMapping's "MedGen", "@CUI" value
+                case "XRef" =>
+                  xrefs.foreach { xref =>
+                    if (xref.obj(Str("@DB")) == traitMapping.obj(
+                          Str("@MappingRef")
+                        ) &&
+                        xref.obj(Str("@ID")) == traitMapping.obj(
+                          Str("@CUI")
+                        )) {
+                      mapped.obj.update(
+                        IdKey,
+                        traitMapping.obj(Str("MedGen")).obj(Str("@CUI"))
+                      )
+                    }
+                  }
+              }
+            }
+          }
+        }
+        mapped
+      }
+    }.distinctBy(_.obj(IdKey).str)
 
   val scvVariationMappings = Map(
     NonEmptyList.of("VariantType") -> Str("variation_type"),

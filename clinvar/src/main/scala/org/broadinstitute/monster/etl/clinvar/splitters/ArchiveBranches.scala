@@ -21,7 +21,9 @@ case class ArchiveBranches(
   scvVariations: SCollection[Msg],
   scvObservations: SCollection[Msg],
   scvTraitSets: SCollection[Msg],
-  scvTraits: SCollection[Msg]
+  scvTraits: SCollection[Msg],
+  traitSets: SCollection[Msg],
+  traits: SCollection[Msg]
 )
 
 object ArchiveBranches {
@@ -46,6 +48,8 @@ object ArchiveBranches {
     val scvObservationOut = SideOutput[Msg]
     val scvTraitSetOut = SideOutput[Msg]
     val scvTraitOut = SideOutput[Msg]
+    val traitSetOut = SideOutput[Msg]
+    val traitOut = SideOutput[Msg]
 
     val (variationStream, sideCtx) = archiveStream
       .withSideOutputs(
@@ -56,7 +60,9 @@ object ArchiveBranches {
         scvVariationOut,
         scvObservationOut,
         scvTraitSetOut,
-        scvTraitOut
+        scvTraitOut,
+        traitSetOut,
+        traitOut
       )
       .withName("Split Variation Archives")
       .map { (fullVcv, ctx) =>
@@ -184,6 +190,40 @@ object ArchiveBranches {
               ctx.output(scvOut, scv)
           }
 
+          // extract Variation Archive Trait Sets.
+          extractList(recordCopy, "Interpretations", "Interpretation").foreach {
+            interpretation =>
+              val traitSets =
+                interpretation.obj(Str("ConditionList")).obj(Str("TraitSet")) match {
+                  // the TraitSet tag might have one or multiple elements
+                  case Arr(msgs) => msgs
+                  case msg       => Iterable(msg)
+                }
+              traitSets.foreach { traitSet =>
+                // add an entry for each traitSet element
+
+                // extract Variation Archive Traits.
+                val traits = traitSet.obj.remove(Str("Trait")) match {
+                  // the Trait might have one or multiple elements
+                  case Some(Arr(msgs)) => msgs
+                  case Some(msg)       => Iterable(msg)
+                  case None            => Iterable.empty
+                }
+
+                val traitMappings =
+                  extractList(recordCopy, "TraitMappingList", "TraitMapping")
+
+                // extract TraitMappingList.TraitMapping elements, which are sometimes needed to extract the MedGen ID
+                traits.foreach { `trait` =>
+                  traitMappings.foreach {
+                    `trait`.obj.update(Str("TraitMapping"), _)
+                  }
+                  ctx.output(traitOut, `trait`)
+                }
+                ctx.output(traitSetOut, traitSet)
+              }
+          }
+
           // Re-inject whatever fields are left in the record, along
           // with any top-level fields for the VCV.
           vcvObj.foreach {
@@ -207,7 +247,9 @@ object ArchiveBranches {
       scvVariations = sideCtx(scvVariationOut),
       scvObservations = sideCtx(scvObservationOut),
       scvTraitSets = sideCtx(scvTraitSetOut),
-      scvTraits = sideCtx(scvTraitOut)
+      scvTraits = sideCtx(scvTraitOut),
+      traitSets = sideCtx(traitSetOut),
+      traits = sideCtx(traitOut)
     )
   }
 
