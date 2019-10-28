@@ -137,8 +137,7 @@ object ExtractionPipeline {
     samples.saveAsJsonFile(s"${parsedArgs.outputDir}/biosamples")
     donors.saveAsJsonFile(s"${parsedArgs.outputDir}/donors")
 
-    // waitUntilDone() throws error on failure
-    pipelineContext.close().waitUntilDone()
+    pipelineContext.run()
     ()
   }
 }

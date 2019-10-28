@@ -51,8 +51,8 @@ object V2FUtils {
   def tsvToMsg(
     tableName: String
   ): SCollection[ReadableFile] => SCollection[(String, Msg)] =
-    _.transform(s"Extract $tableName TSV rows") { collection =>
-      collection.flatMap { file =>
+    _.transform(s"Extract $tableName TSV rows") {
+      _.flatMap { file =>
         Channels
           .newInputStream(file.open())
           .autoClosed
@@ -88,22 +88,21 @@ object V2FUtils {
     tableName: String
   ): SCollection[(String, Msg)] => SCollection[(String, Msg)] = {
     _.transform(s"Adding the ancestry ID from $tableName's tsv path to its Msg object") {
-      collection =>
-        collection.map {
-          case (filePath, msgObj) =>
-            val toRet = upack.copy(msgObj)
-            val underlying = toRet.obj
-            val ancestryID = ancestryIDPattern
-              .findFirstMatchIn(filePath)
-              .getOrElse(
-                throw new Exception(
-                  s"addAncestryID: error when finding ancestry ID from $tableName tsv path, ($filePath), using $ancestryIDPattern as a pattern"
-                )
+      _.map {
+        case (filePath, msgObj) =>
+          val toRet = upack.copy(msgObj)
+          val underlying = toRet.obj
+          val ancestryID = ancestryIDPattern
+            .findFirstMatchIn(filePath)
+            .getOrElse(
+              throw new Exception(
+                s"addAncestryID: error when finding ancestry ID from $tableName tsv path, ($filePath), using $ancestryIDPattern as a pattern"
               )
-              .group(1)
-            underlying.update(Str("ancestry"), Str(ancestryID))
-            (filePath, toRet)
-        }
+            )
+            .group(1)
+          underlying.update(Str("ancestry"), Str(ancestryID))
+          (filePath, toRet)
+      }
     }
   }
 

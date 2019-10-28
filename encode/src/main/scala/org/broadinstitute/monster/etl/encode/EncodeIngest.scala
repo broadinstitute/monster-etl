@@ -83,7 +83,7 @@ object EncodeIngest {
     cleanedLibraries.saveAsJsonFile(s"${parsedArgs.outputDir}/libraries")
     cleanedSamples.saveAsJsonFile(s"${parsedArgs.outputDir}/biosamples")
 
-    pipelineContext.close().waitUntilDone()
+    pipelineContext.run()
     ()
   }
 

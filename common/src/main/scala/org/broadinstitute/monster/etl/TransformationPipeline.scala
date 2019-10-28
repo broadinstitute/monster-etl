@@ -18,7 +18,7 @@ abstract class TransformationPipeline[Args: Parser: Help] {
     val (pipelineContext, parsedArgs) = ContextAndArgs.typed[Args](rawArgs)
     buildPipeline(pipelineContext, parsedArgs)
 
-    pipelineContext.close()
+    pipelineContext.run()
     ()
   }
 

@@ -4,7 +4,6 @@ import caseapp.{AppName, AppVersion, HelpMessage, ProgName}
 import com.spotify.scio.ContextAndArgs
 import com.spotify.scio.coders.Coder
 import org.broadinstitute.monster.ClinvarBuildInfo
-import org.broadinstitute.monster.etl.clinvar.splitters._
 import org.broadinstitute.monster.etl.{MsgIO, UpackMsgCoder}
 import upack._
 
@@ -34,107 +33,83 @@ object ClinvarPipeline {
       )
 
     // First split apart all of the entities that already exist in the archives.
+    // Since individual archives are self-contained, nearly all of the pipeline's
+    // logic is done in this step.
     val archiveBranches = ArchiveBranches.fromArchiveStream(fullArchives)
 
-    // Map the fields and types of each entity stream.
-    val mapper = new ClinvarMapper()
-    val variations = mapper.mapVariations(archiveBranches.variations)
-    val genes = mapper.mapGenes(archiveBranches.genes)
-    val vcvs = mapper.mapVcvs(archiveBranches.vcvs)
-    val rcvs = mapper.mapRcvs(archiveBranches.rcvs)
-    val scvs = mapper.mapScvs(archiveBranches.scvs)
-    val scvVariations = mapper.mapScvVariations(archiveBranches.scvVariations)
-    val scvObservations = mapper.mapScvObservations(archiveBranches.scvObservations)
-    val scvTraitSets = mapper.mapScvTraitSets(archiveBranches.scvTraitSets)
-    val scvTraits = mapper.mapScvTraits(archiveBranches.scvTraits)
-    val traitSets = mapper.mapTraitSets(archiveBranches.traitSets)
-    val traits = mapper.mapTraits(archiveBranches.traits)
-
-    // Further split the gene stream to distinguish base genes from associations.
-    val geneBranches = GeneBranches.fromGeneStream(genes)
-    // Further split the VCV stream to create a releases table.
-    val vcvBranches = VcvBranches.fromVcvStream(vcvs)
-    // Further split the SCV stream to create new submitter and submission entities.
-    val scvBranches = ScvBranches.fromScvStream(scvs)
+    // De-duplicate where needed.
+    val uniqueGenes = archiveBranches.genes.distinctBy(_.id)
+    val uniqueSubmitters = archiveBranches.submitters.distinctBy(_.id)
+    val uniqueSubmissions = archiveBranches.submissions.distinctBy(_.id)
 
     // Write everything back to storage.
     MsgIO.writeJsonLists(
-      variations,
+      archiveBranches.variations,
       "Variations",
       s"${parsedArgs.outputPrefix}/variation"
     )
     MsgIO.writeJsonLists(
-      geneBranches.genes,
+      uniqueGenes,
       "Genes",
       s"${parsedArgs.outputPrefix}/gene"
     )
     MsgIO.writeJsonLists(
-      geneBranches.geneAssociations,
+      archiveBranches.geneAssociations,
       "Gene Associations",
       s"${parsedArgs.outputPrefix}/gene_association"
     )
     MsgIO.writeJsonLists(
-      vcvBranches.vcvs,
+      archiveBranches.vcvs,
       "VCVs",
       s"${parsedArgs.outputPrefix}/variation_archive"
     )
     MsgIO.writeJsonLists(
-      vcvBranches.vcvReleases,
+      archiveBranches.vcvReleases,
       "VCV Releases",
       s"${parsedArgs.outputPrefix}/variation_archive_release"
     )
     MsgIO.writeJsonLists(
-      rcvs,
+      archiveBranches.rcvs,
       "RCV Accessions",
       s"${parsedArgs.outputPrefix}/rcv_accession"
     )
     MsgIO.writeJsonLists(
-      scvBranches.scvs,
+      archiveBranches.scvs,
       "SCVs",
       s"${parsedArgs.outputPrefix}/clinical_assertion"
     )
     MsgIO.writeJsonLists(
-      scvBranches.submitters,
+      uniqueSubmitters,
       "Submitters",
       s"${parsedArgs.outputPrefix}/submitter"
     )
     MsgIO.writeJsonLists(
-      scvBranches.submissions,
+      uniqueSubmissions,
       "Submissions",
       s"${parsedArgs.outputPrefix}/submission"
     )
     MsgIO.writeJsonLists(
-      scvVariations,
+      archiveBranches.scvVariations,
       "SCV Variations",
       s"${parsedArgs.outputPrefix}/clinical_assertion_variation"
     )
     MsgIO.writeJsonLists(
-      scvObservations,
+      archiveBranches.scvObservations,
       "SCV Observations",
       s"${parsedArgs.outputPrefix}/clinical_assertion_observation"
     )
     MsgIO.writeJsonLists(
-      scvTraitSets,
+      archiveBranches.scvTraitSets,
       "SCV Trait Sets",
       s"${parsedArgs.outputPrefix}/clinical_assertion_trait_set"
     )
     MsgIO.writeJsonLists(
-      scvTraits,
+      archiveBranches.scvTraits,
       "SCV Traits",
       s"${parsedArgs.outputPrefix}/clinical_assertion_trait"
     )
-    MsgIO.writeJsonLists(
-      traitSets,
-      "Trait Sets",
-      s"${parsedArgs.outputPrefix}/trait_set"
-    )
-    MsgIO.writeJsonLists(
-      traits,
-      "Traits",
-      s"${parsedArgs.outputPrefix}/trait"
-    )
 
-    pipelineContext.close()
+    pipelineContext.run()
     ()
   }
 }

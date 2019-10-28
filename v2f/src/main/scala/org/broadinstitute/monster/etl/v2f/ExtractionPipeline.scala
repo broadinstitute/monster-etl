@@ -39,7 +39,7 @@ object ExtractionPipeline {
 
     // extract and convert TSVs to Msg, transform Msg and then save Msg
     // FrequencyAnalysis
-    convertAndWrite(pipelineContext, parsedArgs.inputDir, parsedArgs.outputDir).close()
+    convertAndWrite(pipelineContext, parsedArgs.inputDir, parsedArgs.outputDir).run()
     () // return Unit type
   }
 
