@@ -4,7 +4,17 @@ import io.circe.Encoder
 import io.circe.derivation.{deriveEncoder, renaming}
 import upack.Msg
 
-/** TODO */
+/**
+  * Info about a collection of traits included in a submission to ClinVar.
+  *
+  * @param id unique ID of the trait collection
+  * @param clinicalAssertionId accession of the SCV which includes this set,
+  *                            if the set was packaged directly under the SCV
+  * @param clinicalAssertionObservationId unique ID of the observation data which
+  *                                       includes this set, if the set was packaged
+  *                                       directly under the observation
+  * @param `type` common type of the trait collection
+  */
 case class SCVTraitSet(
   id: String,
   clinicalAssertionId: Option[String],
@@ -17,15 +27,15 @@ object SCVTraitSet {
 
   implicit val encoder: Encoder[SCVTraitSet] = deriveEncoder(renaming.snakeCase, None)
 
-  /** TODO */
+  /** Extract a TraitSet model from a raw TraitSet payload which was nested under a ClinicalAssertion. */
   def fromRawAssertionSet(scv: SCV, rawSet: Msg): SCVTraitSet =
     fromRawSet(scv.id, Some(scv.id), None, rawSet)
 
-  /** TODO */
+  /** Extract a TraitSet model from a raw TraitSet payload which was nested under observation data. */
   def fromRawObservationSet(observation: SCVObservation, rawSet: Msg): SCVTraitSet =
     fromRawSet(observation.id, None, Some(observation.id), rawSet)
 
-  /** TODO */
+  /** Extract a TraitSet model from a raw TraitSet payload. */
   private def fromRawSet(
     id: String,
     scvId: Option[String],

@@ -4,7 +4,14 @@ import io.circe.Encoder
 import io.circe.derivation.{deriveEncoder, renaming}
 import upack.Msg
 
-/** TODO */
+/**
+  * Info about an organization which has submitted findings to ClinVar.
+  *
+  * @param id ClinVar-assigned ID for the organization
+  * @param submitterName full name of the organization
+  * @param orgCategory category of the organization
+  * @param orgAbbrev short name of the organization
+  */
 case class Submitter(
   id: String,
   submitterName: Option[String],
@@ -17,7 +24,7 @@ object Submitter {
 
   implicit val encoder: Encoder[Submitter] = deriveEncoder(renaming.snakeCase, None)
 
-  /** TODO */
+  /** Extract submitter-related info from a raw ClinicalAssertion payload. */
   def fromRawAssertion(rawAssertion: Msg): Submitter =
     Submitter(
       id = rawAssertion

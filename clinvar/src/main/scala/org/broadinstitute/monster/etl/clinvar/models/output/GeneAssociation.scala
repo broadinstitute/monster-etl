@@ -4,6 +4,15 @@ import io.circe.Encoder
 import io.circe.derivation.{deriveEncoder, renaming}
 import upack.Msg
 
+/**
+  * Description of how a gene is associated with a variation.
+  *
+  * @param geneId unique ID for the gene
+  * @param variationId unique ID for the variation
+  * @param relationshipType description of how the gene and
+  *                         variation are associated
+  * @param source description of how the association was registered
+  */
 case class GeneAssociation(
   geneId: String,
   variationId: String,

@@ -6,7 +6,25 @@ import org.broadinstitute.monster.etl.MsgTransformations
 import org.broadinstitute.monster.etl.clinvar.ClinvarConstants
 import upack.{Arr, Msg}
 
-/** TODO */
+/**
+  * General description of a variation, (ideally) removed from
+  * all ClinVar-specific info.
+  *
+  * @param id unique ID assigned to the variation by ClinVar
+  * @param subclassType subclass of variation described by the info
+  *                     (SimpleAllele, Haplotype, Genotype)
+  * @param childIds unique IDs of the variations which naturally
+  *                 "nest" directly under this variation
+  * @param descendantIds unique IDs of all variations which naturally
+  *                      "nest" under this variation or any of its
+  *                      children
+  * @param name name of this variation
+  * @param variationType type of this variation
+  * @param alleleId unique ID of the allele associated with this variation
+  * @param proteinChange IDs of proteins affected by this variation
+  * @param numberOfChromosomes count of chromosomes affected by this variation
+  * @param numberOfCopies count of copy events included in this variation
+  */
 case class Variation(
   id: String,
   subclassType: String,
@@ -26,7 +44,7 @@ object Variation {
   implicit val encoder: Encoder[Variation] = deriveEncoder(renaming.snakeCase, None)
 
   /**
-    * TODO
+    * Convert a raw variation payload into our expected model.
     *
     * NOTE: We expect that every variant destined for the Variant table will
     * be included in its own Variation Archive. To avoid processing duplicate
@@ -57,7 +75,7 @@ object Variation {
     )
   }
 
-  /** TODO */
+  /** Extract the ClinVar-assigned unique ID out of a variation payload. */
   def extractId(rawVariation: Msg): String =
     rawVariation
       .extract("@VariationID")
@@ -66,7 +84,14 @@ object Variation {
       }
       .str
 
-  /** TODO */
+  /**
+    * Descend the hierarchy of a variation payload to extract the IDs of its
+    * immediate children and "deeper" descendants.
+    *
+    * @return a tuple where the first element contains the IDs of the variation's
+    *         immediate children, and the second contains the IDs of all other
+    *         descendants of the variation
+    */
   def extractDescendantIds(rawVariation: Msg): (List[String], List[String]) = {
     val zero = (List.empty[String], List.empty[String])
     ClinvarConstants.VariationTypes.foldLeft(zero) {

@@ -37,11 +37,6 @@ object ClinvarPipeline {
     // logic is done in this step.
     val archiveBranches = ArchiveBranches.fromArchiveStream(fullArchives)
 
-    // De-duplicate where needed.
-    val uniqueGenes = archiveBranches.genes.distinctBy(_.id)
-    val uniqueSubmitters = archiveBranches.submitters.distinctBy(_.id)
-    val uniqueSubmissions = archiveBranches.submissions.distinctBy(_.id)
-
     // Write everything back to storage.
     MsgIO.writeJsonLists(
       archiveBranches.variations,
@@ -49,7 +44,7 @@ object ClinvarPipeline {
       s"${parsedArgs.outputPrefix}/variation"
     )
     MsgIO.writeJsonLists(
-      uniqueGenes,
+      archiveBranches.genes,
       "Genes",
       s"${parsedArgs.outputPrefix}/gene"
     )
@@ -79,12 +74,12 @@ object ClinvarPipeline {
       s"${parsedArgs.outputPrefix}/clinical_assertion"
     )
     MsgIO.writeJsonLists(
-      uniqueSubmitters,
+      archiveBranches.submitters,
       "Submitters",
       s"${parsedArgs.outputPrefix}/submitter"
     )
     MsgIO.writeJsonLists(
-      uniqueSubmissions,
+      archiveBranches.submissions,
       "Submissions",
       s"${parsedArgs.outputPrefix}/submission"
     )

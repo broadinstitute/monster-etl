@@ -159,7 +159,11 @@ object MsgTransformations {
     toRet
   }
 
-  /** TODO */
+  /**
+    * Convert a key to snake case.
+    *
+    * Handles both kebab-case and camel-case inputs.
+    */
   def keyToSnakeCase(k: String): String =
     k.replace("-", "_")
       .replaceAll("([A-Z]+)([A-Z][a-z])", "$1_$2")

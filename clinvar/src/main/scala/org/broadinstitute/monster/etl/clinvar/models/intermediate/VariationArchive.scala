@@ -9,7 +9,35 @@ import upack.{Msg, Str}
 
 import scala.collection.mutable
 
-/** TODO */
+/**
+  * Wrapper for the fully-parsed contents of a single ClinVar VariationArchive.
+  *
+  * This representation flattens the hierarchy between models contained within
+  * the archive. The parsing process must generate cross-links.
+  *
+  * @param variation general info about the top-level variation described
+  *                  by the archive
+  * @param genes genes associated with the archive's top-level variation.
+  *              NOT guaranteed to be de-duplicated
+  * @param geneAssociations descriptions of how the genes in `genes` relate
+  *                         to `variation`
+  * @param vcv info about how `variation` was submitted to ClinVar and reviewed
+  * @param vcvRelease info about the release history of `vcv`
+  * @param rcvs records describing ClinVar's aggregate knowledge of `variation`
+  * @param scvs records describing individual submissions to ClinVar
+  *             about `variation`
+  * @param submitters info about the organizations that submitted `scvs`.
+  *                   NOT guaranteed to be de-duplicated
+  * @param submissions info about when the members of `submitters` made
+  *                    submissions to ClinVar. NOT guaranteed to be de-duplicated
+  * @param scvVariations info about the variations that were submitted for
+  *                      each item in `scvs`
+  * @param scvObservations info about the sampling process associated with
+  *                        each item in `scvs`
+  * @param scvTraitSets info about collections of `scvTraits` which were submitted
+  *                     as part of each item in `scvs`
+  * @param scvTraits info about traits that were submitted for each item in `scvs`
+  */
 case class VariationArchive(
   variation: WithContent[Variation],
   genes: Array[Gene],
@@ -38,8 +66,33 @@ object VariationArchive {
     */
   val IncludedRecord: Msg = Str("IncludedRecord")
 
-  /** TODO */
+  /**
+    * Convert a raw VariationArchive payload into our parsed form.
+    *
+    * This process assumes:
+    *   1. The input payload was produced by running a ClinVar XML release
+    *      through Monster's XML->JSON conversion program
+    *   2. Each VariationArchive is self-contained, and cross-links
+    *      can be fully constructed between all sub-models without
+    *      examining other archive instances
+    */
   def fromRawArchive(rawArchive: Msg): VariationArchive = {
+
+    /*
+     * ClinVar publishes two types of "record"s:
+     *   1. InterpretedRecords are generated for each variation that is sent
+     *      to ClinVar as the top-level focus of a clinical assertion. They
+     *      are reviewed by experts, and therefore have ClinVar-specific
+     *      provenance info attached to them.
+     *   2. IncludedRecords are generated for variations that have never been
+     *      the focus of a clinical assertion, but have been mentioned as
+     *      descendants by other assertions (i.e. a SimpleAllele in a Haplotype).
+     *      They aren't reviewed by experts, and have no meaningful ClinVar-
+     *      specific provenance info.
+     *
+     * We want to collect the variation and gene info described by both types
+     * of records.
+     */
     val variationRecord = rawArchive.obj
       .get(InterpretedRecord)
       .orElse(rawArchive.obj.get(IncludedRecord))
@@ -47,6 +100,7 @@ object VariationArchive {
         throw new IllegalStateException(s"Found an archive with no record: $rawArchive")
       }
 
+    // Get the top-level variation.
     val (rawVariation, variationType) =
       ClinvarConstants.VariationTypes
         .foldLeft(Option.empty[(Msg, String)]) { (acc, subtype) =>
@@ -87,6 +141,8 @@ object VariationArchive {
       scvTraits = Array.empty
     )
 
+    // Since IncludedRecords don't contain meaningful provenance, we only
+    // bother to do further processing for InterpretedRecords.
     if (rawArchive.obj.contains(InterpretedRecord)) {
       // Pull out top-level info about the VCV.
       val vcv = VCV.fromRawArchive(variation, rawArchive)

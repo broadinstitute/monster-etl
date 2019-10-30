@@ -9,7 +9,19 @@ import org.broadinstitute.monster.etl.clinvar.ClinvarConstants
 import ujson.StringRenderer
 import upack.{Msg, Obj, Str}
 
-/** TODO */
+/**
+  * Info about a trait included in a submission to ClinVar.
+  *
+  * @param id unique ID of the trait
+  * @param clinicalAssertionTraitSetId unique ID of the collection which
+  *                                    includes this trait
+  * @param medgenTraitId unique ID of the trait in NCBI's MedGen database,
+  *                      if known
+  * @param name full name of the trait
+  * @param `type` type of the trait
+  * @param xrefs stringified JSON objects describing unique IDs for
+  *              the trait in databases other than MedGen
+  */
 case class SCVTrait(
   id: String,
   clinicalAssertionTraitSetId: String,
@@ -24,7 +36,7 @@ object SCVTrait {
 
   implicit val encoder: Encoder[SCVTrait] = deriveEncoder(renaming.snakeCase, None)
 
-  /** TODO */
+  /** Extract an SCVTrait from a raw Trait payload. */
   def fromRawTrait(
     traitSet: SCVTraitSet,
     counter: AtomicInteger,

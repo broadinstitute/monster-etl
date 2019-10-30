@@ -98,7 +98,7 @@ object MsgIO {
       )
 
   /**
-    * Write processed messages to storage for use by downstream components.
+    * Write unmodeled messages to storage for use by downstream components.
     *
     * Each message will be written to a single line in a part-file under the given
     * output prefix.
@@ -114,7 +114,12 @@ object MsgIO {
       )
       .saveAsTextFile(outputPrefix, suffix = ".json")
 
-  /** TODO */
+  /**
+    * Write modeled messages to storage for use by downstream components.
+    *
+    * Each message will be written to a single line in a part-file under the given
+    * output prefix.
+    */
   def writeJsonLists[M: Encoder](
     messages: SCollection[M],
     description: String,

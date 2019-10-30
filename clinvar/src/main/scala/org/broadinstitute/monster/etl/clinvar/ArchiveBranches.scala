@@ -94,13 +94,13 @@ object ArchiveBranches {
 
     ArchiveBranches(
       variations = variationStream,
-      genes = sideCtx(geneOut),
+      genes = sideCtx(geneOut).distinctBy(_.id),
       geneAssociations = sideCtx(geneAssociationOut),
       vcvs = sideCtx(vcvOut),
       vcvReleases = sideCtx(vcvReleaseOut),
       rcvs = sideCtx(rcvOut),
-      submitters = sideCtx(submitterOut),
-      submissions = sideCtx(submissionOut),
+      submitters = sideCtx(submitterOut).distinctBy(_.id),
+      submissions = sideCtx(submissionOut).distinctBy(_.id),
       scvs = sideCtx(scvOut),
       scvVariations = sideCtx(scvVariationOut),
       scvObservations = sideCtx(scvObservationOut),

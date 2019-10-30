@@ -7,7 +7,7 @@ import scala.collection.mutable
 
 package object clinvar {
 
-  /** TODO */
+  /** Extension methods for interacting with upack Msgs. */
   implicit class MsgOps(val underlying: Msg) extends AnyVal {
 
     /**
