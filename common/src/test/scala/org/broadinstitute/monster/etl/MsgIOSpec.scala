@@ -15,7 +15,7 @@ class MsgIOSpec extends PipelineSpec {
     s"""{"foo":"bar","baz":[$i,"nan",${i + 1}],"qux":{"even?":${i % 2 == 0}}}"""
   }
 
-  private val msgs = List.tabulate(100) { i =>
+  private val msgs = List.tabulate[Msg](100) { i =>
     Obj(
       Str("foo") -> Str("bar"),
       Str("baz") -> Arr(

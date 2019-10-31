@@ -160,6 +160,19 @@ object MsgTransformations {
   }
 
   /**
+    * Convert a key to snake case.
+    *
+    * Handles both kebab-case and camel-case inputs.
+    */
+  def keyToSnakeCase(k: String): String =
+    k.replace("-", "_")
+      .replaceAll("([A-Z]+)([A-Z][a-z])", "$1_$2")
+      .replaceAll("([a-z\\d])([A-Z])", "$1_$2")
+      .replaceAll("([a-z])([\\d])", "$1_$2")
+      .replaceAll("([\\d])([a-z])", "$1_$2")
+      .toLowerCase
+
+  /**
     * Convert every key in an object message to snake-case.
     *
     * Our version of snake-case inserts underscores between
@@ -172,15 +185,8 @@ object MsgTransformations {
     val toRet = Obj()
     msg.obj.foreach {
       case (k, v) =>
-        val snakeCase = k.str
-          .replace("-", "_")
-          .replaceAll("([A-Z]+)([A-Z][a-z])", "$1_$2")
-          .replaceAll("([a-z\\d])([A-Z])", "$1_$2")
-          .replaceAll("([a-z])([\\d])", "$1_$2")
-          .replaceAll("([\\d])([a-z])", "$1_$2")
-          .toLowerCase
-
-        toRet.value.update(Str(snakeCase), v)
+        val snakeCase = Str(keyToSnakeCase(k.str))
+        toRet.value.update(snakeCase, v)
     }
     toRet
   }
@@ -386,6 +392,13 @@ object MsgTransformations {
   )(msg: Msg): Msg =
     mapFieldValues(fields, msg)(parseArray(_, delimiter, parseDouble(_, nanValues)))
 
+  def popAsArray(msg: Msg, field: String): ArrayBuffer[Msg] =
+    msg.obj.remove(Str(field)) match {
+      case None            => ArrayBuffer.empty
+      case Some(Arr(msgs)) => msgs
+      case Some(oneMsg)    => ArrayBuffer(oneMsg)
+    }
+
   /**
     * Ensure that all the values for a set of fields are arrays.
     *
@@ -398,11 +411,7 @@ object MsgTransformations {
   def ensureArrays(fields: Set[String])(msg: Msg): Msg = {
     val copy = upack.copy(msg)
     fields.foreach { field =>
-      val arrayVal = copy.obj.getOrElse(Str(field), Arr()) match {
-        case arr: Arr => arr
-        case other    => Arr(other)
-      }
-      copy.obj.update(Str(field), arrayVal)
+      copy.obj.update(Str(field), Arr(popAsArray(msg, field)))
     }
     copy
   }

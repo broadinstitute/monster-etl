@@ -2,15 +2,15 @@ package org.broadinstitute.monster.etl
 
 import com.spotify.scio.ScioContext
 import com.spotify.scio.coders.Coder
-import com.spotify.scio.io.Tap
+import com.spotify.scio.io.ClosedTap
 import com.spotify.scio.values.SCollection
-import io.circe.{Json, JsonNumber}
+import io.circe.{Encoder, Json, JsonNumber, Printer}
+import io.circe.syntax._
 import ujson.{AstTransformer, StringRenderer}
 import upack.Msg
 import upickle.core.Visitor
 
 import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.Future
 
 /** Collection of utilities for reading/writing messages from/to storage. */
 object MsgIO {
@@ -63,6 +63,14 @@ object MsgIO {
   }
 
   /**
+    * JSON formatter used when writing outputs.
+    *
+    * Attempts to make our outputs as compact as possible by dropping whitespace and
+    * null values.
+    */
+  val circePrinter: Printer = Printer.noSpaces.copy(dropNullValues = true)
+
+  /**
     * Read JSON-list files matching a glob pattern into a scio collection
     * for processing.
     *
@@ -90,22 +98,36 @@ object MsgIO {
       )
 
   /**
-    * Write processed messages to storage for use by downstream components.
+    * Write unmodeled messages to storage for use by downstream components.
     *
     * Each message will be written to a single line in a part-file under the given
     * output prefix.
-    *
-    * TODO: If BigQuery supports reading compressed files, we should consider enabling
-    * compression here to save on our own storage costs.
     */
   def writeJsonLists(
     messages: SCollection[Msg],
     description: String,
     outputPrefix: String
-  ): Future[Tap[String]] =
+  ): ClosedTap[String] =
     messages
       .transform(s"Stringify Messages: $description")(
         _.map(upack.transform(_, StringRenderer()).toString)
+      )
+      .saveAsTextFile(outputPrefix, suffix = ".json")
+
+  /**
+    * Write modeled messages to storage for use by downstream components.
+    *
+    * Each message will be written to a single line in a part-file under the given
+    * output prefix.
+    */
+  def writeJsonLists[M: Encoder](
+    messages: SCollection[M],
+    description: String,
+    outputPrefix: String
+  ): ClosedTap[String] =
+    messages
+      .transform(s"Stringify Messages: $description")(
+        _.map(_.asJson.printWith(circePrinter))
       )
       .saveAsTextFile(outputPrefix, suffix = ".json")
 }

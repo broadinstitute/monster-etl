@@ -1,18 +1,22 @@
-val beamVersion = "2.11.0"
+val beamVersion = "2.16.0"
 val betterFilesVersion = "3.8.0"
-val circeVersion = "0.11.1"
+val circeVersion = "0.12.3"
+val circeDerivationVersion = "0.12.0-M7"
 val enumeratumVersion = "1.5.13"
 val logbackVersion = "1.2.3"
 val scalaCsvVersion = "1.3.6"
-val scioVersion = "0.7.4"
-val uPickleVersion = "0.7.5"
+val scioVersion = "0.8.0-beta2"
+val uPickleVersion = "0.8.0"
 
 val scalaTestVersion = "3.0.8"
 
 // Settings to apply to all sub-projects.
 // Can't be applied at the build level because of scoping rules.
 val commonSettings = Seq(
-  scalacOptions += "-Xmacro-settings:show-coder-fallback=true",
+  scalacOptions ++= Seq(
+    "-Xmacro-settings:show-coder-fallback=true",
+    "-language:higherKinds"
+  ),
   libraryDependencies ++= Seq(
     "org.apache.beam" % "beam-runners-direct-java" % beamVersion,
     "org.apache.beam" % "beam-runners-google-cloud-dataflow-java" % beamVersion
@@ -74,3 +78,8 @@ lazy val clinvar = project
   .enablePlugins(BasePlugin)
   .dependsOn(common)
   .settings(commonSettings)
+  .settings(
+    libraryDependencies ++= Seq(
+      "io.circe" %% "circe-derivation" % circeDerivationVersion
+    )
+  )

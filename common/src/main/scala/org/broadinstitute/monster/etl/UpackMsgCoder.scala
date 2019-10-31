@@ -2,9 +2,9 @@ package org.broadinstitute.monster.etl
 
 import java.io.{InputStream, OutputStream}
 
+import org.apache.beam.repackaged.sql.com.google.common.io.ByteStreams
 import org.apache.beam.sdk.coders.Coder
 import org.apache.beam.sdk.util.VarInt
-import org.apache.beam.vendor.guava.v20_0.com.google.common.io.ByteStreams
 import upack.Msg
 
 /** Serde for upack messages. */

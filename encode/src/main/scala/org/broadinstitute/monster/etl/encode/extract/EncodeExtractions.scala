@@ -2,14 +2,7 @@ package org.broadinstitute.monster.etl.encode.extract
 
 import java.io.IOException
 
-import com.google.common.util.concurrent.{
-  Futures,
-  ListenableFuture,
-  MoreExecutors,
-  SettableFuture
-}
 import com.spotify.scio.coders.Coder
-import com.spotify.scio.transforms.AsyncLookupDoFn.Try
 import com.spotify.scio.transforms._
 import com.spotify.scio.values.SCollection
 import com.squareup.okhttp.{Callback, OkHttpClient, Request, Response}
@@ -20,14 +13,12 @@ import org.apache.beam.sdk.values.KV
 import org.broadinstitute.monster.etl.encode._
 
 import scala.collection.JavaConverters._
+import scala.concurrent.{Future, Promise}
 
 /** Ingest step responsible for pulling raw metadata for a specific entity type from the ENCODE API. */
 object EncodeExtractions {
 
   implicit val jsonCoder: Coder[JsonObject] = Coder.kryo[JsonObject]
-
-  /** Boilerplate needed to tell scio how to (de)serialize its internal Try type. */
-  implicit def coderTry: Coder[Try[String]] = Coder.kryo[Try[String]]
 
   /** HTTP client to use for querying ENCODE APIs. */
   val client = new OkHttpClient()
@@ -39,7 +30,7 @@ object EncodeExtractions {
     * @param encodeEntity the type of ENCODE entity the stage should query
     */
   class EncodeLookup(encodeEntity: EncodeEntity)
-      extends AsyncLookupDoFn[List[(String, String)], String, OkHttpClient] {
+      extends ScalaAsyncLookupDoFn[List[(String, String)], String, OkHttpClient] {
 
     private val baseParams =
       List("frame=object", "status=released", "limit=all", "format=json")
@@ -47,20 +38,16 @@ object EncodeExtractions {
     override def asyncLookup(
       client: OkHttpClient,
       params: List[(String, String)]
-    ): ListenableFuture[String] = {
+    ): Future[String] = {
       val paramStrings = params.map {
         case (key, value) =>
           s"$key=$value"
       }
       val allParams = s"type=${encodeEntity.encodeApiName}" :: baseParams ::: paramStrings
 
-      Futures.transform(
-        get(
-          client,
-          s"https://www.encodeproject.org/search/?${allParams.mkString(sep = "&")}"
-        ),
-        identity[String],
-        MoreExecutors.directExecutor
+      get(
+        client,
+        allParams
       )
     }
 
@@ -69,31 +56,32 @@ object EncodeExtractions {
       * payload resulting from querying a url, or fail.
       *
       * @param client the HTTP client to use in the query
-      * @param url the URL to query
+      * @param params ???
       */
-    private def get(client: OkHttpClient, url: String): ListenableFuture[String] = {
+    private def get(client: OkHttpClient, params: List[String]): Future[String] = {
+      val url = s"https://www.encodeproject.org/search/?${params.mkString(sep = "&")}"
+      val promise = Promise[String]()
+
       val request = new Request.Builder()
         .url(url)
         .get
         .build
 
-      val result = SettableFuture.create[String]()
-
       client
         .newCall(request)
         .enqueue(new Callback {
           override def onFailure(request: Request, e: IOException): Unit = {
-            result.setException(e)
+            promise.failure(e)
             ()
           }
 
           override def onResponse(response: Response): Unit = {
             if (response.isSuccessful) {
-              result.set(response.body.string)
+              promise.success(response.body.string)
             } else if (response.code() == 404) {
-              result.set("""{ "@graph": [] }""")
+              promise.success("""{ "@graph": [] }""")
             } else {
-              result.setException(
+              promise.failure(
                 new RuntimeException(s"ENCODE lookup failed: $response")
               )
             }
@@ -101,7 +89,7 @@ object EncodeExtractions {
           }
         })
 
-      result
+      promise.future
     }
 
     override protected def newClient(): OkHttpClient = client
@@ -118,7 +106,7 @@ object EncodeExtractions {
   ): SCollection[List[(String, String)]] => SCollection[JsonObject] =
     _.transform(s"Download ${encodeEntity.entryName} Entities") {
       _.applyKvTransform(ParDo.of(new EncodeLookup(encodeEntity))).flatMap { kv =>
-        kv.getValue.asScala.fold(
+        kv.getValue.fold(
           throw _,
           value => {
             val decoded = for {
@@ -182,9 +170,9 @@ object EncodeExtractions {
         _.map(KV.of("key", _))
           .setCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
           .applyKvTransform(GroupIntoBatches.ofSize(100))
-          .map(_.getValue.asScala)
-          .map {
-            _.foldLeft(List.empty[(String, String)]) { (acc, ref) =>
+          .map(_.getValue)
+          .map { ids =>
+            ids.asScala.foldLeft(List.empty[(String, String)]) { (acc, ref) =>
               ("@id" -> ref) :: acc
             }
           }

@@ -1,7 +1,10 @@
 package org.broadinstitute.monster.etl.v2f
 
+import better.files.File
 import com.spotify.scio.coders.Coder
 import com.spotify.scio.testing._
+import org.apache.beam.sdk.io.FileIO.ReadableFile
+import org.apache.beam.sdk.io.ReadableFileCoder
 import org.broadinstitute.monster.etl.UpackMsgCoder
 import org.scalatest.Matchers
 import upack.{Msg, Obj, Str}
@@ -9,6 +12,7 @@ import upack.{Msg, Obj, Str}
 class V2FUtilsSpec extends PipelineSpec with Matchers {
 
   implicit val msgCoder: Coder[Msg] = Coder.beam(new UpackMsgCoder)
+  implicit val readableFileCoder: Coder[ReadableFile] = Coder.beam(new ReadableFileCoder)
 
   behavior of "V2FUtils"
 
@@ -78,6 +82,9 @@ class V2FUtilsSpec extends PipelineSpec with Matchers {
     )
   }
 
+  private val dataDir =
+    (File.currentWorkingDirectory / "src/test/scala/org/broadinstitute/monster/etl/v2f").path.toAbsolutePath.toString
+
   // getReadableFiles
   it should "get TSV files as ReadableFiles given a pattern match" in {
     val fileNames = List(
@@ -89,10 +96,7 @@ class V2FUtilsSpec extends PipelineSpec with Matchers {
     val (_, readableFiles) = runWithLocalOutput { sc =>
       {
         V2FUtils
-          .getReadableFiles(
-            "src/test/scala/org/broadinstitute/monster/etl/v2f/*.txt",
-            sc
-          )
+          .getReadableFiles(s"$dataDir/*.txt", sc)
           .map(_.getMetadata.resourceId.getFilename)
       }
     }
@@ -112,10 +116,7 @@ class V2FUtilsSpec extends PipelineSpec with Matchers {
         // double glob without a slash works to cut through multiple directories
         // so */* would look for a file with a / in its name, which is not what we want
         // therefore, we use **.txt
-          .getReadableFiles(
-            "src/test/scala/org/broadinstitute/monster/etl/**.txt",
-            sc
-          )
+          .getReadableFiles(s"$dataDir/**.txt", sc)
           .map(_.getMetadata.resourceId.getFilename)
       }
     }
@@ -125,10 +126,7 @@ class V2FUtilsSpec extends PipelineSpec with Matchers {
   it should "return an empty SCollection if nothing matches the pattern" in {
     val (_, readableFiles) = runWithLocalOutput { sc =>
       {
-        V2FUtils.getReadableFiles(
-          "src/test/scala/org/broadinstitute/monster/etl/v2f/*.foo",
-          sc
-        )
+        V2FUtils.getReadableFiles(s"$dataDir/*.foo", sc)
       }
     }
     readableFiles shouldBe empty
@@ -138,10 +136,7 @@ class V2FUtilsSpec extends PipelineSpec with Matchers {
     an[Exception] shouldBe thrownBy {
       runWithLocalOutput { sc =>
         {
-          V2FUtils.getReadableFiles(
-            "src/test/scala/org/broadinstitute/monster/etl/v2f/thisfiledoesnotexist.txt",
-            sc
-          )
+          V2FUtils.getReadableFiles(s"$dataDir/thisfiledoesnotexist.txt", sc)
         }
       }
     }
@@ -153,10 +148,7 @@ class V2FUtilsSpec extends PipelineSpec with Matchers {
     val (_, readMessages) = runWithLocalOutput { sc =>
       {
         V2FUtils.tsvToMsg("testTableName")(
-          V2FUtils.getReadableFiles(
-            "src/test/scala/org/broadinstitute/monster/etl/v2f/tsvTestFileOriginal.txt",
-            sc
-          )
+          V2FUtils.getReadableFiles(s"$dataDir/tsvTestFileOriginal.txt", sc)
         )
       }
     }
@@ -171,10 +163,7 @@ class V2FUtilsSpec extends PipelineSpec with Matchers {
     val (_, readMessages) = runWithLocalOutput { sc =>
       {
         V2FUtils.tsvToMsg("testTableName")(
-          V2FUtils.getReadableFiles(
-            "src/test/scala/org/broadinstitute/monster/etl/v2f/tsvTestFileMissingValues.txt",
-            sc
-          )
+          V2FUtils.getReadableFiles(s"$dataDir/tsvTestFileMissingValues.txt", sc)
         )
       }
     }
@@ -188,10 +177,7 @@ class V2FUtilsSpec extends PipelineSpec with Matchers {
     val (_, readMessages) = runWithLocalOutput { sc =>
       {
         V2FUtils.tsvToMsg("testTableName")(
-          V2FUtils.getReadableFiles(
-            "src/test/scala/org/broadinstitute/monster/etl/v2f/*.txt",
-            sc
-          )
+          V2FUtils.getReadableFiles(s"$dataDir/*.txt", sc)
         )
       }
     }
