@@ -69,7 +69,9 @@ object ArchiveBranches {
         scvVariationOut,
         scvObservationOut,
         scvTraitSetOut,
-        scvTraitOut
+        scvTraitOut,
+        vcvTraitSetOut,
+        vcvTraitOut
       )
       .withName("Split Variation Archives")
       .map { (rawArchive, ctx) =>
