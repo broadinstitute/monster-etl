@@ -37,6 +37,10 @@ import scala.collection.mutable
   * @param scvTraitSets info about collections of `scvTraits` which were submitted
   *                     as part of each item in `scvs`
   * @param scvTraits info about traits that were submitted for each item in `scvs`
+  *
+  * @param vcvTraitSets info about collections of `vcvTraits`
+  *
+  * @param vcvTraits info about traits
   */
 case class VariationArchive(
   variation: WithContent[Variation],
@@ -51,7 +55,9 @@ case class VariationArchive(
   scvVariations: Array[WithContent[SCVVariation]],
   scvObservations: Array[WithContent[SCVObservation]],
   scvTraitSets: Array[WithContent[SCVTraitSet]],
-  scvTraits: Array[WithContent[SCVTrait]]
+  scvTraits: Array[WithContent[SCVTrait]],
+  vcvTraitSets: Array[WithContent[VCVTraitSet]],
+  vcvTraits: Array[WithContent[VCVTrait]]
 )
 
 object VariationArchive {
@@ -138,7 +144,9 @@ object VariationArchive {
       submissions = Array.empty,
       scvObservations = Array.empty,
       scvTraitSets = Array.empty,
-      scvTraits = Array.empty
+      scvTraits = Array.empty,
+      vcvTraitSets = Array.empty,
+      vcvTraits = Array.empty
     )
 
     // Since IncludedRecords don't contain meaningful provenance, we only
@@ -162,6 +170,8 @@ object VariationArchive {
       val observations = new mutable.ArrayBuffer[WithContent[SCVObservation]]()
       val scvTraitSets = new mutable.ArrayBuffer[WithContent[SCVTraitSet]]()
       val scvTraits = new mutable.ArrayBuffer[WithContent[SCVTrait]]()
+      val vcvTraitSets = new mutable.ArrayBuffer[WithContent[VCVTraitSet]]()
+      val vcvTraits = new mutable.ArrayBuffer[WithContent[VCVTrait]]()
 
       variationRecord.extractList("ClinicalAssertionList", "ClinicalAssertion").foreach {
         rawScv =>
@@ -228,7 +238,9 @@ object VariationArchive {
         submissions = submissions.toArray,
         scvObservations = observations.toArray,
         scvTraitSets = scvTraitSets.toArray,
-        scvTraits = scvTraits.toArray
+        scvTraits = scvTraits.toArray,
+        vcvTraitSets = vcvTraitSets.toArray,
+        vcvTraits = vcvTraits.toArray
       )
     } else {
       outputBase

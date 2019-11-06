@@ -25,7 +25,9 @@ case class ArchiveBranches(
   scvVariations: SCollection[WithContent[SCVVariation]],
   scvObservations: SCollection[WithContent[SCVObservation]],
   scvTraitSets: SCollection[WithContent[SCVTraitSet]],
-  scvTraits: SCollection[WithContent[SCVTrait]]
+  scvTraits: SCollection[WithContent[SCVTrait]],
+  vcvTraitSets: SCollection[WithContent[VCVTraitSet]],
+  vcvTraits: SCollection[WithContent[VCVTrait]]
 )
 
 object ArchiveBranches {
@@ -51,6 +53,8 @@ object ArchiveBranches {
     val scvObservationOut = SideOutput[WithContent[SCVObservation]]
     val scvTraitSetOut = SideOutput[WithContent[SCVTraitSet]]
     val scvTraitOut = SideOutput[WithContent[SCVTrait]]
+    val vcvTraitSetOut = SideOutput[WithContent[VCVTraitSet]]
+    val vcvTraitOut = SideOutput[WithContent[VCVTrait]]
 
     val (variationStream, sideCtx) = archiveStream
       .withSideOutputs(
@@ -105,7 +109,9 @@ object ArchiveBranches {
       scvVariations = sideCtx(scvVariationOut),
       scvObservations = sideCtx(scvObservationOut),
       scvTraitSets = sideCtx(scvTraitSetOut),
-      scvTraits = sideCtx(scvTraitOut)
+      scvTraits = sideCtx(scvTraitOut),
+      vcvTraitSets = sideCtx(vcvTraitSetOut),
+      vcvTraits = sideCtx(vcvTraitOut)
     )
   }
 }

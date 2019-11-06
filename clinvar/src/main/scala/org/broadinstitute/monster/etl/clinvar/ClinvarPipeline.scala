@@ -103,6 +103,16 @@ object ClinvarPipeline {
       "SCV Traits",
       s"${parsedArgs.outputPrefix}/clinical_assertion_trait"
     )
+    MsgIO.writeJsonLists(
+      archiveBranches.vcvTraitSets,
+      "VCV Trait Sets",
+      s"${parsedArgs.outputPrefix}/variation_archive_trait_set"
+    )
+    MsgIO.writeJsonLists(
+      archiveBranches.vcvTraits,
+      "VCV Traits",
+      s"${parsedArgs.outputPrefix}/variation_archive_trait"
+    )
 
     pipelineContext.run()
     ()
