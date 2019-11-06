@@ -166,21 +166,22 @@ object VariationArchive {
       }
 
       // TODO INTERP THINGS FOR FUTURE DAN AND RAAID
-      val interp = variationRecord.extract("Interpretations", "Interpretation").getOrElse {
-        throw new IllegalStateException(s"Found a VCV with no Interpretation: $variationRecord")
-      }
+      val interp =
+        variationRecord.extract("Interpretations", "Interpretation").getOrElse {
+          throw new IllegalStateException(
+            s"Found a VCV with no Interpretation: $variationRecord"
+          )
+        }
 
-      interp.extractList("ConditionList", "TraitSet").foreach {
-        rawTraitSet =>
-          val vcvTraitSet = VCVTraitSet.fromRawSet(rawTraitSet)
+      interp.extractList("ConditionList", "TraitSet").foreach { rawTraitSet =>
+        val vcvTraitSet = VCVTraitSet.fromRawSet(rawTraitSet)
 
-          MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach {
-            rawTrait =>
-              val vcvTrait = VCVTrait.fromRawTrait(vcvTraitSet, rawTrait)
-              vcvTraits.append(WithContent.attachContent(vcvTrait, rawTrait))
-          }
+        MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
+          val vcvTrait = VCVTrait.fromRawTrait(vcvTraitSet, rawTrait)
+          vcvTraits.append(WithContent.attachContent(vcvTrait, rawTrait))
+        }
 
-          vcvTraitSets.append(WithContent.attachContent(vcvTraitSet, rawTraitSet))
+        vcvTraitSets.append(WithContent.attachContent(vcvTraitSet, rawTraitSet))
       }
 
       // Pull out any SCVs, and related info.

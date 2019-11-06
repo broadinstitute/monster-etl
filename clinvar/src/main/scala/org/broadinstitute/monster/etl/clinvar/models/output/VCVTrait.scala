@@ -1,7 +1,5 @@
 package org.broadinstitute.monster.etl.clinvar.models.output
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import io.circe.Encoder
 import io.circe.derivation.{deriveEncoder, renaming}
 import org.broadinstitute.monster.etl.MsgTransformations
@@ -19,11 +17,11 @@ import upack.{Msg, Obj, Str}
   * @param `type` type of the trait
   */
 case class VCVTrait(
-                     id: String,
-                     medgenTraitId: Option[String],
-                     name: Option[String],
-                     `type`: Option[String]
-                   )
+  id: String,
+  medgenTraitId: Option[String],
+  name: Option[String],
+  `type`: Option[String]
+)
 
 object VCVTrait {
   import org.broadinstitute.monster.etl.clinvar.MsgOps
@@ -33,7 +31,7 @@ object VCVTrait {
   /** Extract a VCVTrait from a raw Trait payload. */
   def fromRawTrait(traitSet: VCVTraitSet, rawTrait: Msg): VCVTrait = {
     val allXrefs = MsgTransformations.popAsArray(rawTrait, "XRef")
-    val (medgenId, xrefs) =
+    val (medgenId, _) =
       allXrefs.foldLeft((Option.empty[String], List.empty[String])) {
         case ((medgenAcc, xrefAcc), xref) =>
           val db = xref.obj.get(Str("@DB")).map(_.str)
@@ -65,7 +63,7 @@ object VCVTrait {
       id = rawTrait.extract("@ID").map(_.str).get,
       medgenTraitId = medgenId,
       name = rawTrait.extract("Name", "ElementValue").flatMap(_.extract("$")).map(_.str),
-      `type` = rawTrait.extract("@Type").map(_.str),
+      `type` = rawTrait.extract("@Type").map(_.str)
     )
   }
 }
