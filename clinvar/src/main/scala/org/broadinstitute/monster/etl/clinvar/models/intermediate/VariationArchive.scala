@@ -172,8 +172,15 @@ object VariationArchive {
 
       interp.extractList("ConditionList", "TraitSet").foreach {
         rawTraitSet =>
-          val traitSet = VCVTraitSet.fromRawSet(rawTraitSet)
-          vcvTraitSets.append(WithContent.attachContent(traitSet, rawTraitSet))
+          val vcvTraitSet = VCVTraitSet.fromRawSet(rawTraitSet)
+
+          MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach {
+            rawTrait =>
+              val vcvTrait = VCVTrait.fromRawTrait(vcvTraitSet, rawTrait)
+              vcvTraits.append(WithContent.attachContent(vcvTrait, rawTrait))
+          }
+
+          vcvTraitSets.append(WithContent.attachContent(vcvTraitSet, rawTraitSet))
       }
 
       // Pull out any SCVs, and related info.

@@ -31,12 +31,7 @@ object VCVTrait {
   implicit val encoder: Encoder[VCVTrait] = deriveEncoder(renaming.snakeCase, None)
 
   /** Extract a VCVTrait from a raw Trait payload. */
-  def fromRawTrait(
-                    traitSet: VCVTraitSet,
-                    counter: AtomicInteger,
-                    rawTrait: Msg
-                  ): VCVTrait = {
-    val nameWrapper = rawTrait.extract("Name", "ElementValue")
+  def fromRawTrait(traitSet: VCVTraitSet, rawTrait: Msg): VCVTrait = {
     val allXrefs = MsgTransformations.popAsArray(rawTrait, "XRef")
     val (medgenId, xrefs) =
       allXrefs.foldLeft((Option.empty[String], List.empty[String])) {
@@ -47,7 +42,7 @@ object VCVTrait {
           if (db.contains(ClinvarConstants.MedGenKey)) {
             if (medgenAcc.isDefined) {
               throw new IllegalStateException(
-                s"SCV Trait in set ${traitSet.id} contains two MedGen references"
+                s"VCV Trait in set ${traitSet.id} contains two MedGen references"
               )
             } else {
               (id, xrefAcc)
@@ -66,13 +61,11 @@ object VCVTrait {
           }
       }
 
-    SCVTrait(
-      id = s"${traitSet.id}.${counter.getAndIncrement()}",
-      clinicalAssertionTraitSetId = traitSet.id,
+    VCVTrait(
+      id = rawTrait.extract("@ID").map(_.str).get,
       medgenTraitId = medgenId,
-      name = nameWrapper.flatMap(_.extract("$")).map(_.str),
+      name = rawTrait.extract("Name", "ElementValue").flatMap(_.extract("$")).map(_.str),
       `type` = rawTrait.extract("@Type").map(_.str),
-      xrefs = xrefs.toArray
     )
   }
 }

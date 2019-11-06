@@ -10,7 +10,7 @@ import upack.Msg
   * @param id unique ID of the trait collection
   * @param `type` common type of the trait collection
   */
-case class VCVTraitSet(id: String, `type`: String)
+case class VCVTraitSet(id: String, `type`: Option[String])
 
 object VCVTraitSet {
   import org.broadinstitute.monster.etl.clinvar.MsgOps
@@ -20,6 +20,6 @@ object VCVTraitSet {
   /** Extract a TraitSet model from a raw TraitSet payload. */
   def fromRawSet(rawSet: Msg): VCVTraitSet = VCVTraitSet(
     id = rawSet.extract("@ID").map(_.str).get,
-    `type` = rawSet.extract("@Type").map(_.str).get
+    `type` = rawSet.extract("@Type").map(_.str)
   )
 }
