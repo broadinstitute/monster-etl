@@ -62,7 +62,7 @@ object VCVTrait {
     VCVTrait(
       id = rawTrait.extract("@ID").map(_.str).get,
       medgenTraitId = medgenId,
-      name = rawTrait.extract("Name", "ElementValue").flatMap(_.extract("$")).map(_.str),
+      name = rawTrait.extract("Name", "ElementValue", "$").map(_.str),
       `type` = rawTrait.extract("@Type").map(_.str)
     )
   }

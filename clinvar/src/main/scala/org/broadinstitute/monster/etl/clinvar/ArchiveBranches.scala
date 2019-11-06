@@ -93,6 +93,8 @@ object ArchiveBranches {
         parsed.scvObservations.foreach(ctx.output(scvObservationOut, _))
         parsed.scvTraitSets.foreach(ctx.output(scvTraitSetOut, _))
         parsed.scvTraits.foreach(ctx.output(scvTraitOut, _))
+        parsed.vcvTraitSets.foreach(ctx.output(vcvTraitSetOut, _))
+        parsed.vcvTraits.foreach(ctx.output(vcvTraitOut, _))
         // Use variation as the main output because each archive contains
         // exactly one of them.
         parsed.variation
