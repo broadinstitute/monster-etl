@@ -32,10 +32,10 @@ object VCVTrait {
 
   /** Extract a VCVTrait from a raw Trait payload. */
   def fromRawTrait(
-                    traitSet: SCVTraitSet,
+                    traitSet: VCVTraitSet,
                     counter: AtomicInteger,
                     rawTrait: Msg
-                  ): SCVTrait = {
+                  ): VCVTrait = {
     val nameWrapper = rawTrait.extract("Name", "ElementValue")
     val allXrefs = MsgTransformations.popAsArray(rawTrait, "XRef")
     val (medgenId, xrefs) =

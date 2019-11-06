@@ -156,10 +156,24 @@ object VariationArchive {
       val vcv = VCV.fromRawArchive(variation, rawArchive)
       val vcvRelease = VCVRelease.fromRawArchive(vcv, rawArchive)
 
+      val vcvTraitSets = new mutable.ArrayBuffer[WithContent[VCVTraitSet]]()
+      val vcvTraits = new mutable.ArrayBuffer[WithContent[VCVTrait]]()
+
       // Pull out any RCVs.
       val rcvs = variationRecord.extractList("RCVList", "RCVAccession").map { rawRcv =>
         val rcv = RCV.fromRawAccession(variation, vcv, rawRcv)
         WithContent.attachContent(rcv, rawRcv)
+      }
+
+      // TODO INTERP THINGS FOR FUTURE DAN AND RAAID
+      val interp = variationRecord.extract("Interpretations", "Interpretation").getOrElse {
+        throw new IllegalStateException(s"Found a VCV with no Interpretation: $variationRecord")
+      }
+
+      interp.extractList("ConditionList", "TraitSet").foreach {
+        rawTraitSet =>
+          val traitSet = VCVTraitSet.fromRawSet(rawTraitSet)
+          vcvTraitSets.append(WithContent.attachContent(traitSet, rawTraitSet))
       }
 
       // Pull out any SCVs, and related info.
@@ -170,8 +184,6 @@ object VariationArchive {
       val observations = new mutable.ArrayBuffer[WithContent[SCVObservation]]()
       val scvTraitSets = new mutable.ArrayBuffer[WithContent[SCVTraitSet]]()
       val scvTraits = new mutable.ArrayBuffer[WithContent[SCVTrait]]()
-      val vcvTraitSets = new mutable.ArrayBuffer[WithContent[VCVTraitSet]]()
-      val vcvTraits = new mutable.ArrayBuffer[WithContent[VCVTrait]]()
 
       variationRecord.extractList("ClinicalAssertionList", "ClinicalAssertion").foreach {
         rawScv =>
