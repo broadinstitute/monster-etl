@@ -392,8 +392,27 @@ object MsgTransformations {
   )(msg: Msg): Msg =
     mapFieldValues(fields, msg)(parseArray(_, delimiter, parseDouble(_, nanValues)))
 
+  /**
+    * Get the contents of a field in a Msg as an Array and remove the field.
+    *
+    * @param msg the original Msg from which to pull data
+    * @param field the specific field in `msg` to pull data from
+    */
   def popAsArray(msg: Msg, field: String): ArrayBuffer[Msg] =
     msg.obj.remove(Str(field)) match {
+      case None            => ArrayBuffer.empty
+      case Some(Arr(msgs)) => msgs
+      case Some(oneMsg)    => ArrayBuffer(oneMsg)
+    }
+
+  /**
+    * Get the contents of a field in a Msg as an Array without removing the field or contents.
+    *
+    * @param msg the original Msg from which to pull data
+    * @param field the specific field in `msg` to pull data from
+    */
+  def getAsArray(msg: Msg, field: String): ArrayBuffer[Msg] =
+    msg.obj.get(Str(field)) match {
       case None            => ArrayBuffer.empty
       case Some(Arr(msgs)) => msgs
       case Some(oneMsg)    => ArrayBuffer(oneMsg)

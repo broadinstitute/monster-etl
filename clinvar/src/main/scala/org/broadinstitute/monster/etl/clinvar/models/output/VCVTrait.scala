@@ -31,7 +31,7 @@ object VCVTrait {
   def fromRawTrait(traitSet: VCVTraitSet, rawTrait: Msg): VCVTrait = {
 
     val preferredNameArray = MsgTransformations
-      .popAsArray(rawTrait, "Name")
+      .getAsArray(rawTrait, "Name")
       .filter(_.obj(Str("ElementValue")).obj(Str("@Type")).str == "Preferred")
       .toArray
 
@@ -73,7 +73,7 @@ object VCVTrait {
     VCVTrait(
       id = rawTrait.extract("@ID").map(_.str).get,
       medgenTraitId = medgenId,
-      name = preferredNameArray(0).obj(Str("ElementValue")).extract("$").map(_.str),
+      name = preferredNameArray(0).extract("ElementValue").get.extract("$").map(_.str),
       `type` = rawTrait.extract("@Type").map(_.str)
     )
   }
