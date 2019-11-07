@@ -30,6 +30,18 @@ object VCVTrait {
 
   /** Extract a VCVTrait from a raw Trait payload. */
   def fromRawTrait(traitSet: VCVTraitSet, rawTrait: Msg): VCVTrait = {
+
+    val preferredNameArray = MsgTransformations
+      .popAsArray(rawTrait, "Name")
+      .filter(_.obj(Str("ElementValue")).obj(Str("@Type")).str == "Preferred")
+      .toArray
+
+    if (preferredNameArray.length > 1) {
+      throw new IllegalStateException(
+        s"VCV Trait in set ${traitSet.id} contains two Preferred names"
+      )
+    }
+
     val allXrefs = MsgTransformations.popAsArray(rawTrait, "XRef")
     val (medgenId, _) =
       allXrefs.foldLeft((Option.empty[String], List.empty[String])) {
@@ -62,7 +74,7 @@ object VCVTrait {
     VCVTrait(
       id = rawTrait.extract("@ID").map(_.str).get,
       medgenTraitId = medgenId,
-      name = rawTrait.extract("Name", "ElementValue", "$").map(_.str),
+      name = preferredNameArray(0).obj(Str("ElementValue")).extract("$").map(_.str),
       `type` = rawTrait.extract("@Type").map(_.str)
     )
   }

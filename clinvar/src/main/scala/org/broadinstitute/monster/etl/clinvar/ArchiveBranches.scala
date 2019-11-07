@@ -114,8 +114,8 @@ object ArchiveBranches {
       scvObservations = sideCtx(scvObservationOut),
       scvTraitSets = sideCtx(scvTraitSetOut),
       scvTraits = sideCtx(scvTraitOut),
-      vcvTraitSets = sideCtx(vcvTraitSetOut),
-      vcvTraits = sideCtx(vcvTraitOut)
+      vcvTraitSets = sideCtx(vcvTraitSetOut).distinctBy(_.data.id),
+      vcvTraits = sideCtx(vcvTraitOut).distinctBy(_.data.id)
     )
   }
 }
