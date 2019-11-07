@@ -5,7 +5,7 @@ import io.circe.derivation.{deriveEncoder, renaming}
 import upack.Msg
 
 /**
-  * Info about a collection of traits included in a submission to ClinVar.
+  * Info about a collection of traits in ClinVar.
   *
   * @param id unique ID of the trait collection
   * @param `type` common type of the trait collection

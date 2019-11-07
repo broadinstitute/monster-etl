@@ -11,8 +11,7 @@ import upack.{Msg, Obj, Str}
   * Info about a trait approved by ClinVar.
   *
   * @param id unique ID of the trait, corresponding to ClinVar's internal TraitID
-  * @param medgenTraitId unique ID of the trait in NCBI's MedGen database,
-  *                      if known
+  * @param medgenTraitId unique ID of the trait in NCBI's MedGen database, if known
   * @param name full name of the trait
   * @param `type` type of the trait
   */
