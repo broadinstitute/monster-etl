@@ -2,10 +2,7 @@ package org.broadinstitute.monster.etl.clinvar.models.output
 
 import io.circe.Encoder
 import io.circe.derivation.{deriveEncoder, renaming}
-import org.broadinstitute.monster.etl.clinvar.models.intermediate.WithContent
 import upack.Msg
-
-import scala.collection.mutable.ArrayBuffer
 
 /**
   * Info about a collection of traits in ClinVar.
