@@ -77,7 +77,7 @@ object VCVTrait {
       },
       medgenTraitId = medgenId,
       name = preferredNameArray.headOption
-        .flatMap(_.extract("ElementValue", "$").map(_.str)),
+        .flatMap(_.extract("ElementValue").map(_.value.str)),
       `type` = rawTrait.extract("@Type").map(_.str),
       otherXrefs = otherXrefs.toArray
     )
