@@ -25,7 +25,9 @@ case class ArchiveBranches(
   scvVariations: SCollection[WithContent[SCVVariation]],
   scvObservations: SCollection[WithContent[SCVObservation]],
   scvTraitSets: SCollection[WithContent[SCVTraitSet]],
-  scvTraits: SCollection[WithContent[SCVTrait]]
+  scvTraits: SCollection[WithContent[SCVTrait]],
+  vcvTraitSets: SCollection[WithContent[VCVTraitSet]],
+  vcvTraits: SCollection[WithContent[VCVTrait]]
 )
 
 object ArchiveBranches {
@@ -51,6 +53,8 @@ object ArchiveBranches {
     val scvObservationOut = SideOutput[WithContent[SCVObservation]]
     val scvTraitSetOut = SideOutput[WithContent[SCVTraitSet]]
     val scvTraitOut = SideOutput[WithContent[SCVTrait]]
+    val vcvTraitSetOut = SideOutput[WithContent[VCVTraitSet]]
+    val vcvTraitOut = SideOutput[WithContent[VCVTrait]]
 
     val (variationStream, sideCtx) = archiveStream
       .withSideOutputs(
@@ -65,7 +69,9 @@ object ArchiveBranches {
         scvVariationOut,
         scvObservationOut,
         scvTraitSetOut,
-        scvTraitOut
+        scvTraitOut,
+        vcvTraitSetOut,
+        vcvTraitOut
       )
       .withName("Split Variation Archives")
       .map { (rawArchive, ctx) =>
@@ -87,6 +93,8 @@ object ArchiveBranches {
         parsed.scvObservations.foreach(ctx.output(scvObservationOut, _))
         parsed.scvTraitSets.foreach(ctx.output(scvTraitSetOut, _))
         parsed.scvTraits.foreach(ctx.output(scvTraitOut, _))
+        parsed.vcvTraitSets.foreach(ctx.output(vcvTraitSetOut, _))
+        parsed.vcvTraits.foreach(ctx.output(vcvTraitOut, _))
         // Use variation as the main output because each archive contains
         // exactly one of them.
         parsed.variation
@@ -105,7 +113,9 @@ object ArchiveBranches {
       scvVariations = sideCtx(scvVariationOut),
       scvObservations = sideCtx(scvObservationOut),
       scvTraitSets = sideCtx(scvTraitSetOut),
-      scvTraits = sideCtx(scvTraitOut)
+      scvTraits = sideCtx(scvTraitOut),
+      vcvTraitSets = sideCtx(vcvTraitSetOut).distinctBy(_.data.id),
+      vcvTraits = sideCtx(vcvTraitOut).distinctBy(_.data.id)
     )
   }
 }

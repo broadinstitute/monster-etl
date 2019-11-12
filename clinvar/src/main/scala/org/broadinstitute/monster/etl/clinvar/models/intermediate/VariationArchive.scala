@@ -37,6 +37,10 @@ import scala.collection.mutable
   * @param scvTraitSets info about collections of `scvTraits` which were submitted
   *                     as part of each item in `scvs`
   * @param scvTraits info about traits that were submitted for each item in `scvs`
+  *
+  * @param vcvTraitSets info about collections of `vcvTraits`
+  *
+  * @param vcvTraits info about traits
   */
 case class VariationArchive(
   variation: WithContent[Variation],
@@ -51,7 +55,9 @@ case class VariationArchive(
   scvVariations: Array[WithContent[SCVVariation]],
   scvObservations: Array[WithContent[SCVObservation]],
   scvTraitSets: Array[WithContent[SCVTraitSet]],
-  scvTraits: Array[WithContent[SCVTrait]]
+  scvTraits: Array[WithContent[SCVTrait]],
+  vcvTraitSets: Array[WithContent[VCVTraitSet]],
+  vcvTraits: Array[WithContent[VCVTrait]]
 )
 
 object VariationArchive {
@@ -138,7 +144,9 @@ object VariationArchive {
       submissions = Array.empty,
       scvObservations = Array.empty,
       scvTraitSets = Array.empty,
-      scvTraits = Array.empty
+      scvTraits = Array.empty,
+      vcvTraitSets = Array.empty,
+      vcvTraits = Array.empty
     )
 
     // Since IncludedRecords don't contain meaningful provenance, we only
@@ -148,10 +156,32 @@ object VariationArchive {
       val vcv = VCV.fromRawArchive(variation, rawArchive)
       val vcvRelease = VCVRelease.fromRawArchive(vcv, rawArchive)
 
+      val vcvTraitSets = new mutable.ArrayBuffer[WithContent[VCVTraitSet]]()
+      val vcvTraits = new mutable.ArrayBuffer[WithContent[VCVTrait]]()
+
       // Pull out any RCVs.
       val rcvs = variationRecord.extractList("RCVList", "RCVAccession").map { rawRcv =>
         val rcv = RCV.fromRawAccession(variation, vcv, rawRcv)
         WithContent.attachContent(rcv, rawRcv)
+      }
+
+      // TODO INTERP THINGS FOR FUTURE DAN AND RAAID
+      val interp =
+        variationRecord.extract("Interpretations", "Interpretation").getOrElse {
+          throw new IllegalStateException(
+            s"Found a VCV with no Interpretation: $variationRecord"
+          )
+        }
+
+      interp.extractList("ConditionList", "TraitSet").foreach { rawTraitSet =>
+        val currentVcvTraitIds = new mutable.ArrayBuffer[String]()
+        MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
+          val vcvTrait = VCVTrait.fromRawTrait(rawTrait)
+          vcvTraits.append(WithContent.attachContent(vcvTrait, rawTrait))
+          currentVcvTraitIds.append(vcvTrait.id)
+        }
+        val vcvTraitSet = VCVTraitSet.fromRawSet(rawTraitSet, currentVcvTraitIds.toArray)
+        vcvTraitSets.append(WithContent.attachContent(vcvTraitSet, rawTraitSet))
       }
 
       // Pull out any SCVs, and related info.
@@ -228,7 +258,9 @@ object VariationArchive {
         submissions = submissions.toArray,
         scvObservations = observations.toArray,
         scvTraitSets = scvTraitSets.toArray,
-        scvTraits = scvTraits.toArray
+        scvTraits = scvTraits.toArray,
+        vcvTraitSets = vcvTraitSets.toArray,
+        vcvTraits = vcvTraits.toArray
       )
     } else {
       outputBase
