@@ -19,7 +19,8 @@ case class VCVTrait(
   id: String,
   medgenTraitId: Option[String],
   name: Option[String],
-  `type`: Option[String]
+  `type`: Option[String],
+  otherXrefs: Array[String]
 )
 
 object VCVTrait {
@@ -28,7 +29,7 @@ object VCVTrait {
   implicit val encoder: Encoder[VCVTrait] = deriveEncoder(renaming.snakeCase, None)
 
   /** Extract a VCVTrait from a raw Trait payload. */
-  def fromRawTrait(traitSet: VCVTraitSet, rawTrait: Msg): VCVTrait = {
+  def fromRawTrait(rawTrait: Msg): VCVTrait = {
 
     val preferredNameArray = MsgTransformations
       .getAsArray(rawTrait, "Name")
@@ -37,12 +38,12 @@ object VCVTrait {
 
     if (preferredNameArray.length > 1) {
       throw new IllegalStateException(
-        s"VCV Trait in set ${traitSet.id} contains two Preferred names"
+        s"VCV Trait Set contains two Preferred names $rawTrait"
       )
     }
 
     val allXrefs = MsgTransformations.popAsArray(rawTrait, "XRef")
-    val (medgenId, _) =
+    val (medgenId, otherXrefs) =
       allXrefs.foldLeft((Option.empty[String], List.empty[String])) {
         case ((medgenAcc, xrefAcc), xref) =>
           val db = xref.obj.get(Str("@DB")).map(_.str)
@@ -51,7 +52,7 @@ object VCVTrait {
           if (db.contains(ClinvarConstants.MedGenKey)) {
             if (medgenAcc.isDefined) {
               throw new IllegalStateException(
-                s"VCV Trait in set ${traitSet.id} contains two MedGen references"
+                s"VCV Trait Set contains two MedGen references: $rawTrait"
               )
             } else {
               (id, xrefAcc)
@@ -71,10 +72,13 @@ object VCVTrait {
       }
 
     VCVTrait(
-      id = rawTrait.extract("@ID").map(_.str).get,
+      id = rawTrait.extract("@ID").map(_.str).getOrElse {
+        throw new IllegalStateException(s"Found a VCV Trait with no ID: $rawTrait")
+      },
       medgenTraitId = medgenId,
-      name = preferredNameArray(0).extract("ElementValue").get.extract("$").map(_.str),
-      `type` = rawTrait.extract("@Type").map(_.str)
+      name = preferredNameArray.headOption.flatMap(_.extract("ElementValue").get.extract("$").map(_.str)),
+      `type` = rawTrait.extract("@Type").map(_.str),
+      otherXrefs = otherXrefs.toArray
     )
   }
 }
