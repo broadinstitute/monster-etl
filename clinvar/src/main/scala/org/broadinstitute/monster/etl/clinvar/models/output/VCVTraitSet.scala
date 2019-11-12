@@ -12,6 +12,7 @@ import scala.collection.mutable.ArrayBuffer
   *
   * @param id unique ID of the trait collection
   * @param `type` common type of the trait collection
+  * @param traitIds the IDs of the Traits that make up the Trait Set
   */
 case class VCVTraitSet(id: String, `type`: Option[String], traitIds: ArrayBuffer[String])
 
@@ -21,7 +22,10 @@ object VCVTraitSet {
   implicit val encoder: Encoder[VCVTraitSet] = deriveEncoder(renaming.snakeCase, None)
 
   /** Extract a TraitSet model from a raw TraitSet payload. */
-  def fromRawSet(rawSet: Msg, vcvTraits: ArrayBuffer[WithContent[VCVTrait]]): VCVTraitSet =
+  def fromRawSet(
+    rawSet: Msg,
+    vcvTraits: ArrayBuffer[WithContent[VCVTrait]]
+  ): VCVTraitSet =
     VCVTraitSet(
       id = rawSet.extract("@ID").map(_.str).getOrElse {
         throw new IllegalStateException(s"Found a VCV Trait Set with no ID: $rawSet")
