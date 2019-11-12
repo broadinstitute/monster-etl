@@ -76,7 +76,8 @@ object VCVTrait {
         throw new IllegalStateException(s"Found a VCV Trait with no ID: $rawTrait")
       },
       medgenTraitId = medgenId,
-      name = preferredNameArray.headOption.flatMap(_.extract("ElementValue").get.extract("$").map(_.str)),
+      name = preferredNameArray.headOption
+        .flatMap(_.extract("ElementValue").get.extract("$").map(_.str)),
       `type` = rawTrait.extract("@Type").map(_.str),
       otherXrefs = otherXrefs.toArray
     )
