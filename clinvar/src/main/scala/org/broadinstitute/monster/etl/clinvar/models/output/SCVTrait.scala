@@ -76,7 +76,7 @@ object SCVTrait {
       id = s"${traitSet.id}.${counter.getAndIncrement()}",
       clinicalAssertionTraitSetId = traitSet.id,
       medgenTraitId = medgenId,
-      name = nameWrapper.flatMap(_.extract("$")).map(_.str),
+      name = nameWrapper.map(_.value.str),
       `type` = rawTrait.extract("@Type").map(_.str),
       xrefs = xrefs.toArray
     )

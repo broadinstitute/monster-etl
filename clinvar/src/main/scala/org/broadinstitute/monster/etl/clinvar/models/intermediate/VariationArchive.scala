@@ -82,7 +82,7 @@ object VariationArchive {
     *      can be fully constructed between all sub-models without
     *      examining other archive instances
     */
-  def fromRawArchive(rawArchive: Msg): VariationArchive = {
+  def fromRawArchiveWrapper(rawArchive: Msg): VariationArchive = {
 
     /*
      * ClinVar publishes two types of "record"s:

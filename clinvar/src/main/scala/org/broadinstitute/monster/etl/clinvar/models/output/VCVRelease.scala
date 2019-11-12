@@ -30,7 +30,7 @@ object VCVRelease {
       variationArchiveId = vcv.id,
       version = vcv.version,
       releaseDate = rawArchive
-        .extract("@ReleaseDate")
+        .extract("ClinVarVariationRelease", "@ReleaseDate")
         .getOrElse {
           throw new IllegalStateException(
             s"Found a VCV with no release date: $rawArchive"

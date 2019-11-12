@@ -57,8 +57,9 @@ object VCV {
       dateLastUpdated = rawArchive.extract("@DateLastUpdated").map(_.str),
       numSubmissions = rawArchive.extract("@NumberOfSubmissions").map(_.str.toLong),
       numSubmitters = rawArchive.extract("@NumberOfSubmitters").map(_.str.toLong),
-      recordStatus = rawArchive.extract("RecordStatus").map(_.str),
-      reviewStatus = rawArchive.extract("InterpretedRecord", "ReviewStatus").map(_.str),
-      species = rawArchive.extract("Species").map(_.str)
+      recordStatus = rawArchive.extract("RecordStatus").map(_.value.str),
+      reviewStatus =
+        rawArchive.extract("InterpretedRecord", "ReviewStatus").map(_.value.str),
+      species = rawArchive.extract("Species").map(_.value.str)
     )
 }

@@ -87,17 +87,17 @@ object SCV {
     vcvId = vcv.id,
     submitterId = submitter.id,
     submissionId = submission.id,
-    assertionType = rawAssertion.extract("Assertion").map(_.str),
+    assertionType = rawAssertion.extract("Assertion").map(_.value.str),
     dateCreated = rawAssertion.extract("@DateCreated").map(_.str),
     dateLastUpdated = rawAssertion.extract("@DateLastUpdated").map(_.str),
-    recordStatus = rawAssertion.extract("RecordStatus").map(_.str),
-    reviewStatus = rawAssertion.extract("ReviewStatus").map(_.str),
+    recordStatus = rawAssertion.extract("RecordStatus").map(_.value.str),
+    reviewStatus = rawAssertion.extract("ReviewStatus").map(_.value.str),
     title = rawAssertion.extract("ClinVarSubmissionID", "@title").map(_.str),
     localKey = rawAssertion.extract("ClinVarSubmissionID", "@localKey").map(_.str),
     submittedAssembly =
       rawAssertion.extract("ClinVarSubmissionID", "@submittedAssembly").map(_.str),
     interpretationDescription =
-      rawAssertion.extract("Interpretation", "Description").map(_.str),
+      rawAssertion.extract("Interpretation", "Description").map(_.value.str),
     interpretationLastEvaluated = rawAssertion
       .extract("Interpretation", "@DateLastEvaluated")
       .flatMap(normalizeEvaluationDate),
@@ -126,25 +126,27 @@ object SCV {
   }
 
   /**
+    * Process free-form comments to match our expected schema.
+    *
     * SCV comments always contain a text body, and sometimes are tagged with a type.
-    * If they have a type, they'll be extracted as objects.
-    * Otherwise they'll be extracted as scalar strings.
-    * We normalize them to always be stored as stringified JSON objects, with
-    * an 'unknown' type when needed.
+    * A single SCV can contain zero+ comments. We normalize the comments to always
+    * be an array of stringified JSON objects, each possessing a "text" field containing
+    * the raw comment and an optional "type" field if the source comment had a
+    * corresponding field.
     */
   def normalizeComments(rawComments: Msg): Array[String] = {
-    def normalizeComment(comment: Msg) =
+    def normalizeComment(comment: Msg) = {
+      val base = Obj(Str("text") -> comment.value)
       upack
         .transform(
-          comment match {
-            case Obj(fields) =>
-              Obj(Str("type") -> fields(Str("@Type")), Str("text") -> fields(Str("$")))
-            case other =>
-              Obj(Str("type") -> Str("unknown"), Str("text") -> other)
+          comment.obj.get(Str("@Type")).fold(base) { commentType =>
+            base.obj.update(Str("type"), commentType)
+            base
           },
           StringRenderer()
         )
         .toString
+    }
 
     rawComments match {
       case Arr(comments) => comments.map(normalizeComment).toArray
