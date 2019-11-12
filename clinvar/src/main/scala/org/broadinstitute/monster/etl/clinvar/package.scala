@@ -7,8 +7,31 @@ import scala.collection.mutable
 
 package object clinvar {
 
+  /** Constant key used in Badger-Fish convention to store the scalar value of an XML tag. */
+  val ValueKey: Msg = Str("$")
+
   /** Extension methods for interacting with upack Msgs. */
   implicit class MsgOps(val underlying: Msg) extends AnyVal {
+
+    /**
+      * Read the Badger-Fish value '$' from a Msg object.
+      *
+      * Will throw an exception if the wrapped Msg is not an object, or if
+      * it is an object that doesn't contain the special-case key.
+      */
+    def value: Msg = underlying match {
+      case Obj(fields) =>
+        fields.getOrElse(
+          ValueKey,
+          throw new IllegalArgumentException(
+            s"Key '$ValueKey' not found in object: $underlying"
+          )
+        )
+      case _ =>
+        throw new IllegalArgumentException(
+          s"Cannot get value '$ValueKey' of non-object: $underlying'"
+        )
+    }
 
     /**
       * 'Drill' into a message, following a chain of fields, until either
@@ -40,15 +63,6 @@ package object clinvar {
                 retVal
               }
           }
-        // NOTE: In the case when an XML tag contains both attributes and a text value,
-        //  our extractor program assigns the text value to the '$' field. When attributes
-        // are optional for a tag, this results in a mix of value types for that tag in
-        // the output JSON (some objects w/ '$' fields, and some scalars).
-        // We try to handle both cases by allowing drill-down paths that end in '$' to
-        // terminate one hop early.
-        case nonObj if fieldChain == NonEmptyList("$", Nil) =>
-          logger.warn(s"Returning value $nonObj in place of '$$' field")
-          Some(nonObj)
         case nonObj =>
           logger.warn(
             s"Attempted to extract field(s) [$fieldChain] from non-object: $nonObj"

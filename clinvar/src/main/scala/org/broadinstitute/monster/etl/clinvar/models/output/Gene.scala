@@ -36,6 +36,6 @@ object Gene {
         .str,
       symbol = rawGene.extract("@Symbol").map(_.str),
       hgncId = rawGene.extract("@HGNC_ID").map(_.str),
-      fullName = rawGene.extract("FullName").map(_.str)
+      fullName = rawGene.extract("FullName").map(_.value.str)
     )
 }

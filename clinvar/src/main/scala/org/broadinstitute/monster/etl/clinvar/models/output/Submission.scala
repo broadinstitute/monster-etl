@@ -42,7 +42,7 @@ object Submission {
       submitterId = submitter.id,
       submissionNames = rawAssertion
         .extractList("SubmissionNameList", "SubmissionName")
-        .map(_.str)
+        .map(_.value.str)
         .toArray
     )
   }

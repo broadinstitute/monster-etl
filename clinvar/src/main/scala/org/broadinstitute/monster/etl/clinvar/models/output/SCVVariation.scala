@@ -65,7 +65,7 @@ object SCVVariation {
         variationType = rawVariation
           .extract("VariantType")
           .orElse(rawVariation.extract("VariationType"))
-          .map(_.str)
+          .map(_.value.str)
       )
     }
 

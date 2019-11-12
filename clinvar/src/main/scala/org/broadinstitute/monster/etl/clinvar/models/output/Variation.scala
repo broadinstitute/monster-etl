@@ -62,14 +62,16 @@ object Variation {
       subclassType = subtype,
       childIds = childIds.toArray,
       descendantIds = (childIds ::: descendantIds).toArray,
-      name = rawVariation.extract("Name").map(_.str),
+      name = rawVariation.extract("Name").map(_.value.str),
       variationType = rawVariation
         .extract("VariantType")
         .orElse(rawVariation.extract("VariationType"))
-        .map(_.str),
+        .map(_.value.str),
       alleleId = rawVariation.extract("@AlleleID").map(_.str),
-      proteinChange =
-        MsgTransformations.popAsArray(rawVariation, "ProteinChange").map(_.str).toArray,
+      proteinChange = MsgTransformations
+        .popAsArray(rawVariation, "ProteinChange")
+        .map(_.value.str)
+        .toArray,
       numberOfChromosomes = rawVariation.extract("@NumberOfChromosomes").map(_.str.toLong),
       numberOfCopies = rawVariation.extract("@NumberOfCopies").map(_.str.toLong)
     )

@@ -6,7 +6,7 @@ import org.broadinstitute.monster.etl.clinvar.models.intermediate.{
   WithContent
 }
 import org.broadinstitute.monster.etl.clinvar.models.output._
-import upack.Msg
+import upack.{Msg, Str}
 
 /**
   * Collection of data streams produced by the initial splitting
@@ -31,6 +31,9 @@ case class ArchiveBranches(
 )
 
 object ArchiveBranches {
+
+  /** Object wrapper key expected for all archive entries. */
+  val ArchiveKey: Msg = Str("VariationArchive")
 
   /**
     * Split a stream of raw VariationArchive entries into multiple
@@ -77,7 +80,7 @@ object ArchiveBranches {
       .map { (rawArchive, ctx) =>
         // Beam prohibits mutating inputs, so we have to copy the archive before
         // processing it.
-        val archiveCopy = upack.copy(rawArchive)
+        val archiveCopy = upack.copy(rawArchive.obj(ArchiveKey))
         // Parse the raw archive into the structures we care about.
         val parsed = VariationArchive.fromRawArchive(archiveCopy)
         // Output all the things!
