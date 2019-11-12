@@ -82,7 +82,7 @@ object ArchiveBranches {
         // processing it.
         val archiveCopy = upack.copy(rawArchive.obj(ArchiveKey))
         // Parse the raw archive into the structures we care about.
-        val parsed = VariationArchive.fromRawArchiveWrapper(archiveCopy)
+        val parsed = VariationArchive.fromRawArchive(archiveCopy)
         // Output all the things!
         parsed.genes.foreach(ctx.output(geneOut, _))
         parsed.geneAssociations.foreach(ctx.output(geneAssociationOut, _))
