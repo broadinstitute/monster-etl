@@ -15,8 +15,7 @@ import upack.{Msg, Obj, Str}
   * @param id unique ID of the trait
   * @param clinicalAssertionTraitSetId unique ID of the collection which
   *                                    includes this trait
-  * @param medgenTraitId unique ID of the trait in NCBI's MedGen database,
-  *                      if known
+  * @param medgenId unique ID of the trait in NCBI's MedGen database, if known
   * @param name full name of the trait
   * @param `type` type of the trait
   * @param xrefs stringified JSON objects describing unique IDs for
@@ -25,7 +24,7 @@ import upack.{Msg, Obj, Str}
 case class SCVTrait(
   id: String,
   clinicalAssertionTraitSetId: String,
-  medgenTraitId: Option[String],
+  medgenId: Option[String],
   name: Option[String],
   `type`: Option[String],
   xrefs: Array[String]
@@ -75,7 +74,7 @@ object SCVTrait {
     SCVTrait(
       id = s"${traitSet.id}.${counter.getAndIncrement()}",
       clinicalAssertionTraitSetId = traitSet.id,
-      medgenTraitId = medgenId,
+      medgenId = medgenId,
       name = nameWrapper.map(_.value.str),
       `type` = rawTrait.extract("@Type").map(_.str),
       xrefs = xrefs.toArray

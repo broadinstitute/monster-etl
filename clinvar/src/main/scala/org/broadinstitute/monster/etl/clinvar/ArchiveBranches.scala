@@ -27,7 +27,8 @@ case class ArchiveBranches(
   scvTraitSets: SCollection[WithContent[SCVTraitSet]],
   scvTraits: SCollection[WithContent[SCVTrait]],
   vcvTraitSets: SCollection[WithContent[VCVTraitSet]],
-  vcvTraits: SCollection[WithContent[VCVTrait]]
+  vcvTraits: SCollection[WithContent[VCVTrait]],
+  traitMappings: SCollection[TraitMapping]
 )
 
 object ArchiveBranches {
@@ -58,6 +59,7 @@ object ArchiveBranches {
     val scvTraitOut = SideOutput[WithContent[SCVTrait]]
     val vcvTraitSetOut = SideOutput[WithContent[VCVTraitSet]]
     val vcvTraitOut = SideOutput[WithContent[VCVTrait]]
+    val traitMappingOut = SideOutput[TraitMapping]
 
     val (variationStream, sideCtx) = archiveStream
       .withSideOutputs(
@@ -74,7 +76,8 @@ object ArchiveBranches {
         scvTraitSetOut,
         scvTraitOut,
         vcvTraitSetOut,
-        vcvTraitOut
+        vcvTraitOut,
+        traitMappingOut
       )
       .withName("Split Variation Archives")
       .map { (rawArchive, ctx) =>
@@ -98,6 +101,7 @@ object ArchiveBranches {
         parsed.scvTraits.foreach(ctx.output(scvTraitOut, _))
         parsed.vcvTraitSets.foreach(ctx.output(vcvTraitSetOut, _))
         parsed.vcvTraits.foreach(ctx.output(vcvTraitOut, _))
+        parsed.traitMappings.foreach(ctx.output(traitMappingOut, _))
         // Use variation as the main output because each archive contains
         // exactly one of them.
         parsed.variation
@@ -118,7 +122,8 @@ object ArchiveBranches {
       scvTraitSets = sideCtx(scvTraitSetOut),
       scvTraits = sideCtx(scvTraitOut),
       vcvTraitSets = sideCtx(vcvTraitSetOut).distinctBy(_.data.id),
-      vcvTraits = sideCtx(vcvTraitOut).distinctBy(_.data.id)
+      vcvTraits = sideCtx(vcvTraitOut).distinctBy(_.data.id),
+      traitMappings = sideCtx(traitMappingOut)
     )
   }
 }

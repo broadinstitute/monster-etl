@@ -37,10 +37,10 @@ import scala.collection.mutable
   * @param scvTraitSets info about collections of `scvTraits` which were submitted
   *                     as part of each item in `scvs`
   * @param scvTraits info about traits that were submitted for each item in `scvs`
-  *
   * @param vcvTraitSets info about collections of `vcvTraits`
-  *
   * @param vcvTraits info about traits
+  * @param traitMappings info about how the members of `scvTraits` link to the
+  *                      members of `vcvTraits`
   */
 case class VariationArchive(
   variation: WithContent[Variation],
@@ -57,7 +57,8 @@ case class VariationArchive(
   scvTraitSets: Array[WithContent[SCVTraitSet]],
   scvTraits: Array[WithContent[SCVTrait]],
   vcvTraitSets: Array[WithContent[VCVTraitSet]],
-  vcvTraits: Array[WithContent[VCVTrait]]
+  vcvTraits: Array[WithContent[VCVTrait]],
+  traitMappings: Array[TraitMapping]
 )
 
 object VariationArchive {
@@ -146,7 +147,8 @@ object VariationArchive {
       scvTraitSets = Array.empty,
       scvTraits = Array.empty,
       vcvTraitSets = Array.empty,
-      vcvTraits = Array.empty
+      vcvTraits = Array.empty,
+      traitMappings = Array.empty
     )
 
     // Since IncludedRecords don't contain meaningful provenance, we only
@@ -155,9 +157,6 @@ object VariationArchive {
       // Pull out top-level info about the VCV.
       val vcv = VCV.fromRawArchive(variation, rawArchive)
       val vcvRelease = VCVRelease.fromRawArchive(vcv, rawArchive)
-
-      val vcvTraitSets = new mutable.ArrayBuffer[WithContent[VCVTraitSet]]()
-      val vcvTraits = new mutable.ArrayBuffer[WithContent[VCVTrait]]()
 
       // Pull out any RCVs.
       val rcvs = variationRecord.extractList("RCVList", "RCVAccession").map { rawRcv =>
@@ -173,6 +172,9 @@ object VariationArchive {
           )
         }
 
+      val vcvTraitSets = new mutable.ArrayBuffer[WithContent[VCVTraitSet]]()
+      val vcvTraits = new mutable.ArrayBuffer[WithContent[VCVTrait]]()
+
       interp.extractList("ConditionList", "TraitSet").foreach { rawTraitSet =>
         val currentVcvTraitIds = new mutable.ArrayBuffer[String]()
         MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
@@ -183,6 +185,11 @@ object VariationArchive {
         val vcvTraitSet = VCVTraitSet.fromRawSet(rawTraitSet, currentVcvTraitIds.toArray)
         vcvTraitSets.append(WithContent.attachContent(vcvTraitSet, rawTraitSet))
       }
+
+      // Pull out SCV<->VCV trait mappings.
+      val traitMappings = variationRecord
+        .extractList("TraitMappingList", "TraitMapping")
+        .map(TraitMapping.fromRawMapping)
 
       // Pull out any SCVs, and related info.
       val scvs = new mutable.ArrayBuffer[WithContent[SCV]]()
@@ -260,7 +267,8 @@ object VariationArchive {
         scvTraitSets = scvTraitSets.toArray,
         scvTraits = scvTraits.toArray,
         vcvTraitSets = vcvTraitSets.toArray,
-        vcvTraits = vcvTraits.toArray
+        vcvTraits = vcvTraits.toArray,
+        traitMappings = traitMappings.toArray
       )
     } else {
       outputBase
