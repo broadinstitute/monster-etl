@@ -11,13 +11,13 @@ import upack.{Msg, Obj, Str}
   * Info about a trait approved by ClinVar.
   *
   * @param id unique ID of the trait, corresponding to ClinVar's internal TraitID
-  * @param medgenTraitId unique ID of the trait in NCBI's MedGen database, if known
+  * @param medgenId unique ID of the trait in NCBI's MedGen database, if known
   * @param name full name of the trait
   * @param `type` type of the trait
   */
 case class VCVTrait(
   id: String,
-  medgenTraitId: Option[String],
+  medgenId: Option[String],
   name: Option[String],
   `type`: Option[String],
   otherXrefs: Array[String]
@@ -75,7 +75,7 @@ object VCVTrait {
       id = rawTrait.extract("@ID").map(_.str).getOrElse {
         throw new IllegalStateException(s"Found a VCV Trait with no ID: $rawTrait")
       },
-      medgenTraitId = medgenId,
+      medgenId = medgenId,
       name = preferredNameArray.headOption
         .flatMap(_.extract("ElementValue").map(_.value.str)),
       `type` = rawTrait.extract("@Type").map(_.str),
