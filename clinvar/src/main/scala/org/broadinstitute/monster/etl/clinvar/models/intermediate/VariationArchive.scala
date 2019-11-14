@@ -174,7 +174,6 @@ object VariationArchive {
 
       val vcvTraitSets = new mutable.ArrayBuffer[WithContent[VCVTraitSet]]()
       val vcvTraits = new mutable.ArrayBuffer[WithContent[VCVTrait]]()
-
       interp.extractList("ConditionList", "TraitSet").foreach { rawTraitSet =>
         val currentVcvTraitIds = new mutable.ArrayBuffer[String]()
         MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
@@ -190,6 +189,11 @@ object VariationArchive {
       val traitMappings = variationRecord
         .extractList("TraitMappingList", "TraitMapping")
         .map(TraitMapping.fromRawMapping)
+        .toArray
+
+      // Narrow the search space needed in future cross-linking by grouping
+      // mappings by their SCV.
+      val mappingsByScv = traitMappings.groupBy(_.clinicalAssertionId)
 
       // Pull out any SCVs, and related info.
       val scvs = new mutable.ArrayBuffer[WithContent[SCV]]()
@@ -218,11 +222,20 @@ object VariationArchive {
           // Extract trait-related data from the SCV.
           // Traits and trait sets are nested under both the top-level SCV
           // and individual clinical observations.
+          val relevantMappings = mappingsByScv.getOrElse(scv.id, Array.empty)
+          val traitsWithoutContent = vcvTraits.map(_.data).toArray
+
           rawScv.extract("TraitSet").foreach { rawTraitSet =>
             val traitSet = SCVTraitSet.fromRawAssertionSet(scv, rawTraitSet)
             val traitCounter = new AtomicInteger(0)
             MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
-              val scvTrait = SCVTrait.fromRawTrait(traitSet, traitCounter, rawTrait)
+              val scvTrait = SCVTrait.fromRawTrait(
+                traitSet,
+                traitsWithoutContent,
+                relevantMappings,
+                traitCounter,
+                rawTrait
+              )
               scvTraits.append(WithContent.attachContent(scvTrait, rawTrait))
             }
             scvTraitSets.append(WithContent.attachContent(traitSet, rawTraitSet))
@@ -239,8 +252,13 @@ object VariationArchive {
                 SCVTraitSet.fromRawObservationSet(observation, rawTraitSet)
               val traitCounter = new AtomicInteger(0)
               MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
-                val scvTrait =
-                  SCVTrait.fromRawTrait(traitSet, traitCounter, rawTrait)
+                val scvTrait = SCVTrait.fromRawTrait(
+                  traitSet,
+                  traitsWithoutContent,
+                  relevantMappings,
+                  traitCounter,
+                  rawTrait
+                )
                 scvTraits.append(WithContent.attachContent(scvTrait, rawTrait))
               }
               scvTraitSets.append(WithContent.attachContent(traitSet, rawTraitSet))
@@ -268,7 +286,7 @@ object VariationArchive {
         scvTraits = scvTraits.toArray,
         vcvTraitSets = vcvTraitSets.toArray,
         vcvTraits = vcvTraits.toArray,
-        traitMappings = traitMappings.toArray
+        traitMappings = traitMappings
       )
     } else {
       outputBase
