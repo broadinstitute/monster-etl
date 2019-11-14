@@ -37,7 +37,8 @@ case class RCV(
   reviewStatus: Option[String],
   interpretation: Option[String],
   submissionCount: Option[Long],
-  independentObservations: Option[Long]
+  independentObservations: Option[Long],
+  traitSetId: Option[String]
 )
 
 object RCV {
@@ -46,7 +47,32 @@ object RCV {
   implicit val encoder: Encoder[RCV] = deriveEncoder(renaming.snakeCase, None)
 
   /** Parse a raw RCVAccesion payload into our expected model. */
-  def fromRawAccession(variation: Variation, vcv: VCV, rawRcvAccession: Msg): RCV =
+  def fromRawAccession(
+    variation: Variation,
+    vcv: VCV,
+    traitSets: Array[VCVTraitSet],
+    traits: Array[VCVTrait],
+    rawRcvAccession: Msg
+  ): RCV = {
+    val relevantTraitIds = rawRcvAccession
+      .extractList("InterpretedConditionList", "InterpretedCondition")
+      .flatMap { rawCondition =>
+        val conditionDb = rawCondition.extract("@DB").map(_.str)
+        val conditionId = rawCondition.extract("@ID").map(_.str)
+        val conditionValue = rawCondition.value.str
+
+        if (conditionDb.contains("MedGen")) {
+          traits.find(_.medgenId == conditionId)
+        } else {
+          traits.find(_.name.contains(conditionValue))
+        }
+      }
+      .map(_.id)
+      .toSet
+
+    val relevantTraitSetId =
+      traitSets.find(_.traitIds.toSet == relevantTraitIds).map(_.id)
+
     RCV(
       id = rawRcvAccession
         .extract("@Accession")
@@ -71,6 +97,8 @@ object RCV {
       interpretation = rawRcvAccession.extract("@Interpretation").map(_.str),
       submissionCount = rawRcvAccession.extract("@SubmissionCount").map(_.str.toLong),
       independentObservations =
-        rawRcvAccession.extract("@independentObservations").map(_.str.toLong)
+        rawRcvAccession.extract("@independentObservations").map(_.str.toLong),
+      traitSetId = relevantTraitSetId
     )
+  }
 }

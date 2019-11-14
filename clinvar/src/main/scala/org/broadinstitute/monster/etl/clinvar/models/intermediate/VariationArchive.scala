@@ -158,12 +158,6 @@ object VariationArchive {
       val vcv = VCV.fromRawArchive(variation, rawArchive)
       val vcvRelease = VCVRelease.fromRawArchive(vcv, rawArchive)
 
-      // Pull out any RCVs.
-      val rcvs = variationRecord.extractList("RCVList", "RCVAccession").map { rawRcv =>
-        val rcv = RCV.fromRawAccession(variation, vcv, rawRcv)
-        WithContent.attachContent(rcv, rawRcv)
-      }
-
       // TODO INTERP THINGS FOR FUTURE DAN AND RAAID
       val interp =
         variationRecord.extract("Interpretations", "Interpretation").getOrElse {
@@ -183,6 +177,21 @@ object VariationArchive {
         }
         val vcvTraitSet = VCVTraitSet.fromRawSet(rawTraitSet, currentVcvTraitIds.toArray)
         vcvTraitSets.append(WithContent.attachContent(vcvTraitSet, rawTraitSet))
+      }
+
+      val traitSetsWithoutContent = vcvTraitSets.map(_.data).toArray
+      val traitsWithoutContent = vcvTraits.map(_.data).toArray
+
+      // Pull out any RCVs, cross-linking to the relevant trait sets.
+      val rcvs = variationRecord.extractList("RCVList", "RCVAccession").map { rawRcv =>
+        val rcv = RCV.fromRawAccession(
+          variation,
+          vcv,
+          traitSetsWithoutContent,
+          traitsWithoutContent,
+          rawRcv
+        )
+        WithContent.attachContent(rcv, rawRcv)
       }
 
       // Pull out SCV<->VCV trait mappings.
@@ -223,7 +232,6 @@ object VariationArchive {
           // Traits and trait sets are nested under both the top-level SCV
           // and individual clinical observations.
           val relevantMappings = mappingsByScv.getOrElse(scv.id, Array.empty)
-          val traitsWithoutContent = vcvTraits.map(_.data).toArray
 
           rawScv.extract("TraitSet").foreach { rawTraitSet =>
             val traitSet = SCVTraitSet.fromRawAssertionSet(scv, rawTraitSet)
