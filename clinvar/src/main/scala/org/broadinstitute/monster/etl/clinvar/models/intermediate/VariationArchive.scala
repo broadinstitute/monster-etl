@@ -163,7 +163,8 @@ object VariationArchive {
           )
         }
 
-      // use an Interpretation object to utilize the existing WithContent functionality before passing along to VCV
+      // use an Interpretation object to utilize the existing WithContent functionality
+      // before passing it along to the fromRawArchive method of VCV
       val interpretation = Interpretation.fromRawInterp(rawInterpretation)
       val interpretationWithContent =
         WithContent.attachContent(interpretation, rawInterpretation)
