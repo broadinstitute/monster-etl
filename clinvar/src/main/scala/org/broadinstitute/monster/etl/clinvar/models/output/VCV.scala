@@ -2,6 +2,10 @@ package org.broadinstitute.monster.etl.clinvar.models.output
 
 import io.circe.Encoder
 import io.circe.derivation.{deriveEncoder, renaming}
+import org.broadinstitute.monster.etl.clinvar.models.intermediate.{
+  Interpretation,
+  WithContent
+}
 import upack.Msg
 
 /**
@@ -17,6 +21,11 @@ import upack.Msg
   * @param recordStatus description of the archive's current state in ClinVar's database
   * @param reviewStatus description of the archive's current state in ClinVar's review process
   * @param species ID of the species referred to by the archive
+  * @param interpDateLastEvaluated the date the interpretation was last evaluated at
+  * @param interpType the type of interpretation, such as "clinical significance"
+  * @param interpDescription a simple interpretation description, like "pathogenic"
+  * @param interpExplanation a more detailed interpretation explanation than the description
+  * @param interpContent the remaining content, if any, of the interpretation
   */
 case class VCV(
   id: String,
@@ -28,7 +37,12 @@ case class VCV(
   numSubmitters: Option[Long],
   recordStatus: Option[String],
   reviewStatus: Option[String],
-  species: Option[String]
+  species: Option[String],
+  interpDateLastEvaluated: Option[String],
+  interpType: Option[String],
+  interpDescription: Option[String],
+  interpExplanation: Option[String],
+  interpContent: Option[String]
 )
 
 object VCV {
@@ -37,7 +51,11 @@ object VCV {
   implicit val encoder: Encoder[VCV] = deriveEncoder(renaming.snakeCase, None)
 
   /** Extract VCV-related info from a raw VariationArchive payload. */
-  def fromRawArchive(variation: Variation, rawArchive: Msg): VCV =
+  def fromRawArchive(
+    variation: Variation,
+    interpWithContent: WithContent[Interpretation],
+    rawArchive: Msg
+  ): VCV =
     VCV(
       id = rawArchive
         .extract("@Accession")
@@ -60,6 +78,11 @@ object VCV {
       recordStatus = rawArchive.extract("RecordStatus").map(_.value.str),
       reviewStatus =
         rawArchive.extract("InterpretedRecord", "ReviewStatus").map(_.value.str),
-      species = rawArchive.extract("Species").map(_.value.str)
+      species = rawArchive.extract("Species").map(_.value.str),
+      interpDateLastEvaluated = interpWithContent.data.dateLastEvaluated,
+      interpType = interpWithContent.data.`type`,
+      interpDescription = interpWithContent.data.description,
+      interpExplanation = interpWithContent.data.explanation,
+      interpContent = interpWithContent.content
     )
 }
