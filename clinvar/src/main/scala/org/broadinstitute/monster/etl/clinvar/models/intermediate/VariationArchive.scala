@@ -202,7 +202,11 @@ object VariationArchive {
 
       // Narrow the search space needed in future cross-linking by grouping
       // mappings by their SCV.
-      val mappingsByScv = traitMappings.groupBy(_.clinicalAssertionId)
+      //
+      // NOTE: This grouping is done by numeric ID, not accession.
+      // We have to post-process the trait mappings after looping through
+      // the SCVs to fix up the references.
+      val mappingsByScvId = traitMappings.groupBy(_.clinicalAssertionId)
 
       // Pull out any SCVs, and related info.
       val scvs = new mutable.ArrayBuffer[WithContent[SCV]]()
@@ -213,6 +217,7 @@ object VariationArchive {
       val scvTraitSets = new mutable.ArrayBuffer[WithContent[SCVTraitSet]]()
       val scvTraits = new mutable.ArrayBuffer[WithContent[SCVTrait]]()
 
+      val scvIdToAccession = new mutable.HashMap[String, String]()
       variationRecord.extractList("ClinicalAssertionList", "ClinicalAssertion").foreach {
         rawScv =>
           val submitter = Submitter.fromRawAssertion(rawScv)
@@ -231,7 +236,18 @@ object VariationArchive {
           // Extract trait-related data from the SCV.
           // Traits and trait sets are nested under both the top-level SCV
           // and individual clinical observations.
-          val relevantMappings = mappingsByScv.getOrElse(scv.id, Array.empty)
+          //
+          // NOTE: Because trait mappings link to the numeric ID for each SCV,
+          // but we use the accession as the PK, we need to do a little bit
+          // of post-processing on the mappings.
+          val scvId = rawScv
+            .extract("@ID")
+            .getOrElse {
+              throw new IllegalStateException(s"Found an SCV with no numeric ID: $scv")
+            }
+            .str
+          scvIdToAccession.update(scvId, scv.id)
+          val relevantMappings = mappingsByScvId.getOrElse(scvId, Array.empty)
 
           rawScv.extract("TraitSet").foreach { rawTraitSet =>
             val traitSet = SCVTraitSet.fromRawAssertionSet(scv, rawTraitSet)
@@ -281,6 +297,14 @@ object VariationArchive {
           scvs.append(WithContent.attachContent(scv, rawScv))
       }
 
+      // Swap SCV accessions for their numeric IDs so the FK in the mapping table
+      // actually works.
+      val mappingsWithAccessionLinks = traitMappings.map { rawMapping =>
+        rawMapping.copy(
+          clinicalAssertionId = scvIdToAccession(rawMapping.clinicalAssertionId)
+        )
+      }
+
       outputBase.copy(
         vcv = Some(WithContent.attachContent(vcv, rawArchive)),
         vcvRelease = Some(vcvRelease),
@@ -294,7 +318,7 @@ object VariationArchive {
         scvTraits = scvTraits.toArray,
         vcvTraitSets = vcvTraitSets.toArray,
         vcvTraits = vcvTraits.toArray,
-        traitMappings = traitMappings
+        traitMappings = mappingsWithAccessionLinks
       )
     } else {
       outputBase

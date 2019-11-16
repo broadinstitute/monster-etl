@@ -35,9 +35,15 @@ object TraitMapping {
 
   implicit val encoder: Encoder[TraitMapping] = deriveEncoder(renaming.snakeCase, None)
 
-  /** Extract a TraitMapping from a raw TraitMapping payload. */
+  /**
+    * Extract a TraitMapping from a raw TraitMapping payload.
+    *
+    * NOTE: The `clinicalAssertionId` of the returned object is the numeric ID,
+    * not the accession, since that's all we have access to within the raw input payload.
+    */
   def fromRawMapping(rawMapping: Msg): TraitMapping = {
     val scvId = rawMapping
+    // we use for the PK on the SCV table.
       .extract("@ClinicalAssertionID")
       .getOrElse {
         throw new IllegalStateException(
