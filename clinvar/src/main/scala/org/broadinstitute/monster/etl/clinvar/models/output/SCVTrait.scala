@@ -45,7 +45,8 @@ object SCVTrait {
     rawTrait: Msg
   ): SCVTrait = {
     val nameWrapper = rawTrait.extract("Name", "ElementValue")
-    val nameType = rawTrait.extract("@Type").map(_.str)
+    val nameType = nameWrapper.flatMap(_.extract("@Type")).map(_.str)
+
     val allXrefs = MsgTransformations.popAsArray(rawTrait, "XRef")
     val (medgenId, xrefs) =
       allXrefs.foldLeft((Option.empty[String], List.empty[Msg])) {
@@ -74,6 +75,7 @@ object SCVTrait {
           }
       }
 
+    // Init all the fields we can pull by looking at the SCV in isolation.
     val baseScv = SCVTrait(
       id = s"${traitSet.id}.${counter.getAndIncrement()}",
       clinicalAssertionTraitSetId = traitSet.id,
@@ -85,43 +87,55 @@ object SCVTrait {
     )
 
     if (traitMappings.isEmpty) {
+      // Lack of trait mappings means the VCV contains at most one trait,
+      // which all the attached SCV traits should link to.
       baseScv.copy(traitId = traits.headOption.map(_.id))
     } else {
-      // Find the MedGen ID to look for in the VCV traits.
-      val matchingMedgenId = baseScv.medgenId.orElse {
-        traitMappings.find { candidateMapping =>
-          val sameTraitType =
-            baseScv.`type`.contains(candidateMapping.traitType)
+      // Look through the trait mappings for one that aligns with
+      // the SCV's data.
+      val matchingMapping = traitMappings.find { candidateMapping =>
+        val sameTraitType =
+          baseScv.`type`.contains(candidateMapping.traitType)
 
-          val nameMatch = {
-            val isNameMapping = candidateMapping.mappingType == "Name"
-            val isPreferredMatch = candidateMapping.mappingRef == "Preferred" &&
-              nameType.contains("Preferred") &&
-              baseScv.name.contains(candidateMapping.mappingValue)
-            val isAlternateMatch = candidateMapping.mappingRef == "Alternate" &&
-              nameType.contains("included") &&
-              baseScv.name.contains(candidateMapping.mappingValue)
+        val nameMatch = {
+          val isNameMapping = candidateMapping.mappingType == "Name"
+          val isPreferredMatch = candidateMapping.mappingRef == "Preferred" &&
+            nameType.contains("Preferred") &&
+            baseScv.name.contains(candidateMapping.mappingValue)
+          val isAlternateMatch = candidateMapping.mappingRef == "Alternate" &&
+            nameType.contains("included") &&
+            baseScv.name.contains(candidateMapping.mappingValue)
 
-            isNameMapping && (isPreferredMatch || isAlternateMatch)
+          isNameMapping && (isPreferredMatch || isAlternateMatch)
+        }
+
+        val xrefMatch = {
+          val isXrefMapping = candidateMapping.mappingType == "XRef"
+          val xrefMatches = xrefs.exists { xref =>
+            xref.obj(Str("db")).str == candidateMapping.mappingRef &&
+            xref.obj(Str("id")).str == candidateMapping.mappingValue
           }
 
-          val xrefMatch = {
-            val isXrefMapping = candidateMapping.mappingType == "XRef"
-            val xrefMatches = xrefs.exists { xref =>
-              xref.obj(Str("db")).str == candidateMapping.mappingRef &&
-              xref.obj(Str("id")).str == candidateMapping.mappingValue
-            }
+          isXrefMapping && xrefMatches
+        }
 
-            isXrefMapping && xrefMatches
-          }
-
-          sameTraitType && (nameMatch || xrefMatch)
-        }.flatMap(_.medgenId)
+        sameTraitType && (nameMatch || xrefMatch)
       }
-      // Find the VCV trait with the MedGen ID.
-      val matchingVcvTrait = traits.find(_.medgenId == matchingMedgenId)
-      // Link!
-      baseScv.copy(traitId = matchingVcvTrait.map(_.id))
+      // Find the MedGen ID / name to look for in the VCV traits.
+      val matchingMedgenId = matchingMapping.flatMap(_.medgenId)
+      val matchingName = matchingMapping.flatMap(_.medgenName)
+      // Find the VCV trait with the matching MedGen ID if it's defined.
+      // Otherwise match on preferred name.
+      val matchingVcvTrait =
+        matchingMedgenId.fold(traits.find(_.name == matchingName)) { id =>
+          traits.find(_.medgenId.contains(id))
+        }
+      // Link! Fill in the MegGen ID of the mapping too, if the SCV trait
+      // didn't already contain one.
+      baseScv.copy(
+        traitId = matchingVcvTrait.map(_.id),
+        medgenId = baseScv.medgenId.orElse(matchingMedgenId)
+      )
     }
   }
 }
