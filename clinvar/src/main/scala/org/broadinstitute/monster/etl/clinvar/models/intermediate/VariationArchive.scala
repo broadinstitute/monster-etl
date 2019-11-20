@@ -154,21 +154,28 @@ object VariationArchive {
     // Since IncludedRecords don't contain meaningful provenance, we only
     // bother to do further processing for InterpretedRecords.
     if (rawArchive.obj.contains(InterpretedRecord)) {
-      // Pull out top-level info about the VCV.
-      val vcv = VCV.fromRawArchive(variation, rawArchive)
-      val vcvRelease = VCVRelease.fromRawArchive(vcv, rawArchive)
 
-      // TODO INTERP THINGS FOR FUTURE DAN AND RAAID
-      val interp =
+      // pull out Interpretation for use in multiple locations
+      val rawInterpretation =
         variationRecord.extract("Interpretations", "Interpretation").getOrElse {
           throw new IllegalStateException(
             s"Found a VCV with no Interpretation: $variationRecord"
           )
         }
 
+      // use an Interpretation object to utilize the existing WithContent functionality
+      // before passing it along to the fromRawArchive method of VCV
+      val interpretation = Interpretation.fromRawInterp(rawInterpretation)
+      val interpretationWithContent =
+        WithContent.attachContent(interpretation, rawInterpretation)
+
+      // Pull out top-level info about the VCV.
+      val vcv = VCV.fromRawArchive(variation, interpretationWithContent, rawArchive)
+      val vcvRelease = VCVRelease.fromRawArchive(vcv, rawArchive)
+
       val vcvTraitSets = new mutable.ArrayBuffer[WithContent[VCVTraitSet]]()
       val vcvTraits = new mutable.ArrayBuffer[WithContent[VCVTrait]]()
-      interp.extractList("ConditionList", "TraitSet").foreach { rawTraitSet =>
+      rawInterpretation.extractList("ConditionList", "TraitSet").foreach { rawTraitSet =>
         val currentVcvTraitIds = new mutable.ArrayBuffer[String]()
         MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
           val vcvTrait = VCVTrait.fromRawTrait(rawTrait)
