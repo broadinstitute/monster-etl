@@ -257,18 +257,20 @@ object VariationArchive {
           val relevantMappings = mappingsByScvId.getOrElse(scvId, Array.empty)
 
           rawScv.extract("TraitSet").foreach { rawTraitSet =>
-            val traitSet = SCVTraitSet.fromRawAssertionSet(scv, rawTraitSet)
             val traitCounter = new AtomicInteger(0)
+            val currentScvTraitIds = new mutable.ArrayBuffer[String]()
             MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
               val scvTrait = SCVTrait.fromRawTrait(
-                traitSet,
+                scv,
                 traitsWithoutContent,
                 relevantMappings,
                 traitCounter,
                 rawTrait
               )
               scvTraits.append(WithContent.attachContent(scvTrait, rawTrait))
+              currentScvTraitIds.append(scvTrait.id)
             }
+            val traitSet = SCVTraitSet.fromRawAssertionSet(scv, rawTraitSet, currentScvTraitIds.toArray)
             scvTraitSets.append(WithContent.attachContent(traitSet, rawTraitSet))
           }
 
@@ -279,19 +281,20 @@ object VariationArchive {
               clinicalAssertionId = scv.id
             )
             rawObservation.extract("TraitSet").foreach { rawTraitSet =>
-              val traitSet =
-                SCVTraitSet.fromRawObservationSet(observation, rawTraitSet)
               val traitCounter = new AtomicInteger(0)
+              val currentScvTraitIds = new mutable.ArrayBuffer[String]()
               MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
                 val scvTrait = SCVTrait.fromRawTrait(
-                  traitSet,
+                  scv,
                   traitsWithoutContent,
                   relevantMappings,
                   traitCounter,
                   rawTrait
                 )
                 scvTraits.append(WithContent.attachContent(scvTrait, rawTrait))
+                currentScvTraitIds.append(scvTrait.id)
               }
+              val traitSet = SCVTraitSet.fromRawObservationSet(observation, rawTraitSet, currentScvTraitIds.toArray)
               scvTraitSets.append(WithContent.attachContent(traitSet, rawTraitSet))
             }
             observations.append(WithContent.attachContent(observation, rawObservation))

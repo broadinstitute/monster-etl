@@ -20,6 +20,7 @@ import upack.{Msg, Obj, Str}
   * @param `type` type of the trait
   * @param xrefs stringified JSON objects describing unique IDs for
   *              the trait in databases other than MedGen
+  * @param traitId the ClinVar trait ID of the corresponding VCVTrait, if known
   */
 case class SCVTrait(
   id: String,
@@ -38,7 +39,7 @@ object SCVTrait {
 
   /** Extract an SCVTrait from a raw Trait payload. */
   def fromRawTrait(
-    traitSet: SCVTraitSet,
+    scv: SCV,
     traits: Array[VCVTrait],
     traitMappings: Array[TraitMapping],
     counter: AtomicInteger,
@@ -57,7 +58,7 @@ object SCVTrait {
           if (db.contains(ClinvarConstants.MedGenKey)) {
             if (medgenAcc.isDefined) {
               throw new IllegalStateException(
-                s"SCV Trait in set ${traitSet.id} contains two MedGen references"
+                s"SCV Trait in set ${scv.id} contains two MedGen references"
               )
             } else {
               (id, xrefAcc)
@@ -77,8 +78,8 @@ object SCVTrait {
 
     // Init all the fields we can pull by looking at the SCV in isolation.
     val baseScv = SCVTrait(
-      id = s"${traitSet.id}.${counter.getAndIncrement()}",
-      clinicalAssertionTraitSetId = traitSet.id,
+      id = s"${scv.id}.${counter.getAndIncrement()}",
+      clinicalAssertionTraitSetId = scv.id,
       medgenId = medgenId,
       name = nameWrapper.map(_.value.str),
       `type` = rawTrait.extract("@Type").map(_.str),

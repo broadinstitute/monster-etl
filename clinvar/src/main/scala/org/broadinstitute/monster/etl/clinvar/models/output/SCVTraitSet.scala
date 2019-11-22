@@ -14,12 +14,14 @@ import upack.Msg
   *                                       includes this set, if the set was packaged
   *                                       directly under the observation
   * @param `type` common type of the trait collection
+  * @param traitIds the IDs of the Traits that make up the Trait Set
   */
 case class SCVTraitSet(
   id: String,
   clinicalAssertionId: Option[String],
   clinicalAssertionObservationId: Option[String],
-  `type`: Option[String]
+  `type`: Option[String],
+  traitIds: Array[String]
 )
 
 object SCVTraitSet {
@@ -28,23 +30,25 @@ object SCVTraitSet {
   implicit val encoder: Encoder[SCVTraitSet] = deriveEncoder(renaming.snakeCase, None)
 
   /** Extract a TraitSet model from a raw TraitSet payload which was nested under a ClinicalAssertion. */
-  def fromRawAssertionSet(scv: SCV, rawSet: Msg): SCVTraitSet =
-    fromRawSet(scv.id, Some(scv.id), None, rawSet)
+  def fromRawAssertionSet(scv: SCV, rawSet: Msg, traitIds: Array[String]): SCVTraitSet =
+    fromRawSet(scv.id, Some(scv.id), None, rawSet, traitIds)
 
   /** Extract a TraitSet model from a raw TraitSet payload which was nested under observation data. */
-  def fromRawObservationSet(observation: SCVObservation, rawSet: Msg): SCVTraitSet =
-    fromRawSet(observation.id, None, Some(observation.id), rawSet)
+  def fromRawObservationSet(observation: SCVObservation, rawSet: Msg, traitIds: Array[String]): SCVTraitSet =
+    fromRawSet(observation.id, None, Some(observation.id), rawSet, traitIds)
 
   /** Extract a TraitSet model from a raw TraitSet payload. */
   private def fromRawSet(
     id: String,
     scvId: Option[String],
     observationId: Option[String],
-    rawSet: Msg
+    rawSet: Msg,
+    traitIds: Array[String]
   ): SCVTraitSet = SCVTraitSet(
     id = id,
     clinicalAssertionId = scvId,
     clinicalAssertionObservationId = observationId,
-    `type` = rawSet.extract("@Type").map(_.str)
+    `type` = rawSet.extract("@Type").map(_.str),
+    traitIds = traitIds
   )
 }

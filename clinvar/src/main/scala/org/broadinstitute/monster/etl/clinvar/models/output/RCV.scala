@@ -26,6 +26,7 @@ import upack.Msg
   * @param independentObservations number of independent observations
   *                                submitted to ClinVar which were
   *                                aggregated to form this reference
+  * @param traitSetId ID of the trait set under this RCV, if present
   */
 case class RCV(
   id: String,

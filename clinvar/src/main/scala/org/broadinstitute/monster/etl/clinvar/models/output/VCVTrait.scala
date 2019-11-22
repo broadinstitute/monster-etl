@@ -15,6 +15,8 @@ import upack.{Msg, Obj, Str}
   * @param name full preferred name of the trait
   * @param alternateNames other names associated with the trait
   * @param `type` type of the trait
+  * @param xrefs stringified JSON objects describing unique IDs for
+  *              the trait in databases other than MedGen
   */
 case class VCVTrait(
   id: String,
