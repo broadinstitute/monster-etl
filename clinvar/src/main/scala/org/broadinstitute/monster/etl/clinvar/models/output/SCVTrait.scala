@@ -39,7 +39,7 @@ object SCVTrait {
 
   /** Extract an SCVTrait from a raw Trait payload. */
   def fromRawTrait(
-    scv: SCV,
+    setId: String,
     traits: Array[VCVTrait],
     traitMappings: Array[TraitMapping],
     counter: AtomicInteger,
@@ -58,7 +58,7 @@ object SCVTrait {
           if (db.contains(ClinvarConstants.MedGenKey)) {
             if (medgenAcc.isDefined) {
               throw new IllegalStateException(
-                s"SCV Trait in set ${scv.id} contains two MedGen references"
+                s"SCV Trait in set ${setId} contains two MedGen references"
               )
             } else {
               (id, xrefAcc)
@@ -78,8 +78,8 @@ object SCVTrait {
 
     // Init all the fields we can pull by looking at the SCV in isolation.
     val baseScv = SCVTrait(
-      id = s"${scv.id}.${counter.getAndIncrement()}",
-      clinicalAssertionTraitSetId = scv.id,
+      id = s"${setId}.${counter.getAndIncrement()}",
+      clinicalAssertionTraitSetId = setId,
       medgenId = medgenId,
       name = nameWrapper.map(_.value.str),
       `type` = rawTrait.extract("@Type").map(_.str),

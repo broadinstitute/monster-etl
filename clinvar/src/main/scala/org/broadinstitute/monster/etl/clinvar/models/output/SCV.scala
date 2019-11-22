@@ -68,14 +68,10 @@ object SCV {
     vcv: VCV,
     submitter: Submitter,
     submission: Submission,
-    rawAssertion: Msg
+    rawAssertion: Msg,
+    scvAccessionId: String
   ): SCV = SCV(
-    id = rawAssertion
-      .extract("ClinVarAccession", "@Accession")
-      .getOrElse {
-        throw new IllegalStateException(s"Found an SCV with no ID: $rawAssertion")
-      }
-      .str,
+    id = scvAccessionId,
     version = rawAssertion
       .extract("ClinVarAccession", "@Version")
       .getOrElse {

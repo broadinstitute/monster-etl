@@ -30,8 +30,8 @@ object SCVTraitSet {
   implicit val encoder: Encoder[SCVTraitSet] = deriveEncoder(renaming.snakeCase, None)
 
   /** Extract a TraitSet model from a raw TraitSet payload which was nested under a ClinicalAssertion. */
-  def fromRawAssertionSet(scv: SCV, rawSet: Msg, traitIds: Array[String]): SCVTraitSet =
-    fromRawSet(scv.id, Some(scv.id), None, rawSet, traitIds)
+  def fromRawAssertionSet(scvAccessionId: String, rawSet: Msg, traitIds: Array[String]): SCVTraitSet =
+    fromRawSet(scvAccessionId, Some(scvAccessionId), None, rawSet, traitIds)
 
   /** Extract a TraitSet model from a raw TraitSet payload which was nested under observation data. */
   def fromRawObservationSet(observation: SCVObservation, rawSet: Msg, traitIds: Array[String]): SCVTraitSet =

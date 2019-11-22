@@ -229,16 +229,12 @@ object VariationArchive {
         rawScv =>
           val submitter = Submitter.fromRawAssertion(rawScv)
           val submission = Submission.fromRawAssertion(submitter, rawScv)
-          val scv = SCV.fromRawAssertion(
-            variation,
-            vcv,
-            submitter,
-            submission,
-            rawScv
-          )
+          val scvAccessionId = rawScv.extract("ClinVarAccession", "@Accession")
+          .getOrElse {
+            throw new IllegalStateException(s"Found an SCV with no ID: $rawScv")
+          }
+          .str
 
-          // Extract variation-related data from the SCV.
-          scvVariations.appendAll(SCVVariation.allFromRawAssertion(scv, rawScv))
 
           // Extract trait-related data from the SCV.
           // Traits and trait sets are nested under both the top-level SCV
@@ -250,10 +246,10 @@ object VariationArchive {
           val scvId = rawScv
             .extract("@ID")
             .getOrElse {
-              throw new IllegalStateException(s"Found an SCV with no numeric ID: $scv")
+              throw new IllegalStateException(s"Found an SCV with no numeric ID: $rawScv")
             }
             .str
-          scvIdToAccession.update(scvId, scv.id)
+          scvIdToAccession.update(scvId, scvAccessionId)
           val relevantMappings = mappingsByScvId.getOrElse(scvId, Array.empty)
 
           rawScv.extract("TraitSet").foreach { rawTraitSet =>
@@ -261,31 +257,31 @@ object VariationArchive {
             val currentScvTraitIds = new mutable.ArrayBuffer[String]()
             MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
               val scvTrait = SCVTrait.fromRawTrait(
-                scv,
+                scvAccessionId,  // the setId is the same as the scv.id when extracting from assertions
                 traitsWithoutContent,
                 relevantMappings,
                 traitCounter,
                 rawTrait
               )
               scvTraits.append(WithContent.attachContent(scvTrait, rawTrait))
-              currentScvTraitIds.append(scvTrait.id)
+              currentScvTraitIds.append(scvTrait.id)  //TODO maybe we just want to directly use the traitId if we're not using this for anything else?
             }
-            val traitSet = SCVTraitSet.fromRawAssertionSet(scv, rawTraitSet, currentScvTraitIds.toArray)
+            val traitSet = SCVTraitSet.fromRawAssertionSet(scvAccessionId, rawTraitSet, currentScvTraitIds.toArray)
             scvTraitSets.append(WithContent.attachContent(traitSet, rawTraitSet))
           }
 
           val observationCounter = new AtomicInteger(0)
           rawScv.extractList("ObservedInList", "ObservedIn").foreach { rawObservation =>
             val observation = SCVObservation(
-              id = s"${scv.id}.${observationCounter.getAndIncrement()}",
-              clinicalAssertionId = scv.id
+              id = s"${scvAccessionId}.${observationCounter.getAndIncrement()}",
+              clinicalAssertionId = scvAccessionId
             )
             rawObservation.extract("TraitSet").foreach { rawTraitSet =>
               val traitCounter = new AtomicInteger(0)
               val currentScvTraitIds = new mutable.ArrayBuffer[String]()
               MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
                 val scvTrait = SCVTrait.fromRawTrait(
-                  scv,
+                  observation.id,  // the setId is the same as the observation.id when extracting from observations
                   traitsWithoutContent,
                   relevantMappings,
                   traitCounter,
@@ -304,6 +300,20 @@ object VariationArchive {
           submissions.append(submission)
           // NOTE: It's important to attach content at the very end, to be sure everything
           // that can be modeled has already been popped out of the raw data.
+          val scv = SCV.fromRawAssertion(
+            variation,
+            vcv,
+            submitter,
+            submission,
+            rawScv,
+            scvAccessionId
+            // now look at the scvTraitSets (maybe we need a `currentScvTraitSetIds`) and compare the traitIds of the
+            // ScvTraits in them to the ids of the vcvTraits in the vcvTraitSets of the rcvs
+          )
+
+          // Extract variation-related data from the SCV.
+          scvVariations.appendAll(SCVVariation.allFromRawAssertion(scv, rawScv))
+
           scvs.append(WithContent.attachContent(scv, rawScv))
       }
 
