@@ -62,6 +62,7 @@ case class VariationArchive(
 )
 
 object VariationArchive {
+
   import org.broadinstitute.monster.etl.clinvar.MsgOps
 
   /** Type for "real" VCVs backed by submissions to ClinVar. */
@@ -78,10 +79,10 @@ object VariationArchive {
     *
     * This process assumes:
     *   1. The input payload was produced by running a ClinVar XML release
-    *      through Monster's XML->JSON conversion program
+    * through Monster's XML->JSON conversion program
     *   2. Each VariationArchive is self-contained, and cross-links
-    *      can be fully constructed between all sub-models without
-    *      examining other archive instances
+    * can be fully constructed between all sub-models without
+    * examining other archive instances
     */
   def fromRawArchive(rawArchive: Msg): VariationArchive = {
 
@@ -307,6 +308,7 @@ object VariationArchive {
 
           submitters.append(submitter)
           submissions.append(submission)
+
           // NOTE: It's important to attach content at the very end, to be sure everything
           // that can be modeled has already been popped out of the raw data.
 
@@ -314,44 +316,24 @@ object VariationArchive {
           // filter scvTraitSets down to the ones for the current scv
             .filter(_.data.id == scvAccessionId)
             .flatMap { traitSet =>
-              // need to use traitSet to find the right scv traits first, THEN
-              // for that set of scv traits, compare the traitIds (the clinvar ones) to the vcvTraits.
+              // need to use traitSet to find the right scv traits first
               val scvTraitIds = scvTraits.filter { `trait` =>
                 traitSet.data.traitIds.contains(`trait`.data.id)
               }.flatMap(_.data.traitId)
-              val outTraits = scvTraitIds.intersect(vcvTraits.map(_.data.id))
+              // for that set of scv traits, compare the traitIds (the clinvar ones) to the vcvTraits.
+              val targetTraits = scvTraitIds.intersect(vcvTraits.map(_.data.id))
 
-              if (outTraits.isEmpty) {
-                val scvTraitIdString = scvTraits.map(_.data.traitId).fold("") {
-                  case (runningString, currentString) =>
-                    runningString + ", " + currentString
-                }
-
-                val vcvTraitIdString = vcvTraits.map(_.data.id).fold("") {
-                  case (runningString, currentString) =>
-                    runningString + ", " + currentString
-                }
-                throw new IllegalStateException(
-                  s"outTraits is empty. scvTraits traitIds: $scvTraitIdString, vcvTraits traitIds: $vcvTraitIdString"
-                )
-              }
               vcvTraitSets
               // filter vcvTraitSets down to the ones that have the same traits as the current scvTraitSet
-                .filter(_.data.traitIds sameElements outTraits)
+                .filter(_.data.traitIds sameElements targetTraits)
                 .map { filteredSet =>
                   // get the IDs of the relevant vcvTraitSets
                   filteredSet.data.id
                 }
             }
 
-//          if (relevantTraitSetIds.isEmpty) {
-//            throw new IllegalStateException(
-//              s"No relevant TraitSetIds found."
-//            )
-//          }
-
           val rcvId = rcvs.filter { rcv =>
-            // boolean check to see if the
+            // filter down to rcvs that contain the same traitSetIds (should be 1, no more no less)
             relevantTraitSetIds.contains(rcv.data.traitSetId.getOrElse(None))
           }.map(_.data.id).headOption
 
@@ -362,8 +344,6 @@ object VariationArchive {
             submission,
             rawScv,
             scvAccessionId,
-            // now look at the scvTraitSets (maybe we need a `currentScvTraitSetIds`) and compare the traitIds of the
-            // ScvTraits in them to the ids of the vcvTraits in the vcvTraitSets of the rcvs
             rcvId
           )
 
