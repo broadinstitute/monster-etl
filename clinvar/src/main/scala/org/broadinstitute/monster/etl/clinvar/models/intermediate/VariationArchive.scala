@@ -62,7 +62,6 @@ case class VariationArchive(
 )
 
 object VariationArchive {
-
   import org.broadinstitute.monster.etl.clinvar.MsgOps
 
   /** Type for "real" VCVs backed by submissions to ClinVar. */
@@ -79,10 +78,10 @@ object VariationArchive {
     *
     * This process assumes:
     *   1. The input payload was produced by running a ClinVar XML release
-    * through Monster's XML->JSON conversion program
+    *      through Monster's XML->JSON conversion program
     *   2. Each VariationArchive is self-contained, and cross-links
-    * can be fully constructed between all sub-models without
-    * examining other archive instances
+    *      can be fully constructed between all sub-models without
+    *      examining other archive instances
     */
   def fromRawArchive(rawArchive: Msg): VariationArchive = {
 
@@ -247,13 +246,14 @@ object VariationArchive {
           val scvId = rawScv
             .extract("@ID")
             .getOrElse {
-              throw new IllegalStateException(s"Found an SCV with no numeric ID: $rawScv")
+              throw new IllegalStateException(s"Found an SCV with no numeric ID: $scv")
             }
             .str
-          scvIdToAccession.update(scvId, scvAccessionId)
+          scvIdToAccession.update(scvId, scv.id)
           val relevantMappings = mappingsByScvId.getOrElse(scvId, Array.empty)
 
           rawScv.extract("TraitSet").foreach { rawTraitSet =>
+            val traitSet = SCVTraitSet.fromRawAssertionSet(scv, rawTraitSet)
             val traitCounter = new AtomicInteger(0)
             val currentScvTraitIds = new mutable.ArrayBuffer[String]()
             MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
@@ -283,6 +283,8 @@ object VariationArchive {
               clinicalAssertionId = scvAccessionId
             )
             rawObservation.extract("TraitSet").foreach { rawTraitSet =>
+              val traitSet =
+                SCVTraitSet.fromRawObservationSet(observation, rawTraitSet)
               val traitCounter = new AtomicInteger(0)
               val currentScvTraitIds = new mutable.ArrayBuffer[String]()
               MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
