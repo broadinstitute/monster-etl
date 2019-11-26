@@ -246,14 +246,13 @@ object VariationArchive {
           val scvId = rawScv
             .extract("@ID")
             .getOrElse {
-              throw new IllegalStateException(s"Found an SCV with no numeric ID: $scv")
+              throw new IllegalStateException(s"Found an SCV with no numeric ID: $rawScv")
             }
             .str
-          scvIdToAccession.update(scvId, scv.id)
+          scvIdToAccession.update(scvId, scvAccessionId)
           val relevantMappings = mappingsByScvId.getOrElse(scvId, Array.empty)
 
           rawScv.extract("TraitSet").foreach { rawTraitSet =>
-            val traitSet = SCVTraitSet.fromRawAssertionSet(scv, rawTraitSet)
             val traitCounter = new AtomicInteger(0)
             val currentScvTraitIds = new mutable.ArrayBuffer[String]()
             MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
@@ -283,8 +282,6 @@ object VariationArchive {
               clinicalAssertionId = scvAccessionId
             )
             rawObservation.extract("TraitSet").foreach { rawTraitSet =>
-              val traitSet =
-                SCVTraitSet.fromRawObservationSet(observation, rawTraitSet)
               val traitCounter = new AtomicInteger(0)
               val currentScvTraitIds = new mutable.ArrayBuffer[String]()
               MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
