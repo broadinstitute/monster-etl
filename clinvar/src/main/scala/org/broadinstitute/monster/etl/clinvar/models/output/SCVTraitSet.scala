@@ -14,7 +14,7 @@ import upack.Msg
   *                                       includes this set, if the set was packaged
   *                                       directly under the observation
   * @param `type` common type of the trait collection
-  * @param traitIds the IDs of the Traits that make up the Trait Set
+  * @param traitIds the IDs of the SCVTraits that make up the Trait Set
   */
 case class SCVTraitSet(
   id: String,
@@ -30,11 +30,19 @@ object SCVTraitSet {
   implicit val encoder: Encoder[SCVTraitSet] = deriveEncoder(renaming.snakeCase, None)
 
   /** Extract a TraitSet model from a raw TraitSet payload which was nested under a ClinicalAssertion. */
-  def fromRawAssertionSet(scvAccessionId: String, rawSet: Msg, traitIds: Array[String]): SCVTraitSet =
+  def fromRawAssertionSet(
+    scvAccessionId: String,
+    rawSet: Msg,
+    traitIds: Array[String]
+  ): SCVTraitSet =
     fromRawSet(scvAccessionId, Some(scvAccessionId), None, rawSet, traitIds)
 
   /** Extract a TraitSet model from a raw TraitSet payload which was nested under observation data. */
-  def fromRawObservationSet(observation: SCVObservation, rawSet: Msg, traitIds: Array[String]): SCVTraitSet =
+  def fromRawObservationSet(
+    observation: SCVObservation,
+    rawSet: Msg,
+    traitIds: Array[String]
+  ): SCVTraitSet =
     fromRawSet(observation.id, None, Some(observation.id), rawSet, traitIds)
 
   /** Extract a TraitSet model from a raw TraitSet payload. */
@@ -49,6 +57,10 @@ object SCVTraitSet {
     clinicalAssertionId = scvId,
     clinicalAssertionObservationId = observationId,
     `type` = rawSet.extract("@Type").map(_.str),
-    traitIds = traitIds
+    traitIds = if (traitIds.isEmpty) {
+      throw new IllegalStateException(s"No trait Ids found in TraitSet with id $id")
+    } else {
+      traitIds
+    }
   )
 }

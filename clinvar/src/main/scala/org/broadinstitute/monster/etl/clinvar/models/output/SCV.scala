@@ -34,6 +34,7 @@ import scala.util.matching.Regex
   * @param interpretationLastEvaluated the day when the clinical significance of this
   *                                    submission was last updated
   * @param interpretationComments comments supporting the submitted clinical significance
+  * @param rcvId The ID of the RCV that this SCV is related to
   */
 case class SCV(
   id: String,
@@ -52,7 +53,8 @@ case class SCV(
   submittedAssembly: Option[String],
   interpretationDescription: Option[String],
   interpretationLastEvaluated: Option[String],
-  interpretationComments: Array[String]
+  interpretationComments: Array[String],
+  rcvId: Option[String]
 )
 
 object SCV {
@@ -69,7 +71,8 @@ object SCV {
     submitter: Submitter,
     submission: Submission,
     rawAssertion: Msg,
-    scvAccessionId: String
+    scvAccessionId: String,
+    rcvId: Option[String]
   ): SCV = SCV(
     id = scvAccessionId,
     version = rawAssertion
@@ -99,7 +102,8 @@ object SCV {
       .flatMap(normalizeEvaluationDate),
     interpretationComments = rawAssertion
       .extract("Interpretation", "Comment")
-      .fold(Array.empty[String])(normalizeComments)
+      .fold(Array.empty[String])(normalizeComments),
+    rcvId = rcvId
   )
 
   /**
