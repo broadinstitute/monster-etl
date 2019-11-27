@@ -14,14 +14,14 @@ import upack.Msg
   *                                       includes this set, if the set was packaged
   *                                       directly under the observation
   * @param `type` common type of the trait collection
-  * @param traitIds the IDs of the SCVTraits that make up the Trait Set
+  * @param scvTraitIds the IDs of the SCVTraits that make up the Trait Set
   */
 case class SCVTraitSet(
   id: String,
   clinicalAssertionId: Option[String],
   clinicalAssertionObservationId: Option[String],
   `type`: Option[String],
-  traitIds: Array[String]
+  scvTraitIds: Array[String]
 )
 
 object SCVTraitSet {
@@ -33,17 +33,17 @@ object SCVTraitSet {
   def fromRawAssertionSet(
     scvAccessionId: String,
     rawSet: Msg,
-    traitIds: Array[String]
+    scvTraitIds: Array[String]
   ): SCVTraitSet =
-    fromRawSet(scvAccessionId, Some(scvAccessionId), None, rawSet, traitIds)
+    fromRawSet(scvAccessionId, Some(scvAccessionId), None, rawSet, scvTraitIds)
 
   /** Extract a TraitSet model from a raw TraitSet payload which was nested under observation data. */
   def fromRawObservationSet(
     observation: SCVObservation,
     rawSet: Msg,
-    traitIds: Array[String]
+    scvTraitIds: Array[String]
   ): SCVTraitSet =
-    fromRawSet(observation.id, None, Some(observation.id), rawSet, traitIds)
+    fromRawSet(observation.id, None, Some(observation.id), rawSet, scvTraitIds)
 
   /** Extract a TraitSet model from a raw TraitSet payload. */
   private def fromRawSet(
@@ -51,16 +51,12 @@ object SCVTraitSet {
     scvId: Option[String],
     observationId: Option[String],
     rawSet: Msg,
-    traitIds: Array[String]
+    scvTraitIds: Array[String]
   ): SCVTraitSet = SCVTraitSet(
     id = id,
     clinicalAssertionId = scvId,
     clinicalAssertionObservationId = observationId,
     `type` = rawSet.extract("@Type").map(_.str),
-    traitIds = if (traitIds.isEmpty) {
-      throw new IllegalStateException(s"No trait Ids found in TraitSet with id $id")
-    } else {
-      traitIds
-    }
+    scvTraitIds = scvTraitIds
   )
 }

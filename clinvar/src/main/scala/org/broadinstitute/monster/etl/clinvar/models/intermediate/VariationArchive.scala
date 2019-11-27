@@ -315,24 +315,22 @@ object VariationArchive {
 
           val relevantTraitSetId = scvTraitSets
           // filter scvTraitSets down to the ones for the current scv
-            .filter(_.data.id == scvAccessionId)
+            .find(_.data.id == scvAccessionId)
             .flatMap { traitSet =>
               // need to use traitSet to find the right scv traits first
               val scvTraitIds = scvTraits.filter { `trait` =>
-                traitSet.data.traitIds.contains(`trait`.data.id)
+                traitSet.data.scvTraitIds.contains(`trait`.data.id)
               }.flatMap(_.data.traitId)
               // for that set of scv traits, compare the traitIds (the clinvar ones) to the vcvTraits.
-              val targetTraits = scvTraitIds.intersect(vcvTraits.map(_.data.id))
 
               vcvTraitSets
               // filter vcvTraitSets down to the ones that have the same traits as the current scvTraitSet
-                .find(_.data.traitIds sameElements targetTraits)
+                .find(_.data.traitIds sameElements scvTraitIds)
                 .map { filteredSet =>
                   // get the IDs of the relevant vcvTraitSets
                   filteredSet.data.id
                 }
             }
-            .headOption
 
           val rcvId = rcvs.find { rcv =>
             // filter down to rcvs that contain the same traitSetIds (should be 1, no more no less)
@@ -346,6 +344,7 @@ object VariationArchive {
             submission,
             rawScv,
             scvAccessionId,
+            relevantTraitSetId,
             rcvId
           )
 
