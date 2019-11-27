@@ -157,4 +157,26 @@ object SCV {
       case comment       => Array(normalizeComment(comment))
     }
   }
+
+  /**
+    * Helper method to extract the accession id from a raw SCV Msg.
+    * Throws an exception if none is found, as that is an illegal state.
+    */
+  def extractAccessionId(rawScv: Msg): String = {
+    rawScv.extract("ClinVarAccession", "@Accession")
+      .getOrElse {
+        throw new IllegalStateException(s"Found an SCV with no Accession ID: $rawScv")
+      }.str
+  }
+
+  /**
+    * Helper method to extract the numeric id from a raw SCV Msg.
+    * Throws an exception if none is found, as that is an illegal state.
+    */
+  def extractNumericId(rawScv: Msg): String = {
+    rawScv.extract("@ID")
+      .getOrElse {
+        throw new IllegalStateException(s"Found an SCV with no numeric ID: $rawScv")
+      }.str
+  }
 }

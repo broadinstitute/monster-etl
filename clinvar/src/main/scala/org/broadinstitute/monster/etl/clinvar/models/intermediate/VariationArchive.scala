@@ -230,12 +230,7 @@ object VariationArchive {
         rawScv =>
           val submitter = Submitter.fromRawAssertion(rawScv)
           val submission = Submission.fromRawAssertion(submitter, rawScv)
-          val scvAccessionId = rawScv
-            .extract("ClinVarAccession", "@Accession")
-            .getOrElse {
-              throw new IllegalStateException(s"Found an SCV with no ID: $rawScv")
-            }
-            .str
+          val scvAccessionId = SCV.extractAccessionId(rawScv)
 
           // Extract trait-related data from the SCV.
           // Traits and trait sets are nested under both the top-level SCV
@@ -244,12 +239,7 @@ object VariationArchive {
           // NOTE: Because trait mappings link to the numeric ID for each SCV,
           // but we use the accession as the PK, we need to do a little bit
           // of post-processing on the mappings.
-          val scvId = rawScv
-            .extract("@ID")
-            .getOrElse {
-              throw new IllegalStateException(s"Found an SCV with no numeric ID: $rawScv")
-            }
-            .str
+          val scvId = SCV.extractNumericId(rawScv)
           scvIdToAccession.update(scvId, scvAccessionId)
           val relevantMappings = mappingsByScvId.getOrElse(scvId, Array.empty)
 
