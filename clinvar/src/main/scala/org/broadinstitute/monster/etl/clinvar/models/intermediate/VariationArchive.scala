@@ -303,29 +303,13 @@ object VariationArchive {
           // NOTE: It's important to attach content at the very end, to be sure everything
           // that can be modeled has already been popped out of the raw data.
 
-          val relevantTraitSetId = scvTraitSets
-          // filter scvTraitSets down to the ones for the current scv
-            .find(_.data.id == scvAccessionId)
-            .flatMap { traitSet =>
-              // need to use traitSet to find the right scv traits first
-              val scvTraitIds = scvTraits.filter { `trait` =>
-                traitSet.data.scvTraitIds.contains(`trait`.data.id)
-              }.flatMap(_.data.traitId)
-              // for that set of scv traits, compare the traitIds (the clinvar ones) to the vcvTraits.
-
-              vcvTraitSets
-              // filter vcvTraitSets down to the ones that have the same traits as the current scvTraitSet
-                .find(_.data.traitIds sameElements scvTraitIds)
-                .map { filteredSet =>
-                  // get the IDs of the relevant vcvTraitSets
-                  filteredSet.data.id
-                }
-            }
-
-          val rcvId = rcvs.find { rcv =>
-            // filter down to rcvs that contain the same traitSetIds (should be 1, no more no less)
-            rcv.data.traitSetId.isDefined && rcv.data.traitSetId == relevantTraitSetId
-          }.map(_.data.id)
+          val relevantTraitSetId = SCV.findRelatedVcvTraitSetId(
+            scvTraitSets,
+            scvAccessionId,
+            scvTraits,
+            vcvTraitSets
+          )
+          val rcvId = SCV.findRelatedRcvId(relevantTraitSetId, rcvs)
 
           val scv = SCV.fromRawAssertion(
             variation,
