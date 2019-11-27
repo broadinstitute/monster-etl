@@ -242,6 +242,7 @@ object VariationArchive {
           val scvId = SCV.extractNumericId(rawScv)
           scvIdToAccession.update(scvId, scvAccessionId)
           val relevantMappings = mappingsByScvId.getOrElse(scvId, Array.empty)
+          val clinicalAssertionTraitSetId = new mutable.ArrayBuffer[String]()
 
           rawScv.extract("TraitSet").foreach { rawTraitSet =>
             val traitCounter = new AtomicInteger(0)
@@ -264,13 +265,15 @@ object VariationArchive {
               currentScvTraitIds.toArray
             )
             scvTraitSets.append(WithContent.attachContent(traitSet, rawTraitSet))
+            clinicalAssertionTraitSetId.append(traitSet.id)
           }
+
+          val clinicalAssertionObservationIds = new mutable.ArrayBuffer[String]()
 
           val observationCounter = new AtomicInteger(0)
           rawScv.extractList("ObservedInList", "ObservedIn").foreach { rawObservation =>
             val observation = SCVObservation(
-              id = s"${scvAccessionId}.${observationCounter.getAndIncrement()}",
-              clinicalAssertionId = scvAccessionId
+              id = s"${scvAccessionId}.${observationCounter.getAndIncrement()}"
             )
             rawObservation.extract("TraitSet").foreach { rawTraitSet =>
               val traitCounter = new AtomicInteger(0)
@@ -295,6 +298,7 @@ object VariationArchive {
               scvTraitSets.append(WithContent.attachContent(traitSet, rawTraitSet))
             }
             observations.append(WithContent.attachContent(observation, rawObservation))
+            clinicalAssertionObservationIds.append(observation.id)
           }
 
           submitters.append(submitter)
@@ -318,6 +322,8 @@ object VariationArchive {
             submission,
             rawScv,
             scvAccessionId,
+            clinicalAssertionTraitSetId.headOption,
+            clinicalAssertionObservationIds.toArray,
             relevantTraitSetId,
             rcvId
           )

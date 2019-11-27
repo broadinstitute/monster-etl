@@ -36,8 +36,10 @@ import scala.util.matching.Regex
   * @param interpretationLastEvaluated the day when the clinical significance of this
   *                                    submission was last updated
   * @param interpretationComments      comments supporting the submitted clinical significance
-  * @param vcvTraitSetId               the ID of the associated vcv trait set, if there is one
-  * @param rcvId                       The ID of the RCV that this SCV is related to
+  * @param clinicalAssertionTraitSetId      the ID of the SCV Trait Set associated with this SCV
+  * @param clinicalAssertionObservationIds      the IDs of the observations associated with this SCV
+  * @param traitSetId               the ID of the associated vcv trait set, if there is one
+  * @param rcvAccessionId                       The ID of the RCV that this SCV is related to
   */
 case class SCV(
   id: String,
@@ -57,8 +59,10 @@ case class SCV(
   interpretationDescription: Option[String],
   interpretationLastEvaluated: Option[String],
   interpretationComments: Array[String],
-  vcvTraitSetId: Option[String],
-  rcvId: Option[String]
+  clinicalAssertionTraitSetId: Option[String],
+  clinicalAssertionObservationIds: Array[String],
+  traitSetId: Option[String],
+  rcvAccessionId: Option[String]
 )
 
 object SCV {
@@ -77,6 +81,8 @@ object SCV {
     submission: Submission,
     rawAssertion: Msg,
     scvAccessionId: String,
+    clinicalAssertionTraitSetId: Option[String],
+    clinicalAssertionObservationIds: Array[String],
     vcvTraitSetId: Option[String],
     rcvId: Option[String]
   ): SCV = SCV(
@@ -109,8 +115,10 @@ object SCV {
     interpretationComments = rawAssertion
       .extract("Interpretation", "Comment")
       .fold(Array.empty[String])(normalizeComments),
-    vcvTraitSetId = vcvTraitSetId,
-    rcvId = rcvId
+    clinicalAssertionTraitSetId = clinicalAssertionTraitSetId,
+    clinicalAssertionObservationIds = clinicalAssertionObservationIds,
+    traitSetId = vcvTraitSetId,
+    rcvAccessionId = rcvId
   )
 
   /**
@@ -208,13 +216,13 @@ object SCV {
       .flatMap { traitSet =>
         // need to use traitSet to find the right scv traits first
         val scvTraitIds = scvTraits.filter { `trait` =>
-          traitSet.data.scvTraitIds.contains(`trait`.data.id)
+          traitSet.data.clinicalAssertionTraitIds.contains(`trait`.data.id)
         }.flatMap(_.data.traitId)
         // for that set of scv traits, compare the traitIds (the clinvar ones) to the vcvTraits.
 
         vcvTraitSets
         // filter vcvTraitSets down to the ones that have the same traits as the current scvTraitSet
-          .find(_.data.traitIds sameElements scvTraitIds)
+          .find(_.data.traitIds.sameElements(scvTraitIds))
           .map { filteredSet =>
             // get the IDs of the relevant vcvTraitSets
             filteredSet.data.id
