@@ -199,34 +199,20 @@ object SCV {
     * Helper method to find the ID of the corresponding VCV Trait Set for the given SCV,
     * which is identified by the scvAccessionId.
     *
-    * Given an SCV ID, we first find the corresponding SCVTraitSet. We then find the SCVTraits within
-    * that SCVTraitSet, and find the clinvar traitIds that they point to. Using these clinvar traitIds,
+    * Given a set of SCVTraits, we find the clinvar traitIds that they point to. Using these clinvar traitIds,
     * we then find the VCVTraitSet that contains the VCVTraits that have the same clinvar traitIds. We
     * then return the ID of the found VCVTraitSet.
     */
   def findRelatedVcvTraitSetId(
-    scvTraitSets: ArrayBuffer[WithContent[SCVTraitSet]],
-    scvAccessionId: String,
-    scvTraits: ArrayBuffer[WithContent[SCVTrait]],
+    scvTraits: ArrayBuffer[SCVTrait],
     vcvTraitSets: ArrayBuffer[WithContent[VCVTraitSet]]
   ): Option[String] = {
-    scvTraitSets
-    // filter scvTraitSets down to the ones for the current scv
-      .find(_.data.id == scvAccessionId)
-      .flatMap { traitSet =>
-        // need to use traitSet to find the right scv traits first
-        val scvTraitIds = scvTraits.filter { `trait` =>
-          traitSet.data.clinicalAssertionTraitIds.contains(`trait`.data.id)
-        }.flatMap(_.data.traitId)
-        // for that set of scv traits, compare the traitIds (the clinvar ones) to the vcvTraits.
-
-        vcvTraitSets
-        // filter vcvTraitSets down to the ones that have the same traits as the current scvTraitSet
-          .find(_.data.traitIds.sameElements(scvTraitIds))
-          .map { filteredSet =>
-            // get the IDs of the relevant vcvTraitSets
-            filteredSet.data.id
-          }
+    vcvTraitSets
+    // filter vcvTraitSets down to the ones that have the same traits as the current scvTraitSet
+      .find(_.data.traitIds.sameElements(scvTraits.flatMap(_.traitId)))
+      .map { filteredSet =>
+        // get the IDs of the relevant vcvTraitSets
+        filteredSet.data.id
       }
   }
 
