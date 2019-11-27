@@ -258,15 +258,15 @@ object VariationArchive {
             val currentScvTraitIds = new mutable.ArrayBuffer[String]()
             MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
               val scvTrait = SCVTrait.fromRawTrait(
-                scvAccessionId, // the setId is the same as the scv.id when extracting from assertions
+                // the setId is the same as the scv.id when extracting from assertions
+                scvAccessionId,
                 traitsWithoutContent,
                 relevantMappings,
                 traitCounter,
                 rawTrait
               )
               scvTraits.append(WithContent.attachContent(scvTrait, rawTrait))
-              currentScvTraitIds
-                .append(scvTrait.id)
+              currentScvTraitIds.append(scvTrait.id)
             }
             val traitSet = SCVTraitSet.fromRawAssertionSet(
               scvAccessionId,
@@ -287,7 +287,8 @@ object VariationArchive {
               val currentScvTraitIds = new mutable.ArrayBuffer[String]()
               MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
                 val scvTrait = SCVTrait.fromRawTrait(
-                  observation.id, // the setId is the same as the observation.id when extracting from observations
+                  // the setId is the same as the observation.id when extracting from observations
+                  observation.id,
                   traitsWithoutContent,
                   relevantMappings,
                   traitCounter,
@@ -312,7 +313,7 @@ object VariationArchive {
           // NOTE: It's important to attach content at the very end, to be sure everything
           // that can be modeled has already been popped out of the raw data.
 
-          val relevantTraitSetIds = scvTraitSets
+          val relevantTraitSetId = scvTraitSets
           // filter scvTraitSets down to the ones for the current scv
             .filter(_.data.id == scvAccessionId)
             .flatMap { traitSet =>
@@ -325,17 +326,18 @@ object VariationArchive {
 
               vcvTraitSets
               // filter vcvTraitSets down to the ones that have the same traits as the current scvTraitSet
-                .filter(_.data.traitIds sameElements targetTraits)
+                .find(_.data.traitIds sameElements targetTraits)
                 .map { filteredSet =>
                   // get the IDs of the relevant vcvTraitSets
                   filteredSet.data.id
                 }
             }
+            .headOption
 
-          val rcvId = rcvs.filter { rcv =>
+          val rcvId = rcvs.find { rcv =>
             // filter down to rcvs that contain the same traitSetIds (should be 1, no more no less)
-            relevantTraitSetIds.contains(rcv.data.traitSetId.getOrElse(None))
-          }.map(_.data.id).headOption
+            rcv.data.traitSetId.isDefined && rcv.data.traitSetId == relevantTraitSetId
+          }.map(_.data.id)
 
           val scv = SCV.fromRawAssertion(
             variation,
