@@ -36,10 +36,10 @@ import scala.util.matching.Regex
   * @param interpretationLastEvaluated the day when the clinical significance of this
   *                                    submission was last updated
   * @param interpretationComments      comments supporting the submitted clinical significance
-  * @param clinicalAssertionTraitSetId      the ID of the SCV Trait Set associated with this SCV
-  * @param clinicalAssertionObservationIds      the IDs of the observations associated with this SCV
-  * @param traitSetId               the ID of the associated vcv trait set, if there is one
-  * @param rcvAccessionId                       The ID of the RCV that this SCV is related to
+  * @param directTraitSet              the SCV Trait Set associated with this SCV
+  * @param observationTraitSets        the SCV Trait Sets under the observations associated with this SCV
+  * @param candidateVcvTraitSets       the associated vcv trait sets
+  * @param candidateRcvs               The RCVs that this SCV is related to
   */
 case class SCV(
   id: String,
@@ -59,10 +59,10 @@ case class SCV(
   interpretationDescription: Option[String],
   interpretationLastEvaluated: Option[String],
   interpretationComments: Array[String],
-  clinicalAssertionTraitSetId: Option[String],
-  clinicalAssertionObservationIds: Array[String],
-  traitSetId: Option[String],
-  rcvAccessionId: Option[String]
+  directTraitSet: Option[SCVTraitSet],
+  observationTraitSets: Array[SCVTraitSet],
+  candidateVcvTraitSets: Array[VCVTraitSet],
+  candidateRcvs: Array[RCV]
 )
 
 object SCV {
@@ -81,10 +81,10 @@ object SCV {
     submission: Submission,
     rawAssertion: Msg,
     scvAccessionId: String,
-    clinicalAssertionTraitSetId: Option[String],
-    clinicalAssertionObservationIds: Array[String],
-    vcvTraitSetId: Option[String],
-    rcvId: Option[String]
+    directTraitSet: Option[SCVTraitSet],
+    observationTraitSets: Array[SCVTraitSet],
+    candidateVcvTraitSets: Array[VCVTraitSet],
+    candidateRcvs: Array[RCV]
   ): SCV = SCV(
     id = scvAccessionId,
     version = rawAssertion
@@ -115,10 +115,10 @@ object SCV {
     interpretationComments = rawAssertion
       .extract("Interpretation", "Comment")
       .fold(Array.empty[String])(normalizeComments),
-    clinicalAssertionTraitSetId = clinicalAssertionTraitSetId,
-    clinicalAssertionObservationIds = clinicalAssertionObservationIds,
-    traitSetId = vcvTraitSetId,
-    rcvAccessionId = rcvId
+    directTraitSet = directTraitSet,
+    observationTraitSets = observationTraitSets,
+    candidateVcvTraitSets = candidateVcvTraitSets,
+    candidateRcvs = candidateRcvs
   )
 
   /**

@@ -13,7 +13,6 @@ import upack.{Msg, Obj, Str}
   * Info about a trait included in a submission to ClinVar.
   *
   * @param id unique ID of the trait
-  * @param clinicalAssertionTraitSetId unique ID of the collection which
   *                                    includes this trait
   * @param medgenId unique ID of the trait in NCBI's MedGen database, if known
   * @param name full name of the trait
@@ -24,7 +23,6 @@ import upack.{Msg, Obj, Str}
   */
 case class SCVTrait(
   id: String,
-  clinicalAssertionTraitSetId: String,
   medgenId: Option[String],
   name: Option[String],
   `type`: Option[String],
@@ -39,7 +37,7 @@ object SCVTrait {
 
   /** Extract an SCVTrait from a raw Trait payload. */
   def fromRawTrait(
-    setId: String,
+    idBase: String,
     traits: Array[VCVTrait],
     traitMappings: Array[TraitMapping],
     counter: AtomicInteger,
@@ -58,7 +56,7 @@ object SCVTrait {
           if (db.contains(ClinvarConstants.MedGenKey)) {
             if (medgenAcc.isDefined) {
               throw new IllegalStateException(
-                s"SCV Trait in set ${setId} contains two MedGen references"
+                s"SCV Trait in set ${idBase} contains two MedGen references"
               )
             } else {
               (id, xrefAcc)
@@ -78,8 +76,7 @@ object SCVTrait {
 
     // Init all the fields we can pull by looking at the SCV in isolation.
     val baseScv = SCVTrait(
-      id = s"${setId}.${counter.getAndIncrement()}",
-      clinicalAssertionTraitSetId = setId,
+      id = s"${idBase}.${counter.getAndIncrement()}",
       medgenId = medgenId,
       name = nameWrapper.map(_.value.str),
       `type` = rawTrait.extract("@Type").map(_.str),

@@ -10,9 +10,11 @@ import io.circe.derivation.{deriveEncoder, renaming}
   * This class is basically serving as a join-table.
   *
   * @param id unique ID of the observation
+  * @param clinicalAssertionTraitIds The IDs of the traits in the observation
   */
 case class SCVObservation(
-  id: String
+  id: String,
+  clinicalAssertionTraitIds: Array[String]
 )
 
 object SCVObservation {
