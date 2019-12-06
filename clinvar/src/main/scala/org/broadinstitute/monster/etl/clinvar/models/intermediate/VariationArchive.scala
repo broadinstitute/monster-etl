@@ -242,66 +242,82 @@ object VariationArchive {
           val scvId = SCV.extractNumericId(rawScv)
           scvIdToAccession.update(scvId, scvAccessionId)
           val relevantMappings = mappingsByScvId.getOrElse(scvId, Array.empty)
-          val clinicalAssertionTraitSetId = new mutable.ArrayBuffer[String]()
-          var relatedVcvTraitSetId: Option[String] = None
 
-          rawScv.extract("TraitSet").foreach { rawTraitSet =>
-            val traitCounter = new AtomicInteger(0)
-            val currentScvTraits = new mutable.ArrayBuffer[SCVTrait]()
-            MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
-              val scvTrait = SCVTrait.fromRawTrait(
-                // the setId is the same as the scv.id when extracting from assertions
+          val (directScvTraitSet, directScvTraits) = rawScv
+            .extract("TraitSet")
+            .map { rawTraitSet =>
+              val traitCounter = new AtomicInteger(0)
+              val currentScvTraits =
+                MsgTransformations.popAsArray(rawTraitSet, "Trait").map { rawTrait =>
+                  val scvTrait = SCVTrait.fromRawTrait(
+                    // the setId is the same as the scv.id when extracting from assertions
+                    scvAccessionId,
+                    traitsWithoutContent,
+                    relevantMappings,
+                    traitCounter,
+                    rawTrait
+                  )
+                  WithContent.attachContent(scvTrait, rawTrait)
+                }
+              val traitSet = SCVTraitSet.fromRawAssertionSet(
                 scvAccessionId,
-                traitsWithoutContent,
-                relevantMappings,
-                traitCounter,
-                rawTrait
+                rawTraitSet,
+                currentScvTraits.map(_.data.id).toArray
               )
-              scvTraits.append(WithContent.attachContent(scvTrait, rawTrait))
-              currentScvTraits.append(scvTrait)
+              (WithContent.attachContent(traitSet, rawTraitSet), currentScvTraits)
             }
-            val traitSet = SCVTraitSet.fromRawAssertionSet(
-              scvAccessionId,
-              rawTraitSet,
-              currentScvTraits.map(_.id).toArray
-            )
-            relatedVcvTraitSetId =
-              SCV.findRelatedVcvTraitSetId(currentScvTraits, vcvTraitSets)
-            scvTraitSets.append(WithContent.attachContent(traitSet, rawTraitSet))
-            clinicalAssertionTraitSetId.append(traitSet.id)
-          }
-
-          val clinicalAssertionObservationIds = new mutable.ArrayBuffer[String]()
+            .fold(
+              (Option.empty[WithContent[SCVTraitSet]], Array.empty[WithContent[SCVTrait]])
+            ) {
+              case (traitSet, traits) => (Some(traitSet), traits.toArray)
+            }
+          directScvTraitSet.foreach(traitSet => scvTraitSets.append(traitSet))
+          scvTraits.appendAll(directScvTraits)
 
           val observationCounter = new AtomicInteger(0)
           rawScv.extractList("ObservedInList", "ObservedIn").foreach { rawObservation =>
-            val observation = SCVObservation(
-              id = s"${scvAccessionId}.${observationCounter.getAndIncrement()}"
-            )
-            rawObservation.extract("TraitSet").foreach { rawTraitSet =>
-              val traitCounter = new AtomicInteger(0)
-              val currentScvTraitIds = new mutable.ArrayBuffer[String]()
-              MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
-                val scvTrait = SCVTrait.fromRawTrait(
-                  // the setId is the same as the observation.id when extracting from observations
-                  observation.id,
-                  traitsWithoutContent,
-                  relevantMappings,
-                  traitCounter,
-                  rawTrait
+            val observationId =
+              s"${scvAccessionId}.${observationCounter.getAndIncrement()}"
+            // pull the observation's trait set and trait ids out for multiple uses and for pattern consistency
+            val (observationScvTraitSet, observationScvTraits) = rawObservation
+              .extract("TraitSet")
+              .map { rawTraitSet =>
+                val traitCounter = new AtomicInteger(0)
+                val currentScvTraits =
+                  MsgTransformations.popAsArray(rawTraitSet, "Trait").map { rawTrait =>
+                    val scvTrait = SCVTrait.fromRawTrait(
+                      // the setId is the same as the observation.id when extracting from observations
+                      observationId,
+                      traitsWithoutContent,
+                      relevantMappings,
+                      traitCounter,
+                      rawTrait
+                    )
+                    WithContent.attachContent(scvTrait, rawTrait)
+                  }
+                val traitSet = SCVTraitSet.fromRawObservationSet(
+                  observationId,
+                  rawTraitSet,
+                  currentScvTraits.map(_.data.id).toArray
                 )
-                scvTraits.append(WithContent.attachContent(scvTrait, rawTrait))
-                currentScvTraitIds.append(scvTrait.id)
+                (WithContent.attachContent(traitSet, rawTraitSet), currentScvTraits)
               }
-              val traitSet = SCVTraitSet.fromRawObservationSet(
-                observation,
-                rawTraitSet,
-                currentScvTraitIds.toArray
-              )
-              scvTraitSets.append(WithContent.attachContent(traitSet, rawTraitSet))
-            }
+              .fold(
+                (
+                  Option.empty[WithContent[SCVTraitSet]],
+                  Array.empty[WithContent[SCVTrait]]
+                )
+              ) {
+                case (traitSet, traits) => (Some(traitSet), traits.toArray)
+              }
+            // use the extracted observation trait ids to create the observation
+            val observation = SCVObservation(
+              s"${scvAccessionId}.${observationCounter.getAndIncrement()}",
+              observationScvTraits.map(_.data.id)
+            )
             observations.append(WithContent.attachContent(observation, rawObservation))
-            clinicalAssertionObservationIds.append(observation.id)
+            observationScvTraitSet.foreach(traitSet => scvTraitSets.append(traitSet))
+            scvTraits.appendAll(observationScvTraits)
           }
 
           submitters.append(submitter)
@@ -310,8 +326,6 @@ object VariationArchive {
           // NOTE: It's important to attach content at the very end, to be sure everything
           // that can be modeled has already been popped out of the raw data.
 
-          val rcvId = SCV.findRelatedRcvId(relatedVcvTraitSetId, rcvs)
-
           val scv = SCV.fromRawAssertion(
             variation,
             vcv,
@@ -319,10 +333,11 @@ object VariationArchive {
             submission,
             rawScv,
             scvAccessionId,
-            clinicalAssertionTraitSetId.headOption,
-            clinicalAssertionObservationIds.toArray,
-            relatedVcvTraitSetId,
-            rcvId
+            directScvTraitSet.map(_.data),
+            directScvTraits.map(_.data),
+            observations.map(_.data).toArray,
+            vcvTraitSets.map(_.data).toArray,
+            rcvs.map(_.data).toArray
           )
 
           // Extract variation-related data from the SCV.

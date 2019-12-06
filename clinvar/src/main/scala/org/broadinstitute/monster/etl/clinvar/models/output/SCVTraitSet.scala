@@ -32,11 +32,11 @@ object SCVTraitSet {
 
   /** Extract a TraitSet model from a raw TraitSet payload which was nested under observation data. */
   def fromRawObservationSet(
-    observation: SCVObservation,
+    observationId: String,
     rawSet: Msg,
     scvTraitIds: Array[String]
   ): SCVTraitSet =
-    fromRawSet(observation.id, rawSet, scvTraitIds)
+    fromRawSet(observationId, rawSet, scvTraitIds)
 
   /** Extract a TraitSet model from a raw TraitSet payload. */
   private def fromRawSet(

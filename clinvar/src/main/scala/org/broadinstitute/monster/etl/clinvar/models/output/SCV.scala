@@ -2,11 +2,9 @@ package org.broadinstitute.monster.etl.clinvar.models.output
 
 import io.circe.Encoder
 import io.circe.derivation.{deriveEncoder, renaming}
-import org.broadinstitute.monster.etl.clinvar.models.intermediate.WithContent
 import ujson.StringRenderer
 import upack.{Arr, Msg, Obj, Str}
 
-import scala.collection.mutable.ArrayBuffer
 import scala.util.matching.Regex
 
 /**
@@ -36,10 +34,10 @@ import scala.util.matching.Regex
   * @param interpretationLastEvaluated the day when the clinical significance of this
   *                                    submission was last updated
   * @param interpretationComments      comments supporting the submitted clinical significance
-  * @param directTraitSet              the SCV Trait Set associated with this SCV
-  * @param observationTraitSets        the SCV Trait Sets under the observations associated with this SCV
-  * @param candidateVcvTraitSets       the associated vcv trait sets
-  * @param candidateRcvs               The RCVs that this SCV is related to
+  * @param clinicalAssertionTraitSetId the SCV Trait Set ID associated with this SCV
+  * @param clinicalAssertionObservationIds        the SCV Observation IDs associated with this SCV
+  * @param traitSetId                  the ID of the associated VCV trait set, if there is one
+  * @param rcvAccessionId              the ID of the RCV that this SCV is related to
   */
 case class SCV(
   id: String,
@@ -59,10 +57,10 @@ case class SCV(
   interpretationDescription: Option[String],
   interpretationLastEvaluated: Option[String],
   interpretationComments: Array[String],
-  directTraitSet: Option[SCVTraitSet],
-  observationTraitSets: Array[SCVTraitSet],
-  candidateVcvTraitSets: Array[VCVTraitSet],
-  candidateRcvs: Array[RCV]
+  clinicalAssertionTraitSetId: Option[String],
+  clinicalAssertionObservationIds: Array[String],
+  traitSetId: Option[String],
+  rcvAccessionId: Option[String]
 )
 
 object SCV {
@@ -82,44 +80,48 @@ object SCV {
     rawAssertion: Msg,
     scvAccessionId: String,
     directTraitSet: Option[SCVTraitSet],
-    observationTraitSets: Array[SCVTraitSet],
+    directTraits: Array[SCVTrait],
+    observations: Array[SCVObservation],
     candidateVcvTraitSets: Array[VCVTraitSet],
     candidateRcvs: Array[RCV]
-  ): SCV = SCV(
-    id = scvAccessionId,
-    version = rawAssertion
-      .extract("ClinVarAccession", "@Version")
-      .getOrElse {
-        throw new IllegalStateException(s"Found an SCV with no version: $rawAssertion")
-      }
-      .str
-      .toLong,
-    variationId = variation.id,
-    vcvId = vcv.id,
-    submitterId = submitter.id,
-    submissionId = submission.id,
-    assertionType = rawAssertion.extract("Assertion").map(_.value.str),
-    dateCreated = rawAssertion.extract("@DateCreated").map(_.str),
-    dateLastUpdated = rawAssertion.extract("@DateLastUpdated").map(_.str),
-    recordStatus = rawAssertion.extract("RecordStatus").map(_.value.str),
-    reviewStatus = rawAssertion.extract("ReviewStatus").map(_.value.str),
-    title = rawAssertion.extract("ClinVarSubmissionID", "@title").map(_.str),
-    localKey = rawAssertion.extract("ClinVarSubmissionID", "@localKey").map(_.str),
-    submittedAssembly =
-      rawAssertion.extract("ClinVarSubmissionID", "@submittedAssembly").map(_.str),
-    interpretationDescription =
-      rawAssertion.extract("Interpretation", "Description").map(_.value.str),
-    interpretationLastEvaluated = rawAssertion
-      .extract("Interpretation", "@DateLastEvaluated")
-      .flatMap(normalizeEvaluationDate),
-    interpretationComments = rawAssertion
-      .extract("Interpretation", "Comment")
-      .fold(Array.empty[String])(normalizeComments),
-    directTraitSet = directTraitSet,
-    observationTraitSets = observationTraitSets,
-    candidateVcvTraitSets = candidateVcvTraitSets,
-    candidateRcvs = candidateRcvs
-  )
+  ): SCV = {
+    val vcvTraitSetId = SCV.findRelatedVcvTraitSetId(directTraits, candidateVcvTraitSets)
+    SCV(
+      id = scvAccessionId,
+      version = rawAssertion
+        .extract("ClinVarAccession", "@Version")
+        .getOrElse {
+          throw new IllegalStateException(s"Found an SCV with no version: $rawAssertion")
+        }
+        .str
+        .toLong,
+      variationId = variation.id,
+      vcvId = vcv.id,
+      submitterId = submitter.id,
+      submissionId = submission.id,
+      assertionType = rawAssertion.extract("Assertion").map(_.value.str),
+      dateCreated = rawAssertion.extract("@DateCreated").map(_.str),
+      dateLastUpdated = rawAssertion.extract("@DateLastUpdated").map(_.str),
+      recordStatus = rawAssertion.extract("RecordStatus").map(_.value.str),
+      reviewStatus = rawAssertion.extract("ReviewStatus").map(_.value.str),
+      title = rawAssertion.extract("ClinVarSubmissionID", "@title").map(_.str),
+      localKey = rawAssertion.extract("ClinVarSubmissionID", "@localKey").map(_.str),
+      submittedAssembly =
+        rawAssertion.extract("ClinVarSubmissionID", "@submittedAssembly").map(_.str),
+      interpretationDescription =
+        rawAssertion.extract("Interpretation", "Description").map(_.value.str),
+      interpretationLastEvaluated = rawAssertion
+        .extract("Interpretation", "@DateLastEvaluated")
+        .flatMap(normalizeEvaluationDate),
+      interpretationComments = rawAssertion
+        .extract("Interpretation", "Comment")
+        .fold(Array.empty[String])(normalizeComments),
+      clinicalAssertionTraitSetId = directTraitSet.map(_.id),
+      clinicalAssertionObservationIds = observations.map(_.id),
+      traitSetId = vcvTraitSetId,
+      rcvAccessionId = SCV.findRelatedRcvId(vcvTraitSetId, candidateRcvs)
+    )
+  }
 
   /**
     * Regex matching the YYYY-MM-DD portion of a date field which might also contain
@@ -204,15 +206,15 @@ object SCV {
     * then return the ID of the found VCVTraitSet.
     */
   def findRelatedVcvTraitSetId(
-    scvTraits: ArrayBuffer[SCVTrait],
-    vcvTraitSets: ArrayBuffer[WithContent[VCVTraitSet]]
+    scvTraits: Array[SCVTrait],
+    vcvTraitSets: Array[VCVTraitSet]
   ): Option[String] = {
     vcvTraitSets
     // filter vcvTraitSets down to the ones that have the same traits as the current scvTraitSet
-      .find(_.data.traitIds.sameElements(scvTraits.flatMap(_.traitId)))
+      .find(_.traitIds.sameElements(scvTraits.flatMap(_.traitId)))
       .map { filteredSet =>
         // get the IDs of the relevant vcvTraitSets
-        filteredSet.data.id
+        filteredSet.id
       }
   }
 
@@ -222,13 +224,13 @@ object SCV {
     * Given a VCVTraitSet ID, we find the RCV that it belongs to and return its ID.
     */
   def findRelatedRcvId(
-    relevantVcvTraitSetId: Option[String],
-    rcvs: ArrayBuffer[WithContent[RCV]]
+    relatedVcvTraitSetId: Option[String],
+    rcvs: Array[RCV]
   ): Option[String] = {
 
     rcvs.find { rcv =>
       // filter down to rcvs that contain the same traitSetIds (should be 1, no more no less)
-      rcv.data.traitSetId.isDefined && rcv.data.traitSetId == relevantVcvTraitSetId
-    }.map(_.data.id)
+      rcv.traitSetId.isDefined && rcv.traitSetId == relatedVcvTraitSetId
+    }.map(_.id)
   }
 }
