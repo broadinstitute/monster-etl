@@ -15,32 +15,32 @@ import scala.collection.mutable
   * This representation flattens the hierarchy between models contained within
   * the archive. The parsing process must generate cross-links.
   *
-  * @param variation general info about the top-level variation described
-  *                  by the archive
-  * @param genes genes associated with the archive's top-level variation.
-  *              NOT guaranteed to be de-duplicated
+  * @param variation        general info about the top-level variation described
+  *                         by the archive
+  * @param genes            genes associated with the archive's top-level variation.
+  *                         NOT guaranteed to be de-duplicated
   * @param geneAssociations descriptions of how the genes in `genes` relate
   *                         to `variation`
-  * @param vcv info about how `variation` was submitted to ClinVar and reviewed
-  * @param vcvRelease info about the release history of `vcv`
-  * @param rcvs records describing ClinVar's aggregate knowledge of `variation`
-  * @param scvs records describing individual submissions to ClinVar
-  *             about `variation`
-  * @param submitters info about the organizations that submitted `scvs`.
-  *                   NOT guaranteed to be de-duplicated
-  * @param submissions info about when the members of `submitters` made
-  *                    submissions to ClinVar. NOT guaranteed to be de-duplicated
-  * @param scvVariations info about the variations that were submitted for
-  *                      each item in `scvs`
-  * @param scvObservations info about the sampling process associated with
-  *                        each item in `scvs`
-  * @param scvTraitSets info about collections of `scvTraits` which were submitted
-  *                     as part of each item in `scvs`
-  * @param scvTraits info about traits that were submitted for each item in `scvs`
-  * @param vcvTraitSets info about collections of `vcvTraits`
-  * @param vcvTraits info about traits
-  * @param traitMappings info about how the members of `scvTraits` link to the
-  *                      members of `vcvTraits`
+  * @param vcv              info about how `variation` was submitted to ClinVar and reviewed
+  * @param vcvRelease       info about the release history of `vcv`
+  * @param rcvs             records describing ClinVar's aggregate knowledge of `variation`
+  * @param scvs             records describing individual submissions to ClinVar
+  *                         about `variation`
+  * @param submitters       info about the organizations that submitted `scvs`.
+  *                         NOT guaranteed to be de-duplicated
+  * @param submissions      info about when the members of `submitters` made
+  *                         submissions to ClinVar. NOT guaranteed to be de-duplicated
+  * @param scvVariations    info about the variations that were submitted for
+  *                         each item in `scvs`
+  * @param scvObservations  info about the sampling process associated with
+  *                         each item in `scvs`
+  * @param scvTraitSets     info about collections of `scvTraits` which were submitted
+  *                         as part of each item in `scvs`
+  * @param scvTraits        info about traits that were submitted for each item in `scvs`
+  * @param vcvTraitSets     info about collections of `vcvTraits`
+  * @param vcvTraits        info about traits
+  * @param traitMappings    info about how the members of `scvTraits` link to the
+  *                         members of `vcvTraits`
   */
 case class VariationArchive(
   variation: WithContent[Variation],
@@ -62,6 +62,7 @@ case class VariationArchive(
 )
 
 object VariationArchive {
+
   import org.broadinstitute.monster.etl.clinvar.MsgOps
 
   /** Type for "real" VCVs backed by submissions to ClinVar. */
@@ -78,10 +79,10 @@ object VariationArchive {
     *
     * This process assumes:
     *   1. The input payload was produced by running a ClinVar XML release
-    *      through Monster's XML->JSON conversion program
+    * through Monster's XML->JSON conversion program
     *   2. Each VariationArchive is self-contained, and cross-links
-    *      can be fully constructed between all sub-models without
-    *      examining other archive instances
+    * can be fully constructed between all sub-models without
+    * examining other archive instances
     */
   def fromRawArchive(rawArchive: Msg): VariationArchive = {
 
@@ -229,16 +230,7 @@ object VariationArchive {
         rawScv =>
           val submitter = Submitter.fromRawAssertion(rawScv)
           val submission = Submission.fromRawAssertion(submitter, rawScv)
-          val scv = SCV.fromRawAssertion(
-            variation,
-            vcv,
-            submitter,
-            submission,
-            rawScv
-          )
-
-          // Extract variation-related data from the SCV.
-          scvVariations.appendAll(SCVVariation.allFromRawAssertion(scv, rawScv))
+          val scvAccessionId = SCV.extractAccessionId(rawScv)
 
           // Extract trait-related data from the SCV.
           // Traits and trait sets are nested under both the top-level SCV
@@ -247,60 +239,110 @@ object VariationArchive {
           // NOTE: Because trait mappings link to the numeric ID for each SCV,
           // but we use the accession as the PK, we need to do a little bit
           // of post-processing on the mappings.
-          val scvId = rawScv
-            .extract("@ID")
-            .getOrElse {
-              throw new IllegalStateException(s"Found an SCV with no numeric ID: $scv")
-            }
-            .str
-          scvIdToAccession.update(scvId, scv.id)
+          val scvId = SCV.extractNumericId(rawScv)
+          scvIdToAccession.update(scvId, scvAccessionId)
           val relevantMappings = mappingsByScvId.getOrElse(scvId, Array.empty)
 
-          rawScv.extract("TraitSet").foreach { rawTraitSet =>
-            val traitSet = SCVTraitSet.fromRawAssertionSet(scv, rawTraitSet)
-            val traitCounter = new AtomicInteger(0)
-            MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
-              val scvTrait = SCVTrait.fromRawTrait(
-                traitSet,
-                traitsWithoutContent,
-                relevantMappings,
-                traitCounter,
-                rawTrait
+          val (directScvTraitSet, directScvTraits) = rawScv
+            .extract("TraitSet")
+            .map { rawTraitSet =>
+              val traitCounter = new AtomicInteger(0)
+              val currentScvTraits =
+                MsgTransformations.popAsArray(rawTraitSet, "Trait").map { rawTrait =>
+                  val scvTrait = SCVTrait.fromRawTrait(
+                    // the setId is the same as the scv.id when extracting from assertions
+                    scvAccessionId,
+                    traitsWithoutContent,
+                    relevantMappings,
+                    traitCounter,
+                    rawTrait
+                  )
+                  WithContent.attachContent(scvTrait, rawTrait)
+                }
+              val traitSet = SCVTraitSet.fromRawAssertionSet(
+                scvAccessionId,
+                rawTraitSet,
+                currentScvTraits.map(_.data.id).toArray
               )
-              scvTraits.append(WithContent.attachContent(scvTrait, rawTrait))
+              (WithContent.attachContent(traitSet, rawTraitSet), currentScvTraits)
             }
-            scvTraitSets.append(WithContent.attachContent(traitSet, rawTraitSet))
-          }
+            .fold(
+              (Option.empty[WithContent[SCVTraitSet]], Array.empty[WithContent[SCVTrait]])
+            ) {
+              case (traitSet, traits) => (Some(traitSet), traits.toArray)
+            }
+          directScvTraitSet.foreach(traitSet => scvTraitSets.append(traitSet))
+          scvTraits.appendAll(directScvTraits)
 
           val observationCounter = new AtomicInteger(0)
           rawScv.extractList("ObservedInList", "ObservedIn").foreach { rawObservation =>
-            val observation = SCVObservation(
-              id = s"${scv.id}.${observationCounter.getAndIncrement()}",
-              clinicalAssertionId = scv.id
-            )
-            rawObservation.extract("TraitSet").foreach { rawTraitSet =>
-              val traitSet =
-                SCVTraitSet.fromRawObservationSet(observation, rawTraitSet)
-              val traitCounter = new AtomicInteger(0)
-              MsgTransformations.popAsArray(rawTraitSet, "Trait").foreach { rawTrait =>
-                val scvTrait = SCVTrait.fromRawTrait(
-                  traitSet,
-                  traitsWithoutContent,
-                  relevantMappings,
-                  traitCounter,
-                  rawTrait
+            val observationId =
+              s"${scvAccessionId}.${observationCounter.getAndIncrement()}"
+            // pull the observation's trait set and trait ids out for multiple uses and for pattern consistency
+            val (observationScvTraitSet, observationScvTraits) = rawObservation
+              .extract("TraitSet")
+              .map { rawTraitSet =>
+                val traitCounter = new AtomicInteger(0)
+                val currentScvTraits =
+                  MsgTransformations.popAsArray(rawTraitSet, "Trait").map { rawTrait =>
+                    val scvTrait = SCVTrait.fromRawTrait(
+                      // the setId is the same as the observation.id when extracting from observations
+                      observationId,
+                      traitsWithoutContent,
+                      relevantMappings,
+                      traitCounter,
+                      rawTrait
+                    )
+                    WithContent.attachContent(scvTrait, rawTrait)
+                  }
+                val traitSet = SCVTraitSet.fromRawObservationSet(
+                  observationId,
+                  rawTraitSet,
+                  currentScvTraits.map(_.data.id).toArray
                 )
-                scvTraits.append(WithContent.attachContent(scvTrait, rawTrait))
+                (WithContent.attachContent(traitSet, rawTraitSet), currentScvTraits)
               }
-              scvTraitSets.append(WithContent.attachContent(traitSet, rawTraitSet))
-            }
+              .fold(
+                (
+                  Option.empty[WithContent[SCVTraitSet]],
+                  Array.empty[WithContent[SCVTrait]]
+                )
+              ) {
+                case (traitSet, traits) => (Some(traitSet), traits.toArray)
+              }
+            // use the extracted observation trait ids to create the observation
+            val observation = SCVObservation(
+              s"${scvAccessionId}.${observationCounter.getAndIncrement()}",
+              observationScvTraits.map(_.data.id)
+            )
             observations.append(WithContent.attachContent(observation, rawObservation))
+            observationScvTraitSet.foreach(traitSet => scvTraitSets.append(traitSet))
+            scvTraits.appendAll(observationScvTraits)
           }
 
           submitters.append(submitter)
           submissions.append(submission)
+
           // NOTE: It's important to attach content at the very end, to be sure everything
           // that can be modeled has already been popped out of the raw data.
+
+          val scv = SCV.fromRawAssertion(
+            variation,
+            vcv,
+            submitter,
+            submission,
+            rawScv,
+            scvAccessionId,
+            directScvTraitSet.map(_.data),
+            directScvTraits.map(_.data),
+            observations.map(_.data).toArray,
+            vcvTraitSets.map(_.data).toArray,
+            rcvs.map(_.data).toArray
+          )
+
+          // Extract variation-related data from the SCV.
+          scvVariations.appendAll(SCVVariation.allFromRawAssertion(scv, rawScv))
+
           scvs.append(WithContent.attachContent(scv, rawScv))
       }
 
