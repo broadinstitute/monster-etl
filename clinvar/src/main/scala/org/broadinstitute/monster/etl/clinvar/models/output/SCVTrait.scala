@@ -26,7 +26,7 @@ case class SCVTrait(
   medgenId: Option[String],
   name: Option[String],
   `type`: Option[String],
-  xrefs: Array[String],
+  xrefs: Array[XRef],
   traitId: Option[String]
 )
 
@@ -46,31 +46,20 @@ object SCVTrait {
     val nameWrapper = rawTrait.extract("Name", "ElementValue")
     val nameType = nameWrapper.flatMap(_.extract("@Type")).map(_.str)
 
-    val allXrefs = MsgTransformations.popAsArray(rawTrait, "XRef")
+    val allXrefs = MsgTransformations.popAsArray(rawTrait, "XRef").map { xref => XRef.fromRawXRef(xref)}
     val (medgenId, xrefs) =
-      allXrefs.foldLeft((Option.empty[String], List.empty[Msg])) {
+      allXrefs.foldLeft((Option.empty[String], List.empty[XRef])) {
         case ((medgenAcc, xrefAcc), xref) =>
-          val db = xref.obj.get(Str("@DB")).map(_.str)
-          val id = xref.obj.get(Str("@ID")).map(_.str)
-
-          if (db.contains(ClinvarConstants.MedGenKey)) {
+          if (xref.db.contains(ClinvarConstants.MedGenKey)) {
             if (medgenAcc.isDefined) {
               throw new IllegalStateException(
                 s"SCV Trait in set ${idBase} contains two MedGen references"
               )
             } else {
-              (id, xrefAcc)
+              (Option(xref.id), xrefAcc)
             }
           } else {
-            val cleaned = Obj()
-            xref.obj.foreach {
-              case (k, v) =>
-                val cleanedKey =
-                  MsgTransformations.keyToSnakeCase(k.str.replaceAllLiterally("@", ""))
-                cleaned.obj.update(Str(cleanedKey), v)
-            }
-
-            (medgenAcc, cleaned :: xrefAcc)
+            (medgenAcc, xref :: xrefAcc)
           }
       }
 
@@ -80,7 +69,7 @@ object SCVTrait {
       medgenId = medgenId,
       name = nameWrapper.map(_.value.str),
       `type` = rawTrait.extract("@Type").map(_.str),
-      xrefs = xrefs.toArray.map(upack.transform(_, StringRenderer()).toString),
+      xrefs = xrefs.toArray,
       traitId = None
     )
 
@@ -110,8 +99,8 @@ object SCVTrait {
         val xrefMatch = {
           val isXrefMapping = candidateMapping.mappingType == "XRef"
           val xrefMatches = xrefs.exists { xref =>
-            xref.obj(Str("db")).str == candidateMapping.mappingRef &&
-            xref.obj(Str("id")).str == candidateMapping.mappingValue
+            xref.db == candidateMapping.mappingRef &&
+            xref.id == candidateMapping.mappingValue
           }
 
           isXrefMapping && xrefMatches
