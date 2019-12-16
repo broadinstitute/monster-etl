@@ -94,7 +94,7 @@ object VCVTrait {
       name = preferredName,
       alternateNames = alternateNames.toArray,
       `type` = rawTrait.extract("@Type").map(_.str),
-      xrefs = finalXrefs.toArray
+      xrefs = finalXrefs.toArray.distinct
     )
   }
 }
