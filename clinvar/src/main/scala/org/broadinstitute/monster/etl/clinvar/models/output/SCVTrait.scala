@@ -45,9 +45,7 @@ object SCVTrait {
     val nameWrapper = rawTrait.extract("Name", "ElementValue")
     val nameType = nameWrapper.flatMap(_.extract("@Type")).map(_.str)
 
-    val allXrefs = MsgTransformations.popAsArray(rawTrait, "XRef").map { xref =>
-      XRef.fromRawXRef(xref)
-    }
+    val allXrefs = MsgTransformations.popAsArray(rawTrait, "XRef").map(XRef.fromRawXRef)
     val (medgenId, xrefs) =
       allXrefs.foldLeft((Option.empty[String], List.empty[XRef])) {
         case ((medgenAcc, xrefAcc), xref) =>
@@ -75,14 +73,10 @@ object SCVTrait {
     )
 
     // Look through the VCVs to see if there are any with aligned medgen IDs
-    val medgenDirectMatches = traits.filter { `trait` =>
-      `trait`.medgenId == baseScv.medgenId
-    }
+    val medgenDirectMatch = traits.find(_.medgenId == baseScv.medgenId)
 
     // Look through the VCVs to see if there are any with aligned XRefs
-    val xrefDirectMatches = traits.filter { `trait` =>
-      `trait`.xrefs.intersect(baseScv.xrefs).isEmpty
-    }
+    val xrefDirectMatch = traits.find(_.xrefs.intersect(baseScv.xrefs).isEmpty)
 
     if (traitMappings.isEmpty) {
       // Lack of trait mappings means the VCV contains at most one trait,
@@ -125,8 +119,8 @@ object SCVTrait {
       val matchingName = matchingMapping.flatMap(_.medgenName)
       // Find the VCV trait with the matching MedGen ID if it's defined.
       // Otherwise match on preferred name.
-      val matchingVcvTrait = medgenDirectMatches.headOption
-        .orElse(xrefDirectMatches.headOption)
+      val matchingVcvTrait = medgenDirectMatch
+        .orElse(xrefDirectMatch)
         .orElse(traits.find(_.medgenId == matchingMedgenId))
         .orElse(traits.find(_.name == matchingName))
 
