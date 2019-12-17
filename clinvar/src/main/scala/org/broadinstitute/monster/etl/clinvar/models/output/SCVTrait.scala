@@ -76,7 +76,7 @@ object SCVTrait {
     val medgenDirectMatch = traits.find(_.medgenId == baseScv.medgenId)
 
     // Look through the VCVs to see if there are any with aligned XRefs
-    val xrefDirectMatch = traits.find(_.xrefs.intersect(baseScv.xrefs).isEmpty)
+    val xrefDirectMatch = traits.find(!_.xrefs.intersect(baseScv.xrefs).isEmpty)
 
     if (traitMappings.isEmpty) {
       // Lack of trait mappings means the VCV contains at most one trait,
