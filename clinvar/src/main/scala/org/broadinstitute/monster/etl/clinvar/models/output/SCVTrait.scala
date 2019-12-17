@@ -74,6 +74,16 @@ object SCVTrait {
       traitId = None
     )
 
+    // Look through the VCVs to see if there are any with aligned medgen IDs
+    val medgenMatches = traits.filter { `trait` =>
+      `trait`.medgenId == baseScv.medgenId
+    }
+
+    // Look through the VCVs to see if there are any with aligned XRefs
+    val xrefMatches = traits.filter { `trait` =>
+      `trait`.xrefs.intersect(baseScv.xrefs).isEmpty
+    }
+
     if (traitMappings.isEmpty) {
       // Lack of trait mappings means the VCV contains at most one trait,
       // which all the attached SCV traits should link to.
@@ -110,23 +120,15 @@ object SCVTrait {
         sameTraitType && (nameMatch || xrefMatch)
       }
 
-      // Look through the VCVs to see if there are any with aligned medgen IDs
-      // TODO
-
-      // Look through the VCVs to see if there are any with aligned XRefs
-      val xrefMatches = traits.filter { `trait` =>
-        `trait`.xrefs.toSet.intersect(baseScv.xrefs.toSet).isEmpty
-      }
-
       // Find the MedGen ID / name to look for in the VCV traits.
       val matchingMedgenId = matchingMapping.flatMap(_.medgenId)
       val matchingName = matchingMapping.flatMap(_.medgenName)
       // Find the VCV trait with the matching MedGen ID if it's defined.
       // Otherwise match on preferred name.
-      val matchingVcvTrait = traits
-        .find(_.medgenId == matchingMedgenId)
-        .orElse(traits.find(_.name == matchingName))
+      val matchingVcvTrait = medgenMatches.headOption
         .orElse(xrefMatches.headOption)
+        .orElse(traits.find(_.medgenId == matchingMedgenId))
+        .orElse(traits.find(_.name == matchingName))
 
       // Link! Fill in the MegGen ID of the mapping too, if the SCV trait
       // didn't already contain one.
