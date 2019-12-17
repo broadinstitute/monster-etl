@@ -37,7 +37,7 @@ object VCVTrait {
     val allNames = MsgTransformations.popAsArray(rawTrait, "Name")
 
     val (preferredName, alternateNames, nameXrefs) =
-      allNames.foldLeft((Option.empty[String], List.empty[String], List.empty[XRef])) {
+      allNames.foldLeft((Option.empty[String], List.empty[String], Set.empty[XRef])) {
         case ((prefAcc, altAcc, xrefAcc), name) =>
           val nameValue = name.extract("ElementValue").getOrElse {
             throw new IllegalStateException(s"Found a name with no value: $name")
@@ -55,7 +55,7 @@ object VCVTrait {
             .map { nameRef =>
               XRef.fromRawXRef(nameRef)
             }
-            .toList
+            .toSet
 
           if (nameType == "Preferred") {
             if (prefAcc.isDefined) {
@@ -63,10 +63,10 @@ object VCVTrait {
                 s"Trait $rawTrait has multiple preferred names"
               )
             } else {
-              (Some(nameString.str), altAcc, nameRefs ::: xrefAcc)
+              (Some(nameString.str), altAcc, nameRefs.union(xrefAcc))
             }
           } else {
-            (prefAcc, nameString.str :: altAcc, nameRefs ::: xrefAcc)
+            (prefAcc, nameString.str :: altAcc, nameRefs.union(xrefAcc))
           }
       }
 
@@ -85,7 +85,7 @@ object VCVTrait {
               (Option(xref.id), xrefAcc)
             }
           } else {
-            (medgenAcc, xref :: xrefAcc)
+            (medgenAcc, xrefAcc + xref)
           }
       }
 
@@ -97,7 +97,7 @@ object VCVTrait {
       name = preferredName,
       alternateNames = alternateNames.toArray,
       `type` = rawTrait.extract("@Type").map(_.str),
-      xrefs = finalXrefs.toArray.distinct
+      xrefs = finalXrefs.toArray
     )
   }
 }
