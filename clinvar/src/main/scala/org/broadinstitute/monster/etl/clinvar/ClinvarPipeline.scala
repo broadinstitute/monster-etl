@@ -30,7 +30,8 @@ object ClinvarPipeline {
   def runPipeline(
     pipelineContext: ScioContext,
     inputPrefix: String,
-    outputPrefix: String): ScioContext = {
+    outputPrefix: String
+  ): ScioContext = {
     // Read the nested archives from storage.
     val fullArchives = MsgIO
       .readJsonLists(
