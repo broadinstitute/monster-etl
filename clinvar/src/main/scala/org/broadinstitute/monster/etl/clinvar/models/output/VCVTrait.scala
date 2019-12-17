@@ -4,8 +4,7 @@ import io.circe.Encoder
 import io.circe.derivation.{deriveEncoder, renaming}
 import org.broadinstitute.monster.etl.MsgTransformations
 import org.broadinstitute.monster.etl.clinvar.ClinvarConstants
-import ujson.StringRenderer
-import upack.{Msg, Obj, Str}
+import upack.Msg
 
 /**
   * Info about a trait approved by ClinVar.
@@ -53,7 +52,9 @@ object VCVTrait {
 
           val nameRefs = MsgTransformations
             .popAsArray(name, "XRef")
-            .map { nameRef => XRef.fromRawXRef(nameRef) }
+            .map { nameRef =>
+              XRef.fromRawXRef(nameRef)
+            }
             .toList
 
           if (nameType == "Preferred") {
@@ -69,7 +70,9 @@ object VCVTrait {
           }
       }
 
-    val topLevelRefs = MsgTransformations.popAsArray(rawTrait, "XRef").map {xref => XRef.fromRawXRef(xref)}
+    val topLevelRefs = MsgTransformations.popAsArray(rawTrait, "XRef").map { xref =>
+      XRef.fromRawXRef(xref)
+    }
     val (medgenId, finalXrefs) =
       topLevelRefs.foldLeft((Option.empty[String], nameXrefs)) {
         case ((medgenAcc, xrefAcc), xref) =>

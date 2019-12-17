@@ -14,14 +14,18 @@ object XRef {
 
   def fromRawXRef(rawXref: Msg): XRef = {
     XRef(
-      rawXref.obj.getOrElse(
-        Str("@DB"),
-        throw new IllegalStateException(s"No DB tag found in xref: $rawXref")
-      ).toString,
-      rawXref.obj.getOrElse(
-        Str("@ID"),
-        throw new IllegalStateException(s"No ID tag found in xref: $rawXref")
-      ).toString
+      rawXref.obj
+        .getOrElse(
+          Str("@DB"),
+          throw new IllegalStateException(s"No DB tag found in xref: $rawXref")
+        )
+        .toString,
+      rawXref.obj
+        .getOrElse(
+          Str("@ID"),
+          throw new IllegalStateException(s"No ID tag found in xref: $rawXref")
+        )
+        .toString
     )
   }
 }

@@ -6,8 +6,7 @@ import io.circe.Encoder
 import io.circe.derivation.{deriveEncoder, renaming}
 import org.broadinstitute.monster.etl.MsgTransformations
 import org.broadinstitute.monster.etl.clinvar.ClinvarConstants
-import ujson.StringRenderer
-import upack.{Msg, Obj, Str}
+import upack.Msg
 
 /**
   * Info about a trait included in a submission to ClinVar.
@@ -46,7 +45,9 @@ object SCVTrait {
     val nameWrapper = rawTrait.extract("Name", "ElementValue")
     val nameType = nameWrapper.flatMap(_.extract("@Type")).map(_.str)
 
-    val allXrefs = MsgTransformations.popAsArray(rawTrait, "XRef").map { xref => XRef.fromRawXRef(xref)}
+    val allXrefs = MsgTransformations.popAsArray(rawTrait, "XRef").map { xref =>
+      XRef.fromRawXRef(xref)
+    }
     val (medgenId, xrefs) =
       allXrefs.foldLeft((Option.empty[String], List.empty[XRef])) {
         case ((medgenAcc, xrefAcc), xref) =>
@@ -108,15 +109,25 @@ object SCVTrait {
 
         sameTraitType && (nameMatch || xrefMatch)
       }
+
+      // Look through the VCVs to see if there are any with aligned XRefs?
+      // TODO
+//      traits.foreach { t =>
+//        val temp = t.xrefs.toSet.intersect(baseScv.xrefs.toSet)
+//        println("FALAFEL")
+//        println(temp)
+//      }
+
       // Find the MedGen ID / name to look for in the VCV traits.
       val matchingMedgenId = matchingMapping.flatMap(_.medgenId)
       val matchingName = matchingMapping.flatMap(_.medgenName)
       // Find the VCV trait with the matching MedGen ID if it's defined.
       // Otherwise match on preferred name.
-      val matchingVcvTrait =
-        matchingMedgenId.fold(traits.find(_.name == matchingName)) { id =>
-          traits.find(_.medgenId.contains(id))
-        }
+
+      val matchingVcvTrait = traits
+        .find(_.medgenId == matchingMedgenId)
+        .orElse(traits.find(_.name == matchingName))
+
       // Link! Fill in the MegGen ID of the mapping too, if the SCV trait
       // didn't already contain one.
       baseScv.copy(
