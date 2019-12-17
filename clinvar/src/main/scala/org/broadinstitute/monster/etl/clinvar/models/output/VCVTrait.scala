@@ -4,8 +4,7 @@ import io.circe.Encoder
 import io.circe.derivation.{deriveEncoder, renaming}
 import org.broadinstitute.monster.etl.MsgTransformations
 import org.broadinstitute.monster.etl.clinvar.ClinvarConstants
-import ujson.StringRenderer
-import upack.{Msg, Obj, Str}
+import upack.Msg
 
 /**
   * Info about a trait approved by ClinVar.
@@ -24,7 +23,7 @@ case class VCVTrait(
   name: Option[String],
   alternateNames: Array[String],
   `type`: Option[String],
-  xrefs: Array[String]
+  xrefs: Array[XRef]
 )
 
 object VCVTrait {
@@ -38,7 +37,7 @@ object VCVTrait {
     val allNames = MsgTransformations.popAsArray(rawTrait, "Name")
 
     val (preferredName, alternateNames, nameXrefs) =
-      allNames.foldLeft((Option.empty[String], List.empty[String], List.empty[String])) {
+      allNames.foldLeft((Option.empty[String], List.empty[String], Set.empty[XRef])) {
         case ((prefAcc, altAcc, xrefAcc), name) =>
           val nameValue = name.extract("ElementValue").getOrElse {
             throw new IllegalStateException(s"Found a name with no value: $name")
@@ -54,11 +53,9 @@ object VCVTrait {
           val nameRefs = MsgTransformations
             .popAsArray(name, "XRef")
             .map { nameRef =>
-              // Tag the ref with its source name so we can rebuild associations.
-              nameRef.obj.update(Str("name"), nameString)
-              processXref(nameRef)
+              XRef.fromRawXRef(nameRef)
             }
-            .toList
+            .toSet
 
           if (nameType == "Preferred") {
             if (prefAcc.isDefined) {
@@ -66,30 +63,29 @@ object VCVTrait {
                 s"Trait $rawTrait has multiple preferred names"
               )
             } else {
-              (Some(nameString.str), altAcc, nameRefs ::: xrefAcc)
+              (Some(nameString.str), altAcc, nameRefs.union(xrefAcc))
             }
           } else {
-            (prefAcc, nameString.str :: altAcc, nameRefs ::: xrefAcc)
+            (prefAcc, nameString.str :: altAcc, nameRefs.union(xrefAcc))
           }
       }
 
-    val topLevelRefs = MsgTransformations.popAsArray(rawTrait, "XRef")
+    val topLevelRefs = MsgTransformations.popAsArray(rawTrait, "XRef").map { xref =>
+      XRef.fromRawXRef(xref)
+    }
     val (medgenId, finalXrefs) =
       topLevelRefs.foldLeft((Option.empty[String], nameXrefs)) {
         case ((medgenAcc, xrefAcc), xref) =>
-          val db = xref.obj.get(Str("@DB")).map(_.str)
-          val id = xref.obj.get(Str("@ID")).map(_.str)
-
-          if (db.contains(ClinvarConstants.MedGenKey)) {
+          if (xref.db.contains(ClinvarConstants.MedGenKey)) {
             if (medgenAcc.isDefined) {
               throw new IllegalStateException(
                 s"VCV Trait Set contains two MedGen references: $rawTrait"
               )
             } else {
-              (id, xrefAcc)
+              (Option(xref.id), xrefAcc)
             }
           } else {
-            (medgenAcc, processXref(xref) :: xrefAcc)
+            (medgenAcc, xrefAcc + xref)
           }
       }
 
@@ -103,20 +99,5 @@ object VCVTrait {
       `type` = rawTrait.extract("@Type").map(_.str),
       xrefs = finalXrefs.toArray
     )
-  }
-
-  /**
-    * Convert the keys of an XRef object to BQ-safe-snake-case, and stringify
-    * it for storage in an array column.
-    */
-  def processXref(xref: Msg): String = {
-    val cleaned = Obj()
-    xref.obj.foreach {
-      case (k, v) =>
-        val cleanedKey =
-          MsgTransformations.keyToSnakeCase(k.str.replaceAllLiterally("@", ""))
-        cleaned.obj.update(Str(cleanedKey), v)
-    }
-    upack.transform(cleaned, StringRenderer()).toString
   }
 }
