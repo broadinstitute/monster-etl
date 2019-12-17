@@ -83,53 +83,67 @@ object SCVTrait {
       // which all the attached SCV traits should link to.
       baseScv.copy(traitId = traits.headOption.map(_.id))
     } else {
-      // Look through the trait mappings for one that aligns with
-      // the SCV's data.
-      val matchingMapping = traitMappings.find { candidateMapping =>
-        val sameTraitType =
-          baseScv.`type`.contains(candidateMapping.traitType)
-
-        val nameMatch = {
-          val isNameMapping = candidateMapping.mappingType == "Name"
-          val isPreferredMatch = candidateMapping.mappingRef == "Preferred" &&
-            nameType.contains("Preferred") &&
-            baseScv.name.contains(candidateMapping.mappingValue)
-          val isAlternateMatch = candidateMapping.mappingRef == "Alternate" &&
-            nameType.contains("included") &&
-            baseScv.name.contains(candidateMapping.mappingValue)
-
-          isNameMapping && (isPreferredMatch || isAlternateMatch)
-        }
-
-        val xrefMatch = {
-          val isXrefMapping = candidateMapping.mappingType == "XRef"
-          val xrefMatches = xrefs.exists { xref =>
-            xref.db == candidateMapping.mappingRef &&
-            xref.id == candidateMapping.mappingValue
-          }
-
-          isXrefMapping && xrefMatches
-        }
-
-        sameTraitType && (nameMatch || xrefMatch)
-      }
-
-      // Find the MedGen ID / name to look for in the VCV traits.
-      val matchingMedgenId = matchingMapping.flatMap(_.medgenId)
-      val matchingName = matchingMapping.flatMap(_.medgenName)
       // Find the VCV trait with the matching MedGen ID if it's defined.
       // Otherwise match on preferred name.
       val matchingVcvTrait = medgenDirectMatch
         .orElse(xrefDirectMatch)
-        .orElse(traits.find(_.medgenId == matchingMedgenId))
-        .orElse(traits.find(_.name == matchingName))
+        .orElse(findTraitMappingMatch(traitMappings, baseScv, xrefs, nameType, traits))
 
       // Link! Fill in the MegGen ID of the mapping too, if the SCV trait
       // didn't already contain one.
       baseScv.copy(
         traitId = matchingVcvTrait.map(_.id),
-        medgenId = baseScv.medgenId.orElse(matchingMedgenId)
+        medgenId = baseScv.medgenId.orElse(matchingVcvTrait.flatMap(_.medgenId))
       )
     }
+  }
+
+  /** Perform the logic needed to use the trait mappings to link an SCVTrait to a VCVTrait. */
+  def findTraitMappingMatch(
+    traitMappings: Array[TraitMapping],
+    baseScv: SCVTrait,
+    xrefs: List[XRef],
+    nameType: Option[String],
+    traits: Array[VCVTrait]
+  ): Option[VCVTrait] = {
+    // Look through the trait mappings for one that aligns with
+    // the SCV's data.
+    val matchingMapping = traitMappings.find { candidateMapping =>
+      val sameTraitType =
+        baseScv.`type`.contains(candidateMapping.traitType)
+
+      val nameMatch = {
+        val isNameMapping = candidateMapping.mappingType == "Name"
+        val isPreferredMatch = candidateMapping.mappingRef == "Preferred" &&
+          nameType.contains("Preferred") &&
+          baseScv.name.contains(candidateMapping.mappingValue)
+        val isAlternateMatch = candidateMapping.mappingRef == "Alternate" &&
+          nameType.contains("included") &&
+          baseScv.name.contains(candidateMapping.mappingValue)
+
+        isNameMapping && (isPreferredMatch || isAlternateMatch)
+      }
+
+      val xrefMatch = {
+        val isXrefMapping = candidateMapping.mappingType == "XRef"
+        val xrefMatches = xrefs.exists { xref =>
+          xref.db == candidateMapping.mappingRef &&
+          xref.id == candidateMapping.mappingValue
+        }
+
+        isXrefMapping && xrefMatches
+      }
+
+      sameTraitType && (nameMatch || xrefMatch)
+    }
+
+    // Find the MedGen ID / name to look for in the VCV traits.
+    val matchingMedgenId = matchingMapping.flatMap(_.medgenId)
+    val matchingName = matchingMapping.flatMap(_.medgenName)
+
+    // return the trait mapping medgen ID match or the name match
+    traits
+      .find(_.medgenId == matchingMedgenId)
+      .orElse(traits.find(_.name == matchingName))
   }
 }
