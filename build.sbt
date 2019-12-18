@@ -80,6 +80,7 @@ lazy val clinvar = project
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "io.circe" %% "circe-derivation" % circeDerivationVersion
+      "io.circe" %% "circe-derivation" % circeDerivationVersion,
+      "com.github.pathikrit" %% "better-files" % betterFilesVersion
     )
   )
