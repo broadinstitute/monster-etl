@@ -53,7 +53,7 @@ object VCVTrait {
           val nameRefs = MsgTransformations
             .popAsArray(name, "XRef")
             .map { nameRef =>
-              XRef.fromRawXRef(nameRef)
+              XRef.fromRawXRef(nameRef, nameValue)
             }
             .toSet
 
