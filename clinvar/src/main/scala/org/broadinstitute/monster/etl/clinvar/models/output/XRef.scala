@@ -4,7 +4,14 @@ import io.circe.{Encoder, Json}
 import io.circe.derivation.deriveEncoder
 import upack.{Msg, Str}
 
-case class XRef(db: String, id: String)
+/**
+  * Info about an XRef (cross-reference) in a trait.
+  *
+  * @param db the database it is from
+  * @param id the id of it in the aforementioned database database
+  * @param sourceName a human sensible name for it, if one is provided
+  */
+case class XRef(db: String, id: String, sourceName: Option[String])
 
 object XRef {
 
@@ -12,7 +19,13 @@ object XRef {
   implicit val encoder: Encoder[XRef] =
     deriveEncoder.mapJson(obj => Json.fromString(obj.noSpaces))
 
-  def fromRawXRef(rawXref: Msg): XRef = {
+  /**
+    * Extract an XRef from a rawXref and combine it with a name (if one is provided).
+    *
+    * @param rawXref a Msg containing the db and id information of the XRef
+    * @param referencedName the human sensible name for the XRef, if one is provided
+    */
+  def fromRawXRef(rawXref: Msg, referencedName: Option[String] = Option.empty): XRef = {
     XRef(
       rawXref.obj
         .getOrElse(
@@ -25,7 +38,8 @@ object XRef {
           Str("@ID"),
           throw new IllegalStateException(s"No ID tag found in xref: $rawXref")
         )
-        .str
+        .str,
+      referencedName
     )
   }
 }

@@ -45,7 +45,9 @@ object SCVTrait {
     val nameWrapper = rawTrait.extract("Name", "ElementValue")
     val nameType = nameWrapper.flatMap(_.extract("@Type")).map(_.str)
 
-    val allXrefs = MsgTransformations.popAsArray(rawTrait, "XRef").map(XRef.fromRawXRef)
+    val allXrefs = MsgTransformations
+      .popAsArray(rawTrait, "XRef")
+      .map(rawXref => XRef.fromRawXRef(rawXref))
     val (medgenId, xrefs) =
       allXrefs.foldLeft((Option.empty[String], List.empty[XRef])) {
         case ((medgenAcc, xrefAcc), xref) =>
