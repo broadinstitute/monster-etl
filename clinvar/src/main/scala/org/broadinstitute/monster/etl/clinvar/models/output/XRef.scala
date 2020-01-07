@@ -24,7 +24,6 @@ object XRef {
     *
     * @param rawXref a Msg containing the db and id information of the XRef
     * @param referencedName the human sensible name for the XRef, if one is provided
-    * @return
     */
   def fromRawXRef(rawXref: Msg, referencedName: Option[String] = Option.empty): XRef = {
     XRef(
