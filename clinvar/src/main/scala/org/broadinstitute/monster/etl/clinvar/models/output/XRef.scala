@@ -4,7 +4,7 @@ import io.circe.{Encoder, Json}
 import io.circe.derivation.deriveEncoder
 import upack.{Msg, Str}
 
-case class XRef(db: String, id: String, name: Option[String])
+case class XRef(db: String, id: String, sourceName: Option[String])
 
 object XRef {
 
@@ -12,7 +12,7 @@ object XRef {
   implicit val encoder: Encoder[XRef] =
     deriveEncoder.mapJson(obj => Json.fromString(obj.noSpaces))
 
-  def fromRawXRef(rawXref: Msg, nameValue: Msg = Str("")): XRef = {
+  def fromRawXRef(rawXref: Msg, nameValue: Option[String] = Option.empty): XRef = {
     XRef(
       rawXref.obj
         .getOrElse(
@@ -27,7 +27,7 @@ object XRef {
         )
         .str,
       // do we want to bother checking if it is an alternate name?
-      nameValue.obj.get(Str("$")).map(_.str)
+      nameValue
     )
   }
 }
