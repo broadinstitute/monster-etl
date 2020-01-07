@@ -26,7 +26,6 @@ object XRef {
           throw new IllegalStateException(s"No ID tag found in xref: $rawXref")
         )
         .str,
-      // do we want to bother checking if it is an alternate name?
       nameValue
     )
   }
