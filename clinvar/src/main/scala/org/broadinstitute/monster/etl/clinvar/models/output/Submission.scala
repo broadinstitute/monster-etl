@@ -10,6 +10,8 @@ import upack.Msg
   * @param id unique ID for the batch
   * @param submissionDate the day the batch was submitted to ClinVar
   * @param submitterId ID of the organization that made the submission
+  * @param additionalSubmitterIds IDs of any organizations listed as secondary
+  *                               submitters in the submission
   * @param submissionNames submitter-provided tags associated with the
   *                        submission batch
   */
@@ -17,6 +19,7 @@ case class Submission(
   id: String,
   submissionDate: String,
   submitterId: String,
+  additionalSubmitterIds: Array[String],
   submissionNames: Array[String]
 )
 
@@ -36,10 +39,15 @@ object Submission {
       }
       .str
 
+    val additionalSubmitters =
+      rawAssertion.extractList("AdditionalSubmitters", "SubmitterDescription")
+
     Submission(
       id = s"${submitter.id}.$submitDate",
       submissionDate = submitDate,
       submitterId = submitter.id,
+      additionalSubmitterIds =
+        additionalSubmitters.flatMap(_.extract("@OrgID")).map(_.str).toArray,
       submissionNames = rawAssertion
         .extractList("SubmissionNameList", "SubmissionName")
         .map(_.value.str)
