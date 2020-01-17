@@ -313,7 +313,7 @@ object VariationArchive {
             // use the extracted observation trait ids to create the observation
             val observation = SCVObservation(
               s"${scvAccessionId}.${observationCounter.getAndIncrement()}",
-              observationScvTraits.map(_.data.id)
+              observationScvTraitSet.map(_.data.id)
             )
             observations.append(WithContent.attachContent(observation, rawObservation))
             observationScvTraitSet.foreach(traitSet => scvTraitSets.append(traitSet))
