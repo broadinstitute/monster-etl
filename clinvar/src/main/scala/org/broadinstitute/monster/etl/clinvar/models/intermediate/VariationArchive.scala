@@ -333,6 +333,7 @@ object VariationArchive {
             submission,
             rawScv,
             scvAccessionId,
+            scvId,
             directScvTraitSet.map(_.data),
             directScvTraits.map(_.data),
             observations.map(_.data).toArray,

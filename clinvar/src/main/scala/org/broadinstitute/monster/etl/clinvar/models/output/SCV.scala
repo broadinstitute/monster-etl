@@ -17,6 +17,7 @@ import scala.util.matching.Regex
   * @param vcvId                       unique ID for the variation archive which captures the submission
   * @param submitterId                 unique ID of the organization which made the submission
   * @param submissionId                unique ID of the submission batch which contained this submission
+  * @param internalId                  internal numeric ID for each SCV submission
   * @param assertionType               description of the clinical significance asserted by
   *                                    this submission
   * @param dateCreated                 the day the submission was registered in ClinVar
@@ -46,6 +47,7 @@ case class SCV(
   vcvId: String,
   submitterId: String,
   submissionId: String,
+  internalId: String,
   assertionType: Option[String],
   dateCreated: Option[String],
   dateLastUpdated: Option[String],
@@ -79,6 +81,7 @@ object SCV {
     submission: Submission,
     rawAssertion: Msg,
     scvAccessionId: String,
+    scvInternalId: String,
     directTraitSet: Option[SCVTraitSet],
     directTraits: Array[SCVTrait],
     observations: Array[SCVObservation],
@@ -99,6 +102,7 @@ object SCV {
       vcvId = vcv.id,
       submitterId = submitter.id,
       submissionId = submission.id,
+      internalId = scvInternalId,
       assertionType = rawAssertion.extract("Assertion").map(_.value.str),
       dateCreated = rawAssertion.extract("@DateCreated").map(_.str),
       dateLastUpdated = rawAssertion.extract("@DateLastUpdated").map(_.str),
