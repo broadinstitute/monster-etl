@@ -1,7 +1,6 @@
 val beamVersion = "2.16.0"
 val betterFilesVersion = "3.8.0"
 val circeVersion = "0.12.3"
-val circeDerivationVersion = "0.12.0-M7"
 val enumeratumVersion = "1.5.13"
 val logbackVersion = "1.2.3"
 val scalaCsvVersion = "1.3.6"
@@ -28,7 +27,7 @@ val commonSettings = Seq(
 
 lazy val `monster-etl` = project
   .in(file("."))
-  .aggregate(common, encode, v2f, clinvar)
+  .aggregate(common, v2f)
 
 lazy val common = project
   .in(file("common"))
@@ -47,19 +46,6 @@ lazy val common = project
     ).map(_ % Test)
   )
 
-lazy val encode = project
-  .in(file("encode"))
-  .enablePlugins(BasePlugin)
-  .dependsOn(common)
-  .settings(commonSettings)
-  .settings(
-    libraryDependencies ++= Seq(
-      "ch.qos.logback" % "logback-classic" % logbackVersion,
-      "com.beachape" %% "enumeratum" % enumeratumVersion,
-      "com.spotify" %% "scio-extra" % scioVersion
-    )
-  )
-
 lazy val v2f = project
   .in(file("v2f"))
   .enablePlugins(BasePlugin)
@@ -69,18 +55,6 @@ lazy val v2f = project
     libraryDependencies ++= Seq(
       "com.spotify" %% "scio-extra" % scioVersion,
       "com.github.tototoshi" %% "scala-csv" % scalaCsvVersion,
-      "com.github.pathikrit" %% "better-files" % betterFilesVersion
-    )
-  )
-
-lazy val clinvar = project
-  .in(file("clinvar"))
-  .enablePlugins(BasePlugin)
-  .dependsOn(common)
-  .settings(commonSettings)
-  .settings(
-    libraryDependencies ++= Seq(
-      "io.circe" %% "circe-derivation" % circeDerivationVersion,
       "com.github.pathikrit" %% "better-files" % betterFilesVersion
     )
   )
